@@ -15,6 +15,7 @@
 | FTS key derivation | `jadx5/sources/com/alipay/android/phone/businesscommon/globalsearch/fts/FTSSearcher.java:987-989`; `libap_local_search.so` VA `0xae3ec` → `0xb69b4`, `PRAGMA key` VA `0x88638` |
 | MD5 primitive | `jadx12/sources/com/alipay/mobile/common/utils/MD5Util.java:38-50`, `:234-248` |
 | Social password protection boundary | `jadx13/sources/com/alipay/mobile/personalbase/db/EncryptOrmliteSqliteOpenHelper.java:297-322`, `:889-910`; `AlipaySecurityEncryptorUtils.java:44-58`; `BlueShieldSecurityEncryptor.java:203-226` |
+| SecurityGuard static-crypto router | `libsgmain.so` embedded `classes.dex` → `C0134.java:47-59`, `:115-126`; `C0013.java:9-10` (`doCommandNative`) |
 | Scan cache password boundary | `jadx14/sources/com/alipay/mobile/scan/util/db/UnifiedScanDbHelper.java:47`; `jadx14/sources/com/alipay/mobile/scan/npc/cache/NPayCodeCache.java:562-569` |
 | 状态库 password interface | `classes15.dex` → state dataset DB helper `:49`, `:53` |
 | Flare/Privacy/Invoke password interface | `jadx9/sources/com/alipay/fusion/localrecord/flare/FlareRecordDbHelper.java:26`; `jadx7/sources/com/alipay/android/phone/mobilesdk/permission/fortress/invoke/InvokeRecordDbHelper.java:26`; `jadx7/sources/com/alipay/android/phone/mobilesdk/permission/fortress/auth/AuthStatusDBHelper.java:26` |
