@@ -1,0 +1,45 @@
+{
+  "database": "EnMicroMsg.db",
+  "verification": {
+    "opened": true,
+    "observed_size_bytes": 5837163520,
+    "mode": "SQLCipher v1 via WCDB SQLiteCipherSpec, OPEN_READONLY",
+    "isolation": "same-inode hard link, no database copy",
+    "source_unchanged_during_open": true,
+    "integrity": "ok",
+    "page_size": 1024,
+    "page_count": 5700355,
+    "freelist_count": 44,
+    "encoding": "UTF-8",
+    "sqlite_master_objects": 714,
+    "tables": 252,
+    "indexes": 462
+  },
+  "current_table_counts": {
+    "message": 3404241,
+    "AppMessage": 417373,
+    "rcontact": 26644,
+    "rconversation": 1280,
+    "chatroom": 284,
+    "userinfo": 107,
+    "userinfo2": 261,
+    "SafeDeviceInfo": 0,
+    "LiteAppAuthInfo": 0,
+    "HardDeviceInfo": 2,
+    "WalletUserInfo": 1,
+    "WalletBankcard": 13,
+    "walletcache": 7,
+    "AAPayRecord": 0,
+    "HoneyPayMsgRecord": 0,
+    "WalletLuckyMoney": 4
+  },
+  "scope": "Point-in-time read-only aggregates from the current active database. No message/contact/payment values, identifiers, timestamps, paths, keys, or payloads are exported.",
+  "historical_comparison": {
+    "snapshot": "197451776-byte decrypted historical snapshot",
+    "tables": 251,
+    "message": 100506,
+    "rcontact": 16674,
+    "rconversation": 819,
+    "chatroom": 221
+  }
+}

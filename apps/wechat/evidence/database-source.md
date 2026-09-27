@@ -17,6 +17,8 @@
 
 这直接证明微信 WCDB 封装使用 page size 1024 和 SQLCipher version 1。
 
+动态复核使用 `../../tools/wcdb-probe.java:67-197` 的 `SQLiteCipherSpec`/只读打开链；为避免失败尝试影响活跃主库，`EnMicroMsg.db` 通过同 inode 硬链接句柄打开，不复制 5.84 GB 文件。当前全量返回 `integrity_check=ok`、page size 1024、5,700,355 页和 714 个 schema 对象，脱敏结果见 `main-aggregates.json`。
+
 ## key 派生与历史 device ID
 
 来源：`smali-classes11/kh5/b0.smali:1658-1716`。

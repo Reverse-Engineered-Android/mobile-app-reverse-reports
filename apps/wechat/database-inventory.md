@@ -6,7 +6,7 @@
 - **SQLCipher v1 快照已解密**：主库历史副本已按源码还原参数解密，并有独立明文副本。
 - **独立加密已解密快照**：文件头不是 SQLite，但已按该库源码对应的 SQLCipher v1 或 WCDB default 路径打开独立快照并通过 `integrity_check=ok`，可枚举表/列/行数。
 - **独立加密未解密**：文件头不是 SQLite，当前没有可验证的内容级打开结果；内容角色只按文件名和静态代码标注，不冒充解密结果。
-- **大库未解密**：当前文件太大，未创建超过 1 GB 的完整副本；历史小快照或 Schema 线索单独标注。
+- **大库当前全量只读验证**：不创建超过 1 GB 的副本，直接以只读、同 inode 隔离句柄验证 key、页布局、Schema、完整性和脱敏聚合；活跃库计数标为验证时点。
 
 当前源目录共 68 个数据库：57 个明文 SQLite、11 个非 SQLite 头加密库；后者由 2 个加密大库和 9 个独立加密库组成（`WxFileIndex.db` 属于独立加密类）。路径中的账号目录、UIN、AppId/设备 hash 已统一写为 `<opaque-id>`。
 
@@ -14,8 +14,8 @@
 
 | 数据库 | 当前大小 | 状态 | 已明确内容 |
 | --- | ---: | --- | --- |
-| `MicroMsg/<opaque-id>/EnMicroMsg.db` | 5,836,770,304 | SQLCipher v1 历史快照已解密 | 消息、联系人、会话、群聊、AppMessage、账号配置、小程序配置、钱包缓存、设备绑定；历史快照 251 表/100,506 消息 |
-| `MicroMsg/<opaque-id>/FTS5IndexMicroMsg_encrypt.db` | 1,104,314,368 | 当前全量内容级只读打开已验证 | 全文搜索索引；160 对象/270,018 页，消息 2,857,312、联系人 12,998、聊天室成员 280、小程序 110 等表级聚合 |
+| `MicroMsg/<opaque-id>/EnMicroMsg.db` | 5,837,163,520 | 当前全量内容级只读验证 | SQLCipher v1、`integrity_check=ok`、5,700,355 页；252 表/462 索引，验证时点 3,404,241 消息、417,373 AppMessage、26,644 联系人、1,280 会话、284 群聊 |
+| `MicroMsg/<opaque-id>/FTS5IndexMicroMsg_encrypt.db` | 1,105,993,728 | 当前全量内容级只读打开已验证 | 全文搜索索引；160 对象/270,018 页，消息 2,857,312、联系人 12,998、聊天室成员 280、小程序 110 等表级聚合 |
 | `MicroMsg/<opaque-id>/WxFileIndex.db` | 104,028,160 | 快照已解密 | 文件索引/文件元数据；6 表、317,265 行 |
 
 ## 独立加密库
@@ -102,4 +102,4 @@
 - `IMEISave.smali:15-145` 证明历史 device ID 来自加密 `KeyInfo.bin`，并额外加入当前/兼容 device ID。
 - 实际 key、UIN、device ID、`KeyInfo.bin` 内容均不公开。
 - 2026-09-27 对 `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db` 的本地快照执行 `PRAGMA cipher_compatibility=1`，四库均成功导出并通过 `integrity_check=ok`；过程、静态打开链和脱敏聚合见 `evidence/decryption-attempts.md`、`evidence/database-aggregates.json`。
-- 9 个独立加密小库快照均已完成内容级只读验证；其中 8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 打开并通过 `integrity_check=ok`，结果见 `evidence/priority-aggregates.json`。`FTS5IndexMicroMsg_encrypt.db` 已按 `com/tencent/mm/plugin/fts/p.smali:104-275` 的独立路径对当前全量做内容级只读打开，结果见 `evidence/fts-aggregates.json`。当前唯一未做全量内容级复核的是增长中的 `EnMicroMsg.db`。
+- 9 个独立加密小库快照均已完成内容级只读验证；其中 8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 打开并通过 `integrity_check=ok`，结果见 `evidence/priority-aggregates.json`。`FTS5IndexMicroMsg_encrypt.db` 已按 `com/tencent/mm/plugin/fts/p.smali:104-275` 的独立路径对当前全量做内容级只读打开，结果见 `evidence/fts-aggregates.json`。`EnMicroMsg.db` 当前全量也已通过 SQLCipher v1 只读验证、完整性和表级聚合，结果见 `evidence/main-aggregates.json`。

@@ -1,12 +1,13 @@
 # 解密尝试记录
 
-版本边界：数据库文件来自微信 8.0.78 / versionCode 3180 的授权快照。所有测试在只读文件副本的首页上进行，不修改源库，不输出候选值。
+版本边界：数据库文件来自微信 8.0.78 / versionCode 3180 的授权数据。小库在只读副本上验证；大库使用只读、同 inode 隔离句柄验证，不复制超过 1 GB 的文件，不修改源库，不输出候选值。
 
 ## 已验证主库路径
 
 - `EnMicroMsg.db` 使用 SQLCipher v1：page size 1024、PBKDF2-HMAC-SHA1、64000 次迭代、HMAC-SHA1 20 字节。
 - `kh5/b0.smali:1658-1716` 与 `com/tencent/mm/storagebase/IMEISave.smali:15-145` 给出 device ID + UIN 摘要前 7 个十六进制字符和历史 device ID 恢复路径。
 - 历史快照使用该参数成功解密并通过 `integrity_check=ok`；实际 key/UIN/device ID 不公开。
+- 2026-09-28 对当前 5,837,163,520 字节全量文件用同一 key/参数执行 `SQLiteDatabase.openDatabase(..., OPEN_READONLY)`。为避免 WCDB 失败尝试删除路径，使用同文件系统、同 inode 的硬链接作为隔离入口；源文件验证前后大小、inode、mtime 均不变。完整 `PRAGMA integrity_check=ok`，page size 1024、5,700,355 页、44 个 freelist 页、714 个 `sqlite_master` 对象（252 表/462 索引），脱敏计数见 `main-aggregates.json`。
 
 ## 独立加密库快照解密
 
@@ -40,4 +41,4 @@
 
 ## 边界
 
-当前所有独立加密小库和 FTS 全量均已有内容级只读证据。剩余边界是 `EnMicroMsg.db` 当前 5.84 GB 全量仍需在应用停止写入时按已验证 SQLCipher v1 路径做受控复制；FTS 如需词项分布或消息级取证，应另行取得一致快照并执行更细的最小化查询。历史快照的行数不冒充当前全量行数。
+当前所有独立加密小库、`EnMicroMsg.db` 当前全量和 FTS 全量均已有内容级只读证据。活跃主库的行数是验证时点聚合；如需严格时间点消息/支付取证，应在应用停止写入时另存一致快照。FTS 如需词项分布或消息级取证，也应另行取得一致快照并执行更细的最小化查询。历史快照的行数不冒充当前全量行数。

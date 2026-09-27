@@ -24,6 +24,7 @@
 | --- | --- |
 | SQLCipher v1/page 1024 | `evidence/database-source.md` |
 | device ID + UIN key 派生 | `evidence/database-source.md` |
+| `EnMicroMsg.db` 当前全量只读解密、完整性和表级聚合 | `evidence/main-aggregates.json`、`evidence/decryption-attempts.md` |
 | FTS/Priority 的 `t3.Ad` 或 UIN + D3 + username key 路径 | `evidence/database-source.md`、`evidence/decryption-attempts.md` |
 | FTS 当前全量只读打开及表级内容聚合 | `evidence/fts-aggregates.json`、`evidence/decryption-attempts.md` |
 | `MicroMsgPriority.db` WCDB default 内容级 Schema/行数聚合 | `evidence/priority-aggregates.json`、`evidence/decryption-attempts.md` |
@@ -35,7 +36,7 @@
 | 登录设备、认证、钱包绑定/缓存聚合 | [schema.md](schema.md) |
 | AppBrand ORM/表注册 | `evidence/database-source.md` |
 
-当前 9 个独立加密小库快照均通过 `integrity_check=ok`：8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 完成内容级 Schema/行数聚合。`FTS5IndexMicroMsg_encrypt.db` 也已完成当前全量内容级只读打开和表级聚合；当前仅 `EnMicroMsg.db` 全量未复核。
+当前 9 个独立加密小库快照均通过 `integrity_check=ok`：8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 完成内容级 Schema/行数聚合。`EnMicroMsg.db` 当前全量已通过 SQLCipher v1、完整性和脱敏表级聚合；`FTS5IndexMicroMsg_encrypt.db` 当前全量也已完成内容级只读打开。两个大库均未创建超过 1 GB 的副本。
 
 ## 支付
 

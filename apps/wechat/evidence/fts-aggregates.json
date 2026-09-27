@@ -3,6 +3,7 @@
   "verification": {
     "opened": true,
     "candidate_index": 0,
+    "observed_size_bytes": 1105993728,
     "mode": "SQLiteDatabase.openDatabase OPEN_READONLY with SQLiteCipherSpec=null",
     "integrity": "skipped",
     "page_size": 4096,

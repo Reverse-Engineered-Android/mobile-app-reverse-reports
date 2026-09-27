@@ -172,7 +172,21 @@
 
 ## 登录、设备与钱包主库聚合
 
-以下结果来自 `EnMicroMsg.db` 的独立历史解密副本，仅查询表名、列名和行数，不输出任何字段值：
+`EnMicroMsg.db` 当前全量已用 SQLCipher v1/page 1024 只读打开并通过完整 `integrity_check=ok`。验证时点为 5,700,355 页、252 表/462 索引；只查询表名、列名和行数，不输出任何字段值：
+
+| 当前表 | 验证时点行数 | 内容边界 |
+| --- | ---: | --- |
+| `message` | 3,404,241 | 消息主表 |
+| `AppMessage` | 417,373 | App/小程序/业务消息扩展 |
+| `rcontact` | 26,644 | 联系人 |
+| `rconversation` | 1,280 | 会话 |
+| `chatroom` | 284 | 群聊 |
+| `userinfo` / `userinfo2` | 107 / 261 | 登录与账号配置键值 |
+| `HardDeviceInfo` | 2 | 硬件连接、认证/会话缓冲字段 |
+| `WalletUserInfo` / `WalletBankcard` | 1 / 13 | 钱包注册与银行卡绑定状态 |
+| `walletcache` / `WalletLuckyMoney` | 7 / 4 | 钱包缓存与红包状态 |
+
+完整当前计数见 `evidence/main-aggregates.json`。下表来自 197 MB 独立历史解密快照，用于补充列结构和历史时点对比，不与当前计数混用：
 
 | 表 | 行数 | 内容边界 |
 | --- | ---: | --- |

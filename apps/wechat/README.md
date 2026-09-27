@@ -13,4 +13,4 @@
 - [Schema 与聚合](schema.md)
 - [证据索引](evidence.md)
 
-证据分为“已验证”“结构已证实”“静态推断”三级。`EnMicroMsg.db` 历史快照、8 个 SQLCipher v1 独立库快照和 `MicroMsgPriority.db` 的 WCDB default 快照均已解密并校验；`FTS5IndexMicroMsg_encrypt.db` 当前全量已按独立 key/打开链完成内容级只读验证。当前仅 `EnMicroMsg.db` 的 5.84 GB 全量尚未复制/解密。报告明确区分静态结构与内容级结果，不用文件名推测冒充解密结果。
+证据分为“已验证”“结构已证实”“静态推断”三级。`EnMicroMsg.db` 当前全量与历史快照、8 个 SQLCipher v1 独立库快照、`MicroMsgPriority.db` 的 WCDB default 快照以及 `FTS5IndexMicroMsg_encrypt.db` 当前全量均已完成内容级只读验证。两个大库均未创建超过 1 GB 的副本；主库以同 inode 只读隔离句柄完成 `integrity_check=ok` 和脱敏聚合。报告明确区分静态结构、当前时点计数与历史快照，不用文件名推测冒充解密结果。
