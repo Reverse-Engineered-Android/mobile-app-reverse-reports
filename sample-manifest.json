@@ -1,0 +1,45 @@
+{
+  "samples": [
+    {
+      "app": "AMap",
+      "package": "com.autonavi.minimap",
+      "version_name": "17.00.0.2005",
+      "version_code": 170000,
+      "files": [
+        {
+          "name": "base.apk",
+          "size": 195437758,
+          "sha256": "475ef983285559042ff194029a78ca3a4c79b537c8c052fc121ee796dbbd8e8a"
+        }
+      ]
+    },
+    {
+      "app": "Xiaohongshu",
+      "package": "com.xingin.xhs",
+      "version_name": "9.37.0",
+      "version_code": 9370802,
+      "files": [
+        {
+          "name": "rednote_9.37.0.xapk",
+          "size": 209807135,
+          "sha256": "42033a369835209738ee5b4b1ad6553e6289cac09fee8559fbf4286c9d490bbd"
+        },
+        {
+          "name": "com.xingin.xhs.apk",
+          "size": 134361211,
+          "sha256": "0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c"
+        },
+        {
+          "name": "config.arm64_v8a.apk",
+          "size": 74703658,
+          "sha256": "b2580ad86d27ec595cb8e07c104d8b90ff0a780d963c876de52ef0ae6afc2487"
+        },
+        {
+          "name": "config.mdpi.apk",
+          "size": 731019,
+          "sha256": "1136f952fc1a1c471168ba5f84f8677fe3b71a654683c1abb1a45eaf1a4de8bf"
+        }
+      ]
+    }
+  ]
+}
