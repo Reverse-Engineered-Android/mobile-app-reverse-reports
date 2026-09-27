@@ -28,6 +28,8 @@
 
 `MicroMsgPriority.db` 是唯一尚未完成内容级解密的独立小库。`tx3/h.smali:37-105` 证明它直接把 UIN 字符串、登录用户名和 device 字符串拼接，经 MD5 后取前 7 个十六进制字符并以字节串作为 SQLCipher 口令；`tx3/h.smali:143-209` 创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。其无 `SQLiteCipherSpec` 的 WCDB 打开链固定使用 page size 4096 和 `CipherVersion.defaultVersion`，依据见 `database-source.md`。
 
+`FTS5IndexMicroMsg_encrypt.db` 使用与 `MicroMsgPriority.db` 相似的“缓存 key 或 UIN + D3 + 登录用户名”输入，但入口独立：`com/tencent/mm/plugin/fts/p.smali:104-178` 优先读取 `t3.Ad`，缺失时计算 MD5 前 7 字符并持久化；`p.smali:215-275` 以 null cipher spec 和 key 字节串打开。当前 1.10 GB 文件仍在应用写入路径上，未在停止写入时取得完整一致快照，因此没有进行内容级行/词项导出；该状态不等于 key 路径未知。
+
 2026-09-28 先执行 280 组只读打开验证：14 个 UIN 形态候选、2 个用户名形态（包含 Java null 拼接结果）、2 个当前/fallback D3 形态，以及 WCDB default、SQLCipher compatibility 1/2/3/4 共 5 组参数。随后使用微信自身的 `libcso.so`、`libWCDB.so` 和 `SQLiteDatabase` 做精确默认路径复核：`../../tools/wcdb-probe.java:51-89` 加载原生库并初始化 `CsoLoader`，`../../tools/wcdb-probe.java:91-149` 以 `SQLiteCipherSpec=null`、只读 flag 调用 `SQLiteDatabase.openDatabase`，与 `SQLiteDatabase.smali:1352-1373`、`Database.smali:1689-1721` 的 page size 4096/defaultVersion 路径保持一致。
 
 精确复核使用 14 个 UIN 形态、4 个登录用户名/null 形态和 3 个 D3/null/空形态，共 168 组。输入文件是 147,456 字节、SHA-256 `7ecfeb84dadd702fc61a44f5c824fd48f69359454acf7290a8aa22fbe7861805` 的授权快照；每轮只读打开独立临时副本，源文件哈希保持不变。168 组均返回 `com.tencent.wcdb.database.SQLiteCantOpenDatabaseException`，没有可验证打开结果。`../../tools/wcdb-probe.java:151-179` 只输出候选序号、对象计数、PRAGMA 聚合或异常类，不输出 key/UIN/用户名/D3。
@@ -36,4 +38,4 @@
 
 ## 边界
 
-未解密只证明当前可访问证据不足，不证明文件损坏。下一步应取得 `MicroMsgPriority.db` 创建时的 D3 primary/兼容项 `258` 或等价密钥材料，再按 `tx3/h.smali` 的直接打开路径做只读验证；当前 `EnMicroMsg.db` 与 FTS 大库仍需在应用停止写入时另做受控复制。
+未解密只证明当前可访问证据不足，不证明文件损坏。下一步应取得 `MicroMsgPriority.db` 创建时的 D3 primary/兼容项 `258` 或等价密钥材料，再按 `tx3/h.smali` 的直接打开路径做只读验证；`FTS5IndexMicroMsg_encrypt.db` 应取得 `t3.Ad` 的历史值，或在应用停止写入时按 `com/tencent/mm/plugin/fts/p.smali` 的输入顺序重建候选并做只读复核。当前 `EnMicroMsg.db` 与 FTS 大库仍需在应用停止写入时另做受控复制。

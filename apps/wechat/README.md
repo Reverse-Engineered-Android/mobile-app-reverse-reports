@@ -13,4 +13,4 @@
 - [Schema 与聚合](schema.md)
 - [证据索引](evidence.md)
 
-证据分为“已验证”“结构已证实”“静态推断”三级。`EnMicroMsg.db` 历史快照和 8 个独立加密快照已通过 SQLCipher v1 解密并校验；`MicroMsgPriority.db` 仍缺一个历史设备组件，280 组 SQLCipher 兼容和 168 组微信 WCDB default 只读输入均未命中，未完成内容级解密；当前 `EnMicroMsg.db` 全量和 `FTS5IndexMicroMsg_encrypt.db` 也未复制/解密。报告明确区分这些状态，不用文件名推测冒充解密结果。
+证据分为“已验证”“结构已证实”“静态推断”三级。`EnMicroMsg.db` 历史快照和 8 个独立加密快照已通过 SQLCipher v1 解密并校验；`MicroMsgPriority.db` 仍缺一个历史设备组件，280 组 SQLCipher 兼容和 168 组微信 WCDB default 只读输入均未命中，未完成内容级解密；当前 `EnMicroMsg.db` 全量和 `FTS5IndexMicroMsg_encrypt.db` 也未复制/解密。FTS 与 Priority 的独立 key/打开链已由 smali 还原，报告明确区分静态结构与内容级结果，不用文件名推测冒充解密结果。

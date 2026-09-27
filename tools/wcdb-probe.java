@@ -48,6 +48,31 @@ final class WcdbProbe {
         return value.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r").replace("\t", "\\t");
     }
 
+    private static String sqlIdentifier(String value) {
+        return "\"" + value.replace("\"", "\"\"") + "\"";
+    }
+
+    private static boolean isShadowTable(String value) {
+        return value.endsWith("_config")
+                || value.endsWith("_content")
+                || value.endsWith("_data")
+                || value.endsWith("_docsize")
+                || value.endsWith("_idx");
+    }
+
+    private static Object createCipherSpec() throws Exception {
+        if (!"1".equals(System.getenv("WDB_SQLCIPHER_COMPAT"))) {
+            return null;
+        }
+        Class<?> specClass = Class.forName("com.tencent.wcdb.database.SQLiteCipherSpec");
+        Object spec = specClass.getConstructor().newInstance();
+        Method setPageSize = findMethod(specClass, "setPageSize", 1);
+        setPageSize.invoke(spec, 1024);
+        Method setSQLCipherVersion = findMethod(specClass, "setSQLCipherVersion", 1);
+        setSQLCipherVersion.invoke(spec, 1);
+        return spec;
+    }
+
     private static void initializeCso() throws Exception {
         String libraryDirectory = System.getenv("WDB_LIB_DIR");
         System.load(new File(libraryDirectory, "libcso.so").getPath());
@@ -105,14 +130,37 @@ final class WcdbProbe {
             if (open == null) {
                 throw new IllegalStateException("missing WCDB read-only openDatabase");
             }
-            Object database = open.invoke(null, databasePath, key, null, null, 1, null, 0);
+            Object cipherSpec = createCipherSpec();
+            Object database = open.invoke(null, databasePath, key, cipherSpec, null, 1, null, 0);
             try {
                 List<String> master = query(database, "SELECT type || ':' || name FROM sqlite_master ORDER BY type, name");
-                List<String> integrity = query(database, "PRAGMA integrity_check");
+                String integritySql = System.getenv("WDB_SKIP_INTEGRITY") == null
+                        ? "PRAGMA integrity_check"
+                        : "SELECT 'skipped'";
+                List<String> integrity = query(database, integritySql);
                 List<String> pageSize = query(database, "PRAGMA page_size");
                 List<String> pageCount = query(database, "PRAGMA page_count");
                 List<String> freelistCount = query(database, "PRAGMA freelist_count");
                 List<String> encoding = query(database, "PRAGMA encoding");
+                String countFilter = System.getenv("WDB_COUNT_TABLES");
+                List<String> visibleTables = new ArrayList<String>();
+                List<String> ftsTables = new ArrayList<String>();
+                for (String entry : master) {
+                    if (!entry.startsWith("table:")) {
+                        continue;
+                    }
+                    String tableName = entry.substring(6);
+                    boolean selected = countFilter == null
+                            ? !isShadowTable(tableName)
+                            : ("," + countFilter + ",").contains("," + tableName + ",");
+                    if (!selected) {
+                        continue;
+                    }
+                    visibleTables.add(tableName);
+                    if (tableName.startsWith("FTS5Index") && System.getenv("WDB_FTS_VOCAB") != null) {
+                        ftsTables.add(tableName);
+                    }
+                }
                 StringBuilder tables = new StringBuilder();
                 for (int index = 0; index < master.size(); index++) {
                     if (index > 0) {
@@ -120,13 +168,65 @@ final class WcdbProbe {
                     }
                     tables.append('"').append(jsonEscape(master.get(index))).append('"');
                 }
+                StringBuilder tableCounts = new StringBuilder();
+                for (int index = 0; index < visibleTables.size(); index++) {
+                    if (index > 0) {
+                        tableCounts.append(',');
+                    }
+                    String tableName = visibleTables.get(index);
+                    String countValue = "-1";
+                    try {
+                        List<String> count = query(database, "SELECT count(*) FROM " + sqlIdentifier(tableName));
+                        if (!count.isEmpty()) {
+                            countValue = count.get(0);
+                        }
+                    } catch (Throwable ignored) {
+                    }
+                    tableCounts.append('"').append(jsonEscape(tableName)).append("\":").append(countValue);
+                }
+                StringBuilder ftsAggregates = new StringBuilder();
+                Method execSQL = findMethod(database.getClass(), "execSQL", 1);
+                for (int index = 0; index < ftsTables.size(); index++) {
+                    if (index > 0) {
+                        ftsAggregates.append(',');
+                    }
+                    String tableName = ftsTables.get(index);
+                    String vocabName = "temp.wcdb_vocab_" + index;
+                    String aggregateJson = "\"" + jsonEscape(tableName)
+                            + "\":{\"terms\":-1,\"docs\":-1,\"occurrences\":-1,\"max_doc\":-1,\"max_occurrences\":-1}";
+                    try {
+                        execSQL.invoke(database, "CREATE VIRTUAL TABLE " + vocabName
+                                + " USING fts5vocab(" + sqlIdentifier(tableName) + ", 'row')");
+                        List<String> aggregate = query(database, "SELECT count(*), coalesce(sum(doc), 0), "
+                                + "coalesce(sum(cnt), 0), coalesce(max(doc), 0), coalesce(max(cnt), 0) FROM " + vocabName);
+                        String[] values = aggregate.isEmpty() || aggregate.get(0).length() == 0
+                                ? new String[] {"-1", "-1", "-1", "-1", "-1"}
+                                : aggregate.get(0).split("\t", -1);
+                        StringBuilder aggregateBuilder = new StringBuilder();
+                        aggregateBuilder.append('"').append(jsonEscape(tableName)).append("\":{\"terms\":")
+                                .append(values[0]).append(",\"docs\":").append(values[1])
+                                .append(",\"occurrences\":").append(values[2])
+                                .append(",\"max_doc\":").append(values[3])
+                                .append(",\"max_occurrences\":").append(values[4]).append('}');
+                        aggregateJson = aggregateBuilder.toString();
+                    } catch (Throwable ignored) {
+                    } finally {
+                        try {
+                            execSQL.invoke(database, "DROP TABLE IF EXISTS " + vocabName);
+                        } catch (Throwable ignored) {
+                        }
+                    }
+                    ftsAggregates.append(aggregateJson);
+                }
                 return "{\"opened\":true,\"table_count\":" + master.size()
                         + ",\"integrity\":\"" + jsonEscape(integrity.isEmpty() ? "" : integrity.get(0))
                         + "\",\"page_size\":\"" + jsonEscape(pageSize.isEmpty() ? "" : pageSize.get(0))
                         + "\",\"page_count\":\"" + jsonEscape(pageCount.isEmpty() ? "" : pageCount.get(0))
                         + "\",\"freelist_count\":\"" + jsonEscape(freelistCount.isEmpty() ? "" : freelistCount.get(0))
                         + "\",\"encoding\":\"" + jsonEscape(encoding.isEmpty() ? "" : encoding.get(0))
-                        + "\",\"tables\":[" + tables + "]}";
+                        + "\",\"table_counts\":{" + tableCounts + "}"
+                        + ",\"fts_aggregates\":{" + ftsAggregates + "}"
+                        + ",\"tables\":[" + tables + "]}";
             } finally {
                 Method close = findMethod(database.getClass(), "close", 0);
                 close.invoke(database);

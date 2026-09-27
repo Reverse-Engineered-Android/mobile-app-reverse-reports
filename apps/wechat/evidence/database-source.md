@@ -118,3 +118,24 @@ D3 primary 由 `cp/g0` / `cp/u0` 的认证缓存提供。`cp/u0.smali:31-117` �
 动态只读复核工具见 `../../tools/wcdb-probe.java`。`tools/wcdb-probe.java:51-89` 调用微信 `libcso.so`/`libWCDB.so` 的 JNI 初始化链；`tools/wcdb-probe.java:91-149` 使用相同 null cipher spec，但改用 `SQLiteDatabase.openDatabase(..., OPEN_READONLY, ...)`，避免 `openOrCreateDatabase` 在失败尝试中创建或截断临时文件；`tools/wcdb-probe.java:151-179` 仅发布候选序号和脱敏聚合。该动态结果只用于验证打开路径，不替代上述 smali 对创建路径的证明。
 
 当前快照的 D3 primary cache 为空、兼容 cache 为 0 字节；现有输入候选与 WCDB/SQLCipher 参数组合均未命中，故只发布 key 公式和静态 Schema，不声称内容已解密。
+
+## FTS5 搜索索引特殊 key 与打开路径
+
+`FTS5IndexMicroMsg_encrypt.db` 不使用 `kh5/b0.R()` 的 device ID + UIN 通用派生路径。`smali-classes11/com/tencent/mm/plugin/fts/p.smali:36-178` 先读取配置项 `t3.Ad`；该值为空时按以下顺序拼接并取 MD5 十六进制前 7 个字符，再写回 `t3.Ad`：
+
+```text
+gp0/m.l() + cp/w0.g(true) + b41/y1.u()
+UIN string + current/fallback D3 + login username or Java "null"
+pk/k.g(bytes).substring(0, 7)
+```
+
+`p.smali:215-275` 随后把该 7 字符值转换为 UTF-8 字节，以 `SQLiteCipherSpec=null` 调用 `SQLiteDatabase.openDatabase`。WAL pool 开关只改变 flags：启用时为 `0x30000020`，否则为 `0x10000020`；cipher key 字符串本身先由 `p.smali:104-178` 生成或读取。这个结果解释了为什么不能把 `kh5/f.smali:94-110` 的 SQLCipher v1 / page size 1024 参数直接套到 FTS 索引。
+
+文件选择和生命周期证据如下：
+
+- `smali-classes12/com/tencent/mm/plugin/fts/k0.smali:95-181` 在账号目录中区分 `IndexMicroMsg.db`、未加密 `FTS5IndexMicroMsg.db` 和 `FTS5IndexMicroMsg_encrypt.db`。
+- `smali-classes11/com/tencent/mm/plugin/fts/p.smali:45-84` 构造 `FTS5IndexMicroMsg_encrypt.db` 路径并在 `:314-329` 交给 `FTSIndexDB` 初始化。
+- `smali-classes11/b41/d.smali:26-45` 将 `EnMicroMsg.db`、`EnMicroMsg.dberr*` 和 `FTS5IndexMicroMsg_encrypt.db` 归入同一文件分类动作，但不参与 key 派生。
+- `smali-classes11/f94/c.smali:26-116` 证明修复入口会删除主文件及 `-journal`、`-wal`、`-shm` 后重启，说明这些 sidecar 属于同一数据库生命周期。
+
+`tools/wcdb-probe.java:51-149` 增加了同样的 null cipher spec 只读打开能力；`:151-224` 可输出可见表计数，并在显式启用时用 `fts5vocab` 仅输出词项/文档/出现次数聚合，不输出索引词或文档内容。当前公开证据仍只到静态 key/打开链，未把 FTS 文件标为内容级解密。
