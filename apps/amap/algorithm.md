@@ -31,6 +31,11 @@
 | `dice::MutiThreadEngine::doSearchFromStart` | 有多线程从起点搜索编排 |
 | `dice::RouteSearch::specDJStart` | 有专用 DJ 搜索入口 |
 
+Java/native 模型还暴露了代价相关的输入/输出边界：`GroupSegment` 有 `speed`
+和 `tollCost`，`TmcRoutePath` 有 `costTime`，`Route.getRouteStrategy()` 返回
+路线策略，`CarRouteParser` 将收费、速度和交通状态映射到导航展示模型。它们
+说明路线计算会考虑时间、收费、交通和策略因素，但不能推出具体权重公式。
+
 ## Dijkstra-family 证据边界
 
 静态字符串、符号和反汇编可确认的是 **Dijkstra-family 堆/最小键最短路引擎**：
