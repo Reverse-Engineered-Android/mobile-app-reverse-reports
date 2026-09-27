@@ -1,0 +1,3347 @@
+{
+  "sample": "Alipay Android 12.12.30.8000",
+  "database_count": 61,
+  "privacy": "No row values or identifiers are included.",
+  "databases": [
+    {
+      "id": 1,
+      "path": "app_webview_mywebview_0/Default/databases/Databases.db",
+      "source_file": "Databases.db",
+      "bytes": 32768,
+      "sha256": "b4c2b8af04736897d96eefc7b47856ac9c565ca96e9ec4d9b4d59d49ae04cf8b",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "WebView IndexedDB registry and metadata",
+      "object_count": 3,
+      "row_count": 3,
+      "objects": [
+        {
+          "name": "Databases",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "origin",
+            "name",
+            "description",
+            "estimated_size"
+          ]
+        },
+        {
+          "name": "meta",
+          "type": "table",
+          "row_count": 3,
+          "columns": [
+            "key",
+            "value"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "path": "databases/<account-id>scan_biz.db",
+      "source_file": "<account-id>scan_biz.db",
+      "bytes": 4096,
+      "sha256": "830fe3cbe42637d25b253ea9bb21a6d63c642115c15f70da3be77616e871c6ed",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "runtime protected Trusted Terminal key",
+      "purpose": "scan business cache keyed by user/session",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 3,
+      "path": "databases/FlareRecord-main.db",
+      "source_file": "FlareRecord-main.db",
+      "bytes": 1024,
+      "sha256": "7578e59ffd10060eb0efbc008830a67ceb60ed09087aa1454f7b70a68a03cd94",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "permission flare invocation records",
+      "object_count": 2,
+      "row_count": 166,
+      "objects": [
+        {
+          "name": "APBinAOPFlareRecordDAO_table",
+          "type": "table",
+          "row_count": 166,
+          "columns": [
+            "appId",
+            "createdTime",
+            "id",
+            "permission",
+            "userId"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "path": "databases/Journals.db",
+      "source_file": "Journals.db",
+      "bytes": 36864,
+      "sha256": "6f2c40ca65c178e01ae6274a5e4f1fce83f798a4bc9f4677fb62a1a3f2144449",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "identity-verification and biometric/fast-pay audit journal",
+      "object_count": 3,
+      "row_count": 27,
+      "objects": [
+        {
+          "name": "VerifyIdentityModel_table",
+          "type": "table",
+          "row_count": 25,
+          "columns": [
+            "_id",
+            "biz_id",
+            "uid",
+            "case_id",
+            "case_desc",
+            "scene_id",
+            "trace_id",
+            "time",
+            "cost",
+            "free_memory",
+            "cpu_usage",
+            "timeout",
+            "success",
+            "error_code",
+            "error_message",
+            "request",
+            "result",
+            "extension"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "path": "databases/LogSpmDAU.db",
+      "source_file": "LogSpmDAU.db",
+      "bytes": 5120,
+      "sha256": "142a6fbed7f1699c102e33a445c3b6ad77662f5d38d999c937af33b549a0e5fc",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "SPM/DAU analytics log cache",
+      "object_count": 3,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "log_spm_db",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "date",
+            "id",
+            "isUpload",
+            "param1",
+            "parma2",
+            "parma3",
+            "spm",
+            "userId"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "path": "databases/MultiMediaTask.db",
+      "source_file": "MultiMediaTask.db",
+      "bytes": 750592,
+      "sha256": "8e9a22061e73834afe26ce9ca0c94a33f2d64b3f0ef99e465c894a36316d565c",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "multimedia task queue",
+      "object_count": 2,
+      "row_count": 374,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "multi_media_task",
+          "type": "table",
+          "row_count": 374,
+          "columns": [
+            "cache_id",
+            "cloud_id",
+            "create_time",
+            "current_size",
+            "dest_path",
+            "source_path",
+            "status",
+            "task_id",
+            "total_size",
+            "update_time",
+            "f_cache_business_id",
+            "f_cache_type",
+            "f_cache_create_time",
+            "f_cache_extra",
+            "f_cache_file_size",
+            "f_cache_id",
+            "f_cache_last_modified_time",
+            "f_cache_lock",
+            "f_cache_path"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "path": "databases/NBNet.db",
+      "source_file": "NBNet.db",
+      "bytes": 12288,
+      "sha256": "242e8c424b4572993b0812245a38289758b198a14827b337e3f50f69c3eb99f4",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "network download and upload records",
+      "object_count": 4,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "downloadtaskmodel",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "_file_id",
+            "_file_length",
+            "_file_md5",
+            "_id",
+            "_last_modified",
+            "_request_id"
+          ]
+        },
+        {
+          "name": "nbnet_upload_record_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "file_id",
+            "gmt_created",
+            "gmt_modifield",
+            "_id",
+            "md5",
+            "offset",
+            "result_content",
+            "trace_id",
+            "upload_status"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "path": "databases/PrivacyLocalRecord-main.db",
+      "source_file": "PrivacyLocalRecord-main.db",
+      "bytes": 239616,
+      "sha256": "21db9ab542530ebab3eafc8b1ff8a3c489d73dd673f0168db68ab33da84f04f2",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "main-process privacy/API invocation records",
+      "object_count": 3,
+      "row_count": 755,
+      "objects": [
+        {
+          "name": "APBinAOPLocalRecordDAO_table",
+          "type": "table",
+          "row_count": 754,
+          "columns": [
+            "abnormal",
+            "applicationState",
+            "callBiz",
+            "entryClassName",
+            "id",
+            "isLogin",
+            "methodParam",
+            "permission",
+            "pointCategory",
+            "pointType",
+            "proxyMethodName",
+            "srcBundle",
+            "srcBundleName",
+            "srcBusiness",
+            "stayInBgTime",
+            "ts",
+            "topActivity",
+            "topAppId",
+            "topMicroAppType"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "path": "databases/PrivacyLocalRecord-push.db",
+      "source_file": "PrivacyLocalRecord-push.db",
+      "bytes": 1024,
+      "sha256": "7578e59ffd10060eb0efbc008830a67ceb60ed09087aa1454f7b70a68a03cd94",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "push-process privacy/API invocation records",
+      "object_count": 3,
+      "row_count": 21,
+      "objects": [
+        {
+          "name": "APBinAOPLocalRecordDAO_table",
+          "type": "table",
+          "row_count": 20,
+          "columns": [
+            "abnormal",
+            "applicationState",
+            "callBiz",
+            "entryClassName",
+            "id",
+            "isLogin",
+            "methodParam",
+            "permission",
+            "pointCategory",
+            "pointType",
+            "proxyMethodName",
+            "srcBundle",
+            "srcBundleName",
+            "srcBusiness",
+            "stayInBgTime",
+            "ts",
+            "topActivity",
+            "topAppId",
+            "topMicroAppType"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "path": "databases/PrivacyLocalRecord-tools.db",
+      "source_file": "PrivacyLocalRecord-tools.db",
+      "bytes": 1024,
+      "sha256": "7578e59ffd10060eb0efbc008830a67ceb60ed09087aa1454f7b70a68a03cd94",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "tools-process privacy/API invocation records",
+      "object_count": 3,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "APBinAOPLocalRecordDAO_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "abnormal",
+            "applicationState",
+            "callBiz",
+            "entryClassName",
+            "id",
+            "isLogin",
+            "methodParam",
+            "permission",
+            "pointCategory",
+            "pointType",
+            "proxyMethodName",
+            "srcBundle",
+            "srcBundleName",
+            "srcBusiness",
+            "stayInBgTime",
+            "ts",
+            "topActivity",
+            "topAppId",
+            "topMicroAppType"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "path": "databases/PrivacyLocalRecord-widgetProvider.db",
+      "source_file": "PrivacyLocalRecord-widgetProvider.db",
+      "bytes": 1024,
+      "sha256": "7578e59ffd10060eb0efbc008830a67ceb60ed09087aa1454f7b70a68a03cd94",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "widget-provider privacy/API invocation records",
+      "object_count": 3,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "APBinAOPLocalRecordDAO_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "abnormal",
+            "applicationState",
+            "callBiz",
+            "entryClassName",
+            "id",
+            "isLogin",
+            "methodParam",
+            "permission",
+            "pointCategory",
+            "pointType",
+            "proxyMethodName",
+            "srcBundle",
+            "srcBundleName",
+            "srcBusiness",
+            "stayInBgTime",
+            "ts",
+            "topActivity",
+            "topAppId",
+            "topMicroAppType"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "path": "databases/SLScheme.db",
+      "source_file": "SLScheme.db",
+      "bytes": 20480,
+      "sha256": "17fd12ae2d3c4915b97bf0f7b5cf6fa8c5012be35aa7a5b69d684cdf71fd9392",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "log/scheme cache",
+      "object_count": 3,
+      "row_count": 2,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "log_cache",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "_id",
+            "log_time",
+            "trace_id",
+            "log_data"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "path": "databases/alipayclient.db",
+      "source_file": "alipayclient.db",
+      "bytes": 14336,
+      "sha256": "0cf846b1882ac4d2e87eb0776c10f79796f96f39b14c9d7e861f19ef481abec8",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "login, account, gesture and session state",
+      "object_count": 4,
+      "row_count": 3,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "gestureNewLogicConfig",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "mConfigValue",
+            "mLoginAccount",
+            "mUseNewLogic"
+          ]
+        },
+        {
+          "name": "hrdyutr",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "data",
+            "udrtif"
+          ]
+        },
+        {
+          "name": "userinfo",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "accountConstrainFlag",
+            "aluAvatar",
+            "autoLogin",
+            "colorStr",
+            "crowdLabels",
+            "customerType",
+            "displayName",
+            "extern_token",
+            "gender",
+            "gestureAppearMode",
+            "gestureErrorNum",
+            "gestureOrbitHide",
+            "gesturePwd",
+            "gestureSkip",
+            "gestureSkipStr",
+            "havanaId",
+            "headFrame",
+            "ipayTrustLoginInfo",
+            "ipayUserId",
+            "isBindCard",
+            "isCertified",
+            "isNewUser",
+            "isShowWalletEditionSwitch",
+            "isWirelessUser",
+            "loginEmail",
+            "loginMobile",
+            "loginTime",
+            "loginToken",
+            "logonId",
+            "memberGrade",
+            "mobileNumber",
+            "nick",
+            "noPayPwd",
+            "noQueryPwdUser",
+            "otherLoginId",
+            "realName",
+            "realNamed",
+            "sessionId",
+            "shippingAddressCount",
+            "showRegion",
+            "studentCertify",
+            "switchRegion",
+            "taobaoNick",
+            "taobaoSid",
+            "userAvatar",
+            "userId",
+            "userModelTag",
+            "userName",
+            "userRegionIdentity",
+            "userType",
+            "walletEdition",
+            "zid"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "path": "databases/alipayclient_ad.db",
+      "source_file": "alipayclient_ad.db",
+      "bytes": 943104,
+      "sha256": "ea0c31ee6ca22363bb175b5c118060767cbfb80898d294ed612270f180a366d6",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "ad display, fatigue and placement rules",
+      "object_count": 5,
+      "row_count": 2335,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "displayruletable",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "displayRuleInfoList",
+            "id",
+            "unitCode"
+          ]
+        },
+        {
+          "name": "fatigueruletable",
+          "type": "table",
+          "row_count": 10,
+          "columns": [
+            "fatigueObjectInfoList",
+            "id",
+            "ruleId"
+          ]
+        },
+        {
+          "name": "spaceinfotable",
+          "type": "table",
+          "row_count": 2321,
+          "columns": [
+            "appId",
+            "close",
+            "displayMaxCount",
+            "extInfo",
+            "feedbackRuleList",
+            "h5ViewId",
+            "height",
+            "id",
+            "localRuleList",
+            "location",
+            "multiStyle",
+            "reqRpcTime",
+            "rotationTime",
+            "spaceCode",
+            "spaceFatigues",
+            "spaceObjectList",
+            "type",
+            "updatePolicy",
+            "viewId"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 3,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "path": "databases/alipayclient_ad_cpp.db",
+      "source_file": "alipayclient_ad_cpp.db",
+      "bytes": 988160,
+      "sha256": "bbc40c60cd38e91613cd1afc1c85440f0e103013f5b453f57edf4e07daeccabb",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "native ad fatigue and placement data",
+      "object_count": 3,
+      "row_count": 2351,
+      "objects": [
+        {
+          "name": "FatigueRule",
+          "type": "table",
+          "row_count": 11,
+          "columns": [
+            "ruleId",
+            "fatigueObjectInfoList"
+          ]
+        },
+        {
+          "name": "NonSpaceFatigueRule",
+          "type": "table",
+          "row_count": 24,
+          "columns": [
+            "ruleId",
+            "fatigueObjectInfoList"
+          ]
+        },
+        {
+          "name": "SpaceInfo",
+          "type": "table",
+          "row_count": 2316,
+          "columns": [
+            "spaceCode",
+            "type",
+            "iosViewId",
+            "androidViewId",
+            "h5ViewId",
+            "appId",
+            "spaceObjectList",
+            "localRuleList",
+            "feedbackRuleList",
+            "location",
+            "height",
+            "width",
+            "updatePolicy",
+            "reqRpcTime",
+            "multiStyle",
+            "rotationTime",
+            "displayMaxCount",
+            "extInfo",
+            "spaceFatigues",
+            "bizControlFlag",
+            "harmonyOsViewId",
+            "spaceCommonInfo"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "path": "databases/alsn20170807.db",
+      "source_file": "alsn20170807.db",
+      "bytes": 20480,
+      "sha256": "0940bea59a1147cc6a1cecbdb913ebae6a82dd6fc5603d1c1f9e48f9081f3b6c",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "generic business cache (opaque table name)",
+      "object_count": 3,
+      "row_count": 3,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "c",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "_id",
+            "a2",
+            "a4",
+            "a3"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "path": "databases/aomp_favorite.db",
+      "source_file": "aomp_favorite.db",
+      "bytes": 6144,
+      "sha256": "62abc0c0dc9249fec8860ac0962a643b8983c80cede1ee8152e52e10ad349790",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "mini-app favorites",
+      "object_count": 2,
+      "row_count": 3,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "mini_app_info",
+          "type": "table",
+          "row_count": 3,
+          "columns": [
+            "app_id",
+            "app_name",
+            "desc",
+            "ext",
+            "thumb_url",
+            "update_timestamp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "path": "databases/aomp_mini_app_center.db",
+      "source_file": "aomp_mini_app_center.db",
+      "bytes": 34816,
+      "sha256": "7c17c7acbfec096034dd98cd7e1cdc774970c1e585997c101ea26b434e698165",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "mini-app business/app mapping",
+      "object_count": 2,
+      "row_count": 198,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "biz_id_app_id_mapping",
+          "type": "table",
+          "row_count": 198,
+          "columns": [
+            "app_id",
+            "biz_id",
+            "biz_type",
+            "unique_id",
+            "update_scene",
+            "update_timestamp"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "path": "databases/ap_intelligentdecision_idc.db",
+      "source_file": "ap_intelligentdecision_idc.db",
+      "bytes": 5120,
+      "sha256": "91edc8d808c0393a61a1115b31004d1c954a8de4fb940e44c206f0479a21e3f9",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "intelligent-decision behavior cache",
+      "object_count": 3,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "id_behavior",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "time",
+            "spend_time",
+            "result",
+            "action",
+            "uid",
+            "scene_id",
+            "extend1",
+            "extend2",
+            "extend3"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "path": "databases/birdnest.db",
+      "source_file": "birdnest.db",
+      "bytes": 2031616,
+      "sha256": "2145e8b2e57bc27fde91ae024886b6278ed2e13e89e2b7a91ff8b392afa7eb6d",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "BirdNest templates",
+      "object_count": 2,
+      "row_count": 30,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "templates",
+          "type": "table",
+          "row_count": 30,
+          "columns": [
+            "data",
+            "format",
+            "html",
+            "publishVersion",
+            "tag",
+            "time",
+            "tplId",
+            "tplVersion"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "path": "databases/chat_message.db",
+      "source_file": "chat_message.db",
+      "bytes": 28672,
+      "sha256": "e141e1b696bbc9db77f0eb6fa19eaa28c5b84ee5839fb470ceb56176203cc86d",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "chat message cache",
+      "object_count": 3,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "chat_message",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "userId",
+            "appId",
+            "mk",
+            "mct",
+            "localTime",
+            "isRead",
+            "mData",
+            "msgDirection",
+            "msgStatus",
+            "mSum",
+            "bTime",
+            "mType",
+            "mExt",
+            "toId",
+            "isExt",
+            "isSc",
+            "bMsgId",
+            "ext",
+            "reserv1",
+            "reserv2",
+            "mBox",
+            "shopId",
+            "isMsgProxySend",
+            "publicBizType",
+            "lifeTemplateId",
+            "isLifeData",
+            "contentId",
+            "isHisMsg",
+            "msgBizType",
+            "mNewSum",
+            "mDataType",
+            "msgPointStyle",
+            "mId",
+            "ciphertextType",
+            "bizTemplateId"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 22,
+      "path": "databases/chatmsgdb<account-id>.db",
+      "source_file": "chatmsgdb<account-id>.db",
+      "bytes": 1024,
+      "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "purpose": "account-scoped social chat messages",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 23,
+      "path": "databases/contactsdb<account-id>.db",
+      "source_file": "contactsdb<account-id>.db",
+      "bytes": 1024,
+      "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "purpose": "account-scoped social contacts",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 24,
+      "path": "databases/discussioncontactdb<account-id>.db",
+      "source_file": "discussioncontactdb<account-id>.db",
+      "bytes": 1024,
+      "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "purpose": "account-scoped discussion contacts",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 25,
+      "path": "databases/download_cycle_mng.db",
+      "source_file": "download_cycle_mng.db",
+      "bytes": 32768,
+      "sha256": "3227e581dc7ca94797f714b4c70217590806e0873125ef59687c252c8a912ba8",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "download cycle manager",
+      "object_count": 3,
+      "row_count": 2,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "download_cycle_mng_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "url",
+            "dest_path",
+            "etag",
+            "last_modified",
+            "url_path_md5",
+            "tmp_ttl"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 26,
+      "path": "databases/dynamic_release.db",
+      "source_file": "dynamic_release.db",
+      "bytes": 20480,
+      "sha256": "0bfbfbc0af9b98fe999aecf20467b47cfd85221baa85dc7e5af3e6536ed4557a",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "dynamic release items",
+      "object_count": 3,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "dynamic_release_item",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "_id",
+            "drt",
+            "drv",
+            "resType",
+            "resStatus",
+            "resVersion",
+            "resId",
+            "fileMD5",
+            "fileContent",
+            "fileUrl",
+            "processed"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 27,
+      "path": "databases/fhcube.db",
+      "source_file": "fhcube.db",
+      "bytes": 24576,
+      "sha256": "7a89dcbb38c09066e2336edee970134274683fe2dd9cb171a04578ac99cec3c3",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "FHCube templates",
+      "object_count": 2,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "templates",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "data",
+            "format",
+            "html",
+            "publishVersion",
+            "tag",
+            "templateBin",
+            "time",
+            "tplId",
+            "tplVersion",
+            "type"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 28,
+      "path": "databases/global_search_v_h_<account-id>.db",
+      "source_file": "global_search_v_h_<account-id>.db",
+      "bytes": 1610752,
+      "sha256": "039359c4c9a3c056e77887b609a9a989c1003321cc8a5cbfb1f1d77733c3f409",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "global-search visit history",
+      "object_count": 2,
+      "row_count": 2,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "visit_history",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "actionUrl",
+            "adcode",
+            "appBizType",
+            "appIcon",
+            "appId",
+            "appVersion",
+            "city",
+            "desc",
+            "extInfo",
+            "extInfoBlob",
+            "extInfoBlob1",
+            "historyId",
+            "lat",
+            "lon",
+            "sourceId",
+            "tag1",
+            "tag2",
+            "targetID",
+            "time"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 29,
+      "path": "databases/globalsearch_group_map.db",
+      "source_file": "globalsearch_group_map.db",
+      "bytes": 16384,
+      "sha256": "3757eca52b6d29ce845f27814047fcbd70c15a75d2ce3a233d3b20cc880e60fa",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "global-search group mapping",
+      "object_count": 2,
+      "row_count": 9,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "group_map_<account-id>",
+          "type": "table",
+          "row_count": 8,
+          "columns": [
+            "tableHash",
+            "indexHash"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "path": "databases/globalsearch_use_heat.db",
+      "source_file": "globalsearch_use_heat.db",
+      "bytes": 16384,
+      "sha256": "2a5c8f71d5c8d80d7134cecaa786e517533879f4e7f91b00903385878eba3be6",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "global-search usage heat",
+      "object_count": 2,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "user_heat_<account-id>",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "tableHash",
+            "userPkey",
+            "heatCount",
+            "lastTime"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 31,
+      "path": "databases/httpdns.db",
+      "source_file": "httpdns.db",
+      "bytes": 77824,
+      "sha256": "88ddc11c71219217b6af0beffa9fdae7f18b63b68bae59d2e606040675f47368",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "HTTP DNS cache",
+      "object_count": 3,
+      "row_count": 639,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "httpdns",
+          "type": "table",
+          "row_count": 637,
+          "columns": [
+            "_id",
+            "domain",
+            "ip",
+            "ipType",
+            "port",
+            "time",
+            "ttl",
+            "netType",
+            "ispCode",
+            "cname",
+            "ttd",
+            "ips_main",
+            "hostGroup"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 32,
+      "path": "databases/job_state.db",
+      "source_file": "job_state.db",
+      "bytes": 263168,
+      "sha256": "129d55730e2aa3fb0f3012ab6be2c2d4d5a89e33cc1a7f58b47fbbbf7ef78c50",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "UEP/SSP/CEP job state",
+      "object_count": 3,
+      "row_count": 252,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        },
+        {
+          "name": "state_data",
+          "type": "table",
+          "row_count": 251,
+          "columns": [
+            "content",
+            "extinfo",
+            "extnum",
+            "id",
+            "jobname",
+            "name",
+            "namespace",
+            "timestamp",
+            "uid"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 33,
+      "path": "databases/messagebox.db",
+      "source_file": "messagebox.db",
+      "bytes": 452608,
+      "sha256": "985ac72fb07e68e77ee5c1cc34c52a0cc15ded096f92e4ebacfef283d6a0edd2",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "message box, service and search state",
+      "object_count": 9,
+      "row_count": 142,
+      "objects": [
+        {
+          "name": "UnSubscribeRecord",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "bizName",
+            "id",
+            "serviceCode",
+            "userId"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "mb_app_info_tbl",
+          "type": "table",
+          "row_count": 7,
+          "columns": [
+            "appId",
+            "appName",
+            "id",
+            "linkUrl",
+            "logoUrl",
+            "msgListConfig",
+            "subscribeState",
+            "updateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "mb_assist_info_tbl",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "assistId",
+            "desc",
+            "hiddenMsgHeader",
+            "icon",
+            "id",
+            "name",
+            "reminderMaxNum",
+            "reminderType",
+            "reminderTypeModifyEnable",
+            "showInFriendTab",
+            "updateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "mb_common_message_tbl",
+          "type": "table",
+          "row_count": 47,
+          "columns": [
+            "appId",
+            "attributes",
+            "bizMonitor",
+            "bizOperations",
+            "businessId",
+            "channelFlag",
+            "content",
+            "expireLink",
+            "extra1",
+            "extra2",
+            "extraInfo",
+            "gmtCreate",
+            "gmtValid",
+            "homePageImage",
+            "homePageTitle",
+            "icon",
+            "id",
+            "insertTime",
+            "languageType",
+            "link",
+            "linkName",
+            "msgCategory",
+            "msgId",
+            "msgState",
+            "msgStrategy",
+            "msgStrategyLevel",
+            "msgType",
+            "scm",
+            "status",
+            "statusFlag",
+            "tagCode",
+            "templateCode",
+            "templateId",
+            "templateName",
+            "templateType",
+            "title",
+            "userId",
+            "withPushNfc"
+          ]
+        },
+        {
+          "name": "mb_search_message_tbl",
+          "type": "table",
+          "row_count": 47,
+          "columns": [
+            "appId",
+            "assistMsg1",
+            "assistMsg10",
+            "assistMsg2",
+            "assistMsg3",
+            "assistMsg4",
+            "assistMsg5",
+            "assistMsg6",
+            "assistMsg7",
+            "assistMsg8",
+            "assistMsg9",
+            "assistName1",
+            "assistName10",
+            "assistName2",
+            "assistName3",
+            "assistName4",
+            "assistName5",
+            "assistName6",
+            "assistName7",
+            "assistName8",
+            "assistName9",
+            "bizIcon",
+            "bizLink",
+            "bizMonitor",
+            "bizName",
+            "btnLink1",
+            "btnLink2",
+            "btnName1",
+            "btnName2",
+            "businessId",
+            "expireLink",
+            "gmtCreate",
+            "gmtValid",
+            "id",
+            "insertTime",
+            "languageType",
+            "leftDesc",
+            "leftTitle",
+            "leftTopText",
+            "link",
+            "msgId",
+            "numberType",
+            "rightDesc",
+            "rightTitle",
+            "rightTopText",
+            "scm",
+            "subCgyLeftKey",
+            "subCgyLeftValue",
+            "subCgyMiddleKey",
+            "subCgyMiddleValue",
+            "subCgyRightKey",
+            "subCgyRightValue",
+            "subTitle",
+            "tagCode",
+            "templateCode",
+            "templateId",
+            "templateType",
+            "title",
+            "topTitle",
+            "userId"
+          ]
+        },
+        {
+          "name": "mb_service_info_tbl",
+          "type": "table",
+          "row_count": 11,
+          "columns": [
+            "appId",
+            "assistId",
+            "hiddenSumState",
+            "id",
+            "serviceCode",
+            "serviceIcon",
+            "serviceName",
+            "serviceShowName",
+            "subscribeConfig",
+            "subscribeState",
+            "supportHiddenSum",
+            "templateType",
+            "updateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "service_message",
+          "type": "table",
+          "row_count": 29,
+          "columns": [
+            "appId",
+            "attributes",
+            "bizMonitor",
+            "bizOperations",
+            "businessId",
+            "businessSceneId",
+            "commandType",
+            "content",
+            "expireLink",
+            "extraInfo",
+            "gmtCreate",
+            "gmtValid",
+            "hiddenSum",
+            "homePageImage",
+            "homePageTitle",
+            "icon",
+            "id",
+            "isEncrypted",
+            "languageType",
+            "link",
+            "linkName",
+            "menus",
+            "msgCategory",
+            "msgId",
+            "msgState",
+            "msgStrategy",
+            "msgStrategyLevel",
+            "msgType",
+            "operate",
+            "scm",
+            "status",
+            "statusFlag",
+            "tab2Hidden",
+            "tagCode",
+            "templateCode",
+            "templateId",
+            "templateName",
+            "templateType",
+            "title",
+            "todoExpireDate",
+            "todoId",
+            "todoLevel",
+            "todoMemo",
+            "todoTag",
+            "userId",
+            "withPushNfc"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 34,
+      "path": "databases/mobileaix_datacenter_biz.db",
+      "source_file": "mobileaix_datacenter_biz.db",
+      "bytes": 1024,
+      "sha256": "f07d0102a0cc5fb8687b4f19e48401aeabd45809b4ac69276a65d2854c2108e2",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "runtime-encrypted random database password",
+      "purpose": "MobileAiX business feature data",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 35,
+      "path": "databases/mobileaix_datacenter_feature.db",
+      "source_file": "mobileaix_datacenter_feature.db",
+      "bytes": 1024,
+      "sha256": "a8d2978c43f6f238a37362bfb885082daeff2553561f0beed87e670e4dc0d2b9",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "runtime-encrypted random database password",
+      "purpose": "MobileAiX feature data",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 36,
+      "path": "databases/mobileaix_datacenter_feature_v2.db",
+      "source_file": "mobileaix_datacenter_feature_v2.db",
+      "bytes": 1024,
+      "sha256": "f07d0102a0cc5fb8687b4f19e48401aeabd45809b4ac69276a65d2854c2108e2",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "runtime-encrypted random database password",
+      "purpose": "MobileAiX feature data v2",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 37,
+      "path": "databases/mobileaix_feature.db",
+      "source_file": "mobileaix_feature.db",
+      "bytes": 12288,
+      "sha256": "351d2ae82e5db2e17f166efa01ad6894d612142e13f7a3ed85b82fe7aeb4c3ba",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "MobileAiX custom feature aggregates",
+      "object_count": 5,
+      "row_count": 12,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "custom_data",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "expire_time",
+            "ext_info1",
+            "ext_info2",
+            "ext_info3",
+            "ext_info4",
+            "id",
+            "key",
+            "scene_code",
+            "time",
+            "uid",
+            "value"
+          ]
+        },
+        {
+          "name": "custom_data_month",
+          "type": "table",
+          "row_count": 11,
+          "columns": [
+            "expire_time",
+            "ext_info1",
+            "ext_info2",
+            "ext_info3",
+            "ext_info4",
+            "id",
+            "key",
+            "scene_code",
+            "time",
+            "uid",
+            "value"
+          ]
+        },
+        {
+          "name": "custom_data_week",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "expire_time",
+            "ext_info1",
+            "ext_info2",
+            "ext_info3",
+            "ext_info4",
+            "id",
+            "key",
+            "scene_code",
+            "time",
+            "uid",
+            "value"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 38,
+      "path": "databases/nebula_app.db",
+      "source_file": "nebula_app.db",
+      "bytes": 589824,
+      "sha256": "e0de2f5bf5cd9b0c396842f16da95d8d892a99ce9e7622d4ce0dc0021d235c12",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "Nebula mini-app install/config state",
+      "object_count": 7,
+      "row_count": 72,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "nebula_app_info_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "app_dist",
+            "app_channel",
+            "app_dsec",
+            "app_id",
+            "app_type",
+            "auto_install",
+            "extend_info",
+            "fallback_base_url",
+            "protocol_v1",
+            "icon_url",
+            "is_limit",
+            "is_mapping",
+            "localReport",
+            "main_url",
+            "name",
+            "nbAppType",
+            "nbId",
+            "nbl_id",
+            "online",
+            "package_url",
+            "patch",
+            "release_type",
+            "reqmode",
+            "size",
+            "slogan",
+            "sub_type",
+            "sub_url",
+            "system_max",
+            "system_min",
+            "third_platform",
+            "unavailable_reason",
+            "update_app_time",
+            "user_id",
+            "version",
+            "vhost"
+          ]
+        },
+        {
+          "name": "nebula_app_install",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "installPath",
+            "install_appId",
+            "install_id",
+            "user_id",
+            "install_version"
+          ]
+        },
+        {
+          "name": "nebula_app_urlmap_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "app_id",
+            "id",
+            "public_url",
+            "user_id"
+          ]
+        },
+        {
+          "name": "nebula_config",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "app_pool_limit",
+            "extra",
+            "failed_request_app_list",
+            "last_update_date",
+            "limitReqRate",
+            "normalReqRate",
+            "status_id",
+            "strictReqRate"
+          ]
+        },
+        {
+          "name": "nebula_tiny_app_config_table",
+          "type": "table",
+          "row_count": 69,
+          "columns": [
+            "app_id",
+            "cdnConfigs",
+            "cdnMd5",
+            "cfId",
+            "directConfigs"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 39,
+      "path": "databases/nebulax_app.db",
+      "source_file": "nebulax_app.db",
+      "bytes": 824320,
+      "sha256": "e4687a7e9d918f83f9ffe5ea0c5401183c94c65250e449ef598dec6a98b5e89a",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "NebulaX app/plugin/resource state",
+      "object_count": 7,
+      "row_count": 129,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "nebulax_app_install_table",
+          "type": "table",
+          "row_count": 6,
+          "columns": [
+            "appId",
+            "installedPackageType",
+            "installedPath",
+            "version",
+            "updateAppTime"
+          ]
+        },
+        {
+          "name": "nebulax_resource_app_table",
+          "type": "table",
+          "row_count": 102,
+          "columns": [
+            "api_permission",
+            "appTags",
+            "app_channel",
+            "app_dsec",
+            "app_id",
+            "app_type",
+            "appkey",
+            "auto_install",
+            "extend_info",
+            "fallback_base_url",
+            "icon_url",
+            "cube_degrade_versions",
+            "package_type",
+            "local_report",
+            "scene",
+            "user_id",
+            "main_url",
+            "name",
+            "nbId",
+            "nbapptype",
+            "nbl_id",
+            "new_fallback_base_url",
+            "new_package_size",
+            "new_package_url",
+            "origin",
+            "package_nick",
+            "package_url",
+            "patch",
+            "patch_info",
+            "patched_version",
+            "plugin_version_info",
+            "plugins",
+            "release_type",
+            "reqmode",
+            "size",
+            "slogan",
+            "sub_type",
+            "sub_url",
+            "template_app_id",
+            "third_platform",
+            "version",
+            "vhost"
+          ]
+        },
+        {
+          "name": "nebulax_resource_config",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "config_key",
+            "config_value"
+          ]
+        },
+        {
+          "name": "nebulax_resource_plugin_table",
+          "type": "table",
+          "row_count": 19,
+          "columns": [
+            "app_id",
+            "appkey",
+            "developerVersion",
+            "extendInfo",
+            "fallbackBaseUrl",
+            "gId",
+            "lastUsedTime",
+            "newFallbackBaseUrl",
+            "newPackageSize",
+            "newPackageUrl",
+            "packageSize",
+            "packageUrl",
+            "permission",
+            "requireVersion",
+            "user_id",
+            "version"
+          ]
+        },
+        {
+          "name": "nebulax_resource_urlmap_table",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "app_id",
+            "id",
+            "public_url",
+            "user_id"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 40,
+      "path": "databases/nw_conf_mng.db",
+      "source_file": "nw_conf_mng.db",
+      "bytes": 49152,
+      "sha256": "023e7c1a2956e45cddc0c69cd47a1b1c2802ccdebae94627d23bf03f76cc7d4b",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "network configuration manager",
+      "object_count": 3,
+      "row_count": 24,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "nw_conf_mng_table",
+          "type": "table",
+          "row_count": 22,
+          "columns": [
+            "id",
+            "switch_key",
+            "value",
+            "gmt_modified",
+            "gmt_created"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 41,
+      "path": "databases/open_platform_apps.db",
+      "source_file": "open_platform_apps.db",
+      "bytes": 3624960,
+      "sha256": "d6b331a93d5382cf3e26c1818f76dba5ff1f4a265b72bef920213e5633a4825d",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "open-platform app install and stage state",
+      "object_count": 7,
+      "row_count": 605,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "appentity",
+          "type": "table",
+          "row_count": 508,
+          "columns": [
+            "addToHome",
+            "alipayApp",
+            "appId",
+            "appSource",
+            "appTitlebarType",
+            "autoUpdate",
+            "desc",
+            "display",
+            "downloadScene",
+            "downloadUrl",
+            "extra",
+            "h5AppCdnBaseUrl",
+            "history",
+            "historyHide",
+            "iconUrl",
+            "id",
+            "incrementPkgUrl",
+            "installerType",
+            "isRecommend",
+            "language",
+            "lastRefreshTime",
+            "lastTimestamp",
+            "md5",
+            "movable",
+            "name",
+            "needAuth",
+            "needAutoAuth",
+            "needShowNewFlag",
+            "packageName",
+            "pageUrl",
+            "pkgPath",
+            "pkgVersion",
+            "preinstall",
+            "preinstallVersion",
+            "schemeUri",
+            "size",
+            "slogan",
+            "status",
+            "tinyApp",
+            "updateFrequency",
+            "version"
+          ]
+        },
+        {
+          "name": "fastloginappentity",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "appId",
+            "id"
+          ]
+        },
+        {
+          "name": "recentlistentity",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "id",
+            "recentList",
+            "userId"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 4,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        },
+        {
+          "name": "stageinfoentity",
+          "type": "table",
+          "row_count": 26,
+          "columns": [
+            "appStageShow",
+            "id",
+            "stageCode",
+            "stageName",
+            "userId"
+          ]
+        },
+        {
+          "name": "stageviewentity",
+          "type": "table",
+          "row_count": 65,
+          "columns": [
+            "appList",
+            "cdpSpaceInfoJson",
+            "commendAppList",
+            "configMap",
+            "dataVersion",
+            "edited",
+            "id",
+            "language",
+            "lastRefreshTime",
+            "lastReportTime",
+            "limitInterval",
+            "maxAppNum",
+            "maxShowAppNum",
+            "mergeMinicore",
+            "needCommendReport",
+            "needHide",
+            "needReport",
+            "parentStageCode",
+            "refreshInterval",
+            "replaceProtectContent",
+            "reportInterval",
+            "reportType",
+            "saveExtraParams",
+            "secondStageCode",
+            "secondStageName",
+            "shades",
+            "sortPolicy",
+            "stageRank",
+            "timeLimitApp",
+            "userId"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 42,
+      "path": "databases/permission_fortress_invoke_record-main.db",
+      "source_file": "permission_fortress_invoke_record-main.db",
+      "bytes": 1024,
+      "sha256": "7578e59ffd10060eb0efbc008830a67ceb60ed09087aa1454f7b70a68a03cd94",
+      "format": "sqlite",
+      "status": "readable_decrypted_sqlcrypto",
+      "decryption_note": "",
+      "purpose": "middleware permission invocation records",
+      "object_count": 3,
+      "row_count": 6,
+      "objects": [
+        {
+          "name": "MiddlewareInvokeLocalRecordDAO_table",
+          "type": "table",
+          "row_count": 5,
+          "columns": [
+            "appId",
+            "bizAuthStatus",
+            "callResult",
+            "id",
+            "interfaceName",
+            "permissionType",
+            "productId",
+            "subjectType",
+            "sysAbilityStatus",
+            "sysAuthStatus",
+            "timestamp",
+            "url",
+            "userId"
+          ]
+        },
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 43,
+      "path": "databases/publicHome.db",
+      "source_file": "publicHome.db",
+      "bytes": 17408,
+      "sha256": "af9ca40c485154db884240293d321041436e7203cbe02550de61758f167f8247",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "public-account home/follow state",
+      "object_count": 4,
+      "row_count": 11,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "followaccountbaseinfo",
+          "type": "table",
+          "row_count": 11,
+          "columns": [
+            "acceptMsg",
+            "avatar",
+            "bizType",
+            "cltDefIconType",
+            "deleteType",
+            "disturb",
+            "followObjectId",
+            "followType",
+            "gmtFollowTime",
+            "gotoAppUri",
+            "id",
+            "isFollow",
+            "msgNoteType",
+            "name",
+            "pinyin",
+            "pluginType",
+            "publicBizType",
+            "publicType",
+            "topType",
+            "userId",
+            "userVip",
+            "vip",
+            "wgtMsgId"
+          ]
+        },
+        {
+          "name": "pub_svc_account",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "publicId",
+            "layoutModel",
+            "pubSvcSetBean",
+            "userId",
+            "h5preloadTime",
+            "bizType"
+          ]
+        },
+        {
+          "name": "pub_svc_third_account",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "thirdAccountId",
+            "publicId",
+            "agreementId",
+            "displayName",
+            "realName",
+            "remarkName",
+            "menuContent",
+            "userId"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 44,
+      "path": "databases/public_life.db",
+      "source_file": "public_life.db",
+      "bytes": 1024,
+      "sha256": "fa67b4898b821ab5cae7e68e515af5262b2a9a931ee7ea6f450904e3343cc961",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "protected public-life database key outside recovered DEX",
+      "purpose": "public-life home/settings/broadcast/plugin state",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 45,
+      "path": "databases/push_msg.db",
+      "source_file": "push_msg.db",
+      "bytes": 28672,
+      "sha256": "8f05d2ecc06c96c6a94a5fa7e75b2e1e6bf60562978c08c8067e8207a9883d5b",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "push message and merge/id-map state",
+      "object_count": 5,
+      "row_count": 9,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "push_bizmsg_new",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "noticeId",
+            "msgId",
+            "localTime",
+            "bBId",
+            "bSBId",
+            "bMsgCount",
+            "presKey1",
+            "presKey2",
+            "topContent",
+            "aliveKeys",
+            "id"
+          ]
+        },
+        {
+          "name": "push_mergemsg",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "noticeId",
+            "msgId",
+            "localTime",
+            "title",
+            "content",
+            "mTemId",
+            "mTxt",
+            "mUri",
+            "msgStatus",
+            "reserv1",
+            "id"
+          ]
+        },
+        {
+          "name": "push_msgidmap",
+          "type": "table",
+          "row_count": 7,
+          "columns": [
+            "noticeId",
+            "msgId",
+            "tMsgId",
+            "presKey1",
+            "presKey2",
+            "id"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 46,
+      "path": "databases/socialmobiledb<account-id>.db",
+      "source_file": "socialmobiledb<account-id>.db",
+      "bytes": 1024,
+      "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "purpose": "account-scoped social mobile data",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 47,
+      "path": "databases/sync_dispatch.db",
+      "source_file": "sync_dispatch.db",
+      "bytes": 233472,
+      "sha256": "39c290b088e59342856629d956f0fcb3182992e838270e15ad310923d2d9b663",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "sync dispatch and uplink queue",
+      "object_count": 4,
+      "row_count": 1436,
+      "objects": [
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        },
+        {
+          "name": "syncMsgId",
+          "type": "table",
+          "row_count": 1432,
+          "columns": [
+            "_id",
+            "principal_id",
+            "biz_type",
+            "msg_id",
+            "reserve1"
+          ]
+        },
+        {
+          "name": "syncUplink",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "_id",
+            "userId",
+            "biz",
+            "dateTime",
+            "sendTime",
+            "expireTime",
+            "random",
+            "payload",
+            "payloadPb",
+            "sendStatus",
+            "needCallback",
+            "bizId",
+            "reserve1",
+            "reserve2",
+            "reserve3"
+          ]
+        },
+        {
+          "name": "sync_dispatch",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "userId",
+            "biz",
+            "sKey",
+            "pf",
+            "hm",
+            "md",
+            "sendNum",
+            "localTime",
+            "reserv1",
+            "reserv2",
+            "id",
+            "extData"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 48,
+      "path": "databases/timelinedb<account-id>.db",
+      "source_file": "timelinedb<account-id>.db",
+      "bytes": 1024,
+      "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "purpose": "account-scoped timeline data",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 49,
+      "path": "databases/tiny_app.db",
+      "source_file": "tiny_app.db",
+      "bytes": 6144,
+      "sha256": "722004c427c293037c1e35911455566dccf70da131bf357fd042054095146285",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "tiny-app favorite display state",
+      "object_count": 3,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        },
+        {
+          "name": "tiny_app_favorite_show",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "app_id",
+            "id",
+            "show_times",
+            "user_id"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 50,
+      "path": "databases/ucdp.db",
+      "source_file": "ucdp.db",
+      "bytes": 8192,
+      "sha256": "59614939ea4ed96a5253b6d30a472a580bbd45fb691c25a0bd5effcef79afd1b",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "UCDP fatigue and position rules",
+      "object_count": 4,
+      "row_count": 0,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "fatigueruletable",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "fatigueInfoList",
+            "id",
+            "ruleId",
+            "serverTimestamp"
+          ]
+        },
+        {
+          "name": "positiontable",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "configModel",
+            "creativeList",
+            "creativeOrder",
+            "id",
+            "logModel",
+            "positionCode",
+            "reqRpcTime",
+            "serverTimestamp"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 51,
+      "path": "databases/ucdp<account-id>.db",
+      "source_file": "ucdp<account-id>.db",
+      "bytes": 809984,
+      "sha256": "4b4d8da98eb17c89c3fb4c9881b154a1648ae9ed2c761edb392a481e6b5077f3",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "account-scoped UCDP fatigue and position rules",
+      "object_count": 4,
+      "row_count": 27,
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "fatigueruletable",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "fatigueInfoList",
+            "id",
+            "ruleId",
+            "serverTimestamp"
+          ]
+        },
+        {
+          "name": "positiontable",
+          "type": "table",
+          "row_count": 26,
+          "columns": [
+            "configModel",
+            "creativeList",
+            "creativeOrder",
+            "id",
+            "logModel",
+            "positionCode",
+            "reqRpcTime",
+            "serverTimestamp"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 52,
+      "path": "databases/xriver_app.db",
+      "source_file": "xriver_app.db",
+      "bytes": 674816,
+      "sha256": "4e263a47e058dfcd0fa39a5972fb4f248bfdbaffecd49f6c7bacdd950174de7e",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "XRiver app/plugin install and resource state",
+      "object_count": 4,
+      "row_count": 192,
+      "objects": [
+        {
+          "name": "nebulax_app_install_table",
+          "type": "table",
+          "row_count": 92,
+          "columns": [
+            "appId",
+            "installedPath",
+            "version",
+            "updateAppTime"
+          ]
+        },
+        {
+          "name": "nebulax_resource_app_table",
+          "type": "table",
+          "row_count": 95,
+          "columns": [
+            "api_permission",
+            "app_channel",
+            "app_dsec",
+            "app_id",
+            "app_type",
+            "appkey",
+            "auto_install",
+            "extend_info",
+            "fallback_base_url",
+            "icon_url",
+            "cube_degrade_versions",
+            "local_report",
+            "scene",
+            "user_id",
+            "main_url",
+            "name",
+            "nbId",
+            "nbapptype",
+            "nbl_id",
+            "origin",
+            "package_nick",
+            "package_url",
+            "patch",
+            "patched_version",
+            "plugins",
+            "release_type",
+            "reqmode",
+            "size",
+            "slogan",
+            "sub_type",
+            "sub_url",
+            "template_app_id",
+            "third_platform",
+            "version",
+            "vhost",
+            "patch_info",
+            "package_type",
+            "use_new_package_url",
+            "pluginVersionInfo",
+            "template_config_json",
+            "app_start_tags",
+            "lazyPlugins",
+            "locale"
+          ]
+        },
+        {
+          "name": "nebulax_resource_plugin_table",
+          "type": "table",
+          "row_count": 3,
+          "columns": [
+            "app_id",
+            "appkey",
+            "developerVersion",
+            "extendInfo",
+            "fallbackBaseUrl",
+            "gId",
+            "lastUsedTime",
+            "newFallbackBaseUrl",
+            "newPackageSize",
+            "newPackageUrl",
+            "packageSize",
+            "packageUrl",
+            "permission",
+            "requireVersion",
+            "user_id",
+            "version"
+          ]
+        },
+        {
+          "name": "sqlite_sequence",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "name",
+            "seq"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 53,
+      "path": "files/Sandbox/B_<redacted>/database/fts_contact_friend_<account-id>_<account-id>/7/index.db",
+      "source_file": "index.db",
+      "bytes": 8192,
+      "sha256": "aa9b6cb968c0c44ba1daec4b564e43b281c3174bc61bcd96420b81c34a934783",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "purpose": "protected FTS index: contacts/friends",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 54,
+      "path": "files/Sandbox/B_<redacted>/database/fts_mobile<account-id>_<account-id>/7/index.db",
+      "source_file": "index.db",
+      "bytes": 7168,
+      "sha256": "fcc64e9d982221e49471f66f05f190e0cd4a2c3f66c4ff9835757159870e0e72",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "purpose": "protected FTS index: mobile contacts",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 55,
+      "path": "files/Sandbox/B_<redacted>/database/fts_user_global_label_<account-id>_<account-id>/7/index.db",
+      "source_file": "index.db",
+      "bytes": 7168,
+      "sha256": "a6d3cc8892baa6febc0ca31576f92135cd27bc8f7a92700f7f2d6661e88c8fe6",
+      "format": "sqlcrypto",
+      "status": "undecrypted_sqlcrypto",
+      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "purpose": "protected FTS index: user global labels",
+      "object_count": 0,
+      "row_count": 0,
+      "objects": []
+    },
+    {
+      "id": 56,
+      "path": "files/client_db/<account-id>/client_database.db",
+      "source_file": "client_database.db",
+      "bytes": 76800,
+      "sha256": "34b1a638e8b17fd2143be75aedbb7f49f230dc6cf2f13b6c8b9effedd23166d9",
+      "format": "sqlite",
+      "status": "readable_plain_sqlite",
+      "decryption_note": "",
+      "purpose": "client config/tasks/key-values/revisit changes",
+      "object_count": 14,
+      "row_count": 200,
+      "objects": [
+        {
+          "name": "$biz_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "isValid",
+            "changeSerialNo",
+            "bizId",
+            "bizName",
+            "bizResourceConfig",
+            "maxTableSerialNo",
+            "maxUEPCollectionRuleSerialNo",
+            "maxComputeRuleSerialNo",
+            "maxRpcDataConsumeRuleSerialNo"
+          ]
+        },
+        {
+          "name": "$column_metadata",
+          "type": "table",
+          "row_count": 42,
+          "columns": [
+            "tableId",
+            "columnId",
+            "columnName",
+            "columnDesc",
+            "primary",
+            "isValid",
+            "dataType",
+            "notNull",
+            "defaultValue"
+          ]
+        },
+        {
+          "name": "$compute_task_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "isValid",
+            "changeSerialNo",
+            "computeRuleId",
+            "bizId",
+            "relyTableIds",
+            "clientComputationLogic",
+            "dataOutputConfig",
+            "relyComputeRuleIdList",
+            "relyUEPRuleIdList"
+          ]
+        },
+        {
+          "name": "$data_task_metadata",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "isValid",
+            "changeSerialNo",
+            "uepRuleId",
+            "bizId",
+            "accessConfig",
+            "clientComputationLogic",
+            "dataOutputConfig",
+            "clientCondition"
+          ]
+        },
+        {
+          "name": "$entrainment_metadata",
+          "type": "table",
+          "row_count": 1,
+          "columns": [
+            "isValid",
+            "changeSerialNo",
+            "rpcDataConsumeRuleId",
+            "bizId",
+            "operatorType",
+            "dataConsumeConfigList"
+          ]
+        },
+        {
+          "name": "$key_metadata",
+          "type": "table",
+          "row_count": 2,
+          "columns": [
+            "tableId",
+            "keyId",
+            "keyName",
+            "KeyType",
+            "columnIdList",
+            "isValid"
+          ]
+        },
+        {
+          "name": "$key_value_store",
+          "type": "table",
+          "row_count": 7,
+          "columns": [
+            "key",
+            "value",
+            "created_at",
+            "updated_at"
+          ]
+        },
+        {
+          "name": "$table_metadata",
+          "type": "table",
+          "row_count": 3,
+          "columns": [
+            "isValid",
+            "changeSerialNo",
+            "tableId",
+            "bizId",
+            "tableName",
+            "tableDesc",
+            "quotaConfig",
+            "lastTruncationTime",
+            "syncConfig",
+            "lastSyncTime",
+            "checkPoint"
+          ]
+        },
+        {
+          "name": "home_grid_revisit_flow_data",
+          "type": "table",
+          "row_count": 21,
+          "columns": [
+            "page",
+            "scene",
+            "appid",
+            "creativeId",
+            "bizDate",
+            "creativeType",
+            "strategyId",
+            "playTimes",
+            "exposureTimes",
+            "clickTimes",
+            "firstReceiveTime",
+            "latestExposureTime",
+            "latestClickTime",
+            "latestPlayTime",
+            "$created_at",
+            "$updated_at",
+            "$data_version",
+            "$sync_status"
+          ]
+        },
+        {
+          "name": "home_grid_revisit_flow_data_local_changes",
+          "type": "table",
+          "row_count": 29,
+          "columns": [
+            "recordId",
+            "operation",
+            "data",
+            "createdAt"
+          ]
+        },
+        {
+          "name": "home_grid_revisit_group_data",
+          "type": "table",
+          "row_count": 15,
+          "columns": [
+            "page",
+            "booth",
+            "appId",
+            "creativeId",
+            "bizDate",
+            "creativeType",
+            "strategyId",
+            "playTimes",
+            "exposureTimes",
+            "clickTimes",
+            "firstReceiveTime",
+            "latestExposureTime",
+            "latestClickTime",
+            "latestPlayTime",
+            "$created_at",
+            "$updated_at",
+            "$data_version",
+            "$sync_status"
+          ]
+        },
+        {
+          "name": "home_grid_revisit_group_data_local_changes",
+          "type": "table",
+          "row_count": 76,
+          "columns": [
+            "recordId",
+            "operation",
+            "data",
+            "createdAt"
+          ]
+        },
+        {
+          "name": "mobileappconfig_revisit_fatigue_flow_data",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "page",
+            "booth",
+            "appId",
+            "creativeId",
+            "bizDate",
+            "creativeType",
+            "strategyId",
+            "playTimes",
+            "exposureTimes",
+            "clickTimes",
+            "firstReceiveTime",
+            "latestExposureTime",
+            "latestClickTime",
+            "latestPlayTime",
+            "$created_at",
+            "$updated_at",
+            "$data_version",
+            "$sync_status"
+          ]
+        },
+        {
+          "name": "mobileappconfig_revisit_fatigue_flow_data_local_changes",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "recordId",
+            "operation",
+            "data",
+            "createdAt"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 57,
+      "path": "files/sc_edge/DATA00.db",
+      "source_file": "DATA00.db",
+      "bytes": 151552,
+      "sha256": "3ceba175715ac41dddb51c32939e289f1493e1a270ddaa28ee75af0d486db9e4",
+      "format": "unqlite",
+      "status": "readable_unqlite_values_opaque",
+      "decryption_note": "values are opaque/protected payloads",
+      "purpose": "UnQLite edge/security key-value store",
+      "object_count": 1,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "key-value entries",
+          "type": "unqlite",
+          "row_count": 1,
+          "columns": [
+            "key",
+            "opaque_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 58,
+      "path": "files/sc_edge/DATA11.db",
+      "source_file": "DATA11.db",
+      "bytes": 12288,
+      "sha256": "40c79c942421640975430a1ba853e11a697b04e5cdce1652c5c903aa14e16a48",
+      "format": "unqlite",
+      "status": "readable_unqlite_values_opaque",
+      "decryption_note": "values are opaque/protected payloads",
+      "purpose": "UnQLite edge/security key-value store",
+      "object_count": 1,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "key-value entries",
+          "type": "unqlite",
+          "row_count": 1,
+          "columns": [
+            "key",
+            "opaque_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 59,
+      "path": "files/sc_edge/DATARC.db",
+      "source_file": "DATARC.db",
+      "bytes": 266240,
+      "sha256": "22b9eb5c60060a306a89f3a980f0ea26c008ac53f5e04b36347e49440e2408bc",
+      "format": "unqlite",
+      "status": "readable_unqlite_values_opaque",
+      "decryption_note": "values are opaque/protected payloads",
+      "purpose": "UnQLite remote-configurations store",
+      "object_count": 1,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "key-value entries",
+          "type": "unqlite",
+          "row_count": 1,
+          "columns": [
+            "key",
+            "opaque_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 60,
+      "path": "files/sc_edge/DATAUSS.db",
+      "source_file": "DATAUSS.db",
+      "bytes": 16384,
+      "sha256": "8e4480b4cd468764fb18d28fcf61315d1b11dc787921d2b9ac29542499d1e787",
+      "format": "unqlite",
+      "status": "readable_unqlite_values_opaque",
+      "decryption_note": "values are opaque/protected payloads",
+      "purpose": "UnQLite security service store",
+      "object_count": 1,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "key-value entries",
+          "type": "unqlite",
+          "row_count": 1,
+          "columns": [
+            "key",
+            "opaque_value"
+          ]
+        }
+      ]
+    },
+    {
+      "id": 61,
+      "path": "files/sc_edge/DATAV3.db",
+      "source_file": "DATAV3.db",
+      "bytes": 65536,
+      "sha256": "3c7d294e7463f6fa8b4ea8adde686e7f8b0286d127068ea9d8ab68dc00603f71",
+      "format": "unqlite",
+      "status": "readable_unqlite_values_opaque",
+      "decryption_note": "values are opaque/protected payloads",
+      "purpose": "UnQLite versioned opaque-value store",
+      "object_count": 1,
+      "row_count": 1,
+      "objects": [
+        {
+          "name": "key-value entries",
+          "type": "unqlite",
+          "row_count": 1,
+          "columns": [
+            "key",
+            "opaque_value"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -40,6 +40,18 @@
           "sha256": "1136f952fc1a1c471168ba5f84f8677fe3b71a654683c1abb1a45eaf1a4de8bf"
         }
       ]
+    },
+    {
+      "app": "Alipay",
+      "package": "com.eg.android.AlipayGphone",
+      "version_name": "12.12.30.8000",
+      "version_code": 212310,
+      "files": [
+        {
+          "name": "base.apk",
+          "sha256": "7274a03d16a223fb8d99a05e6e65071be1000e98586defb9b00a959b00e33122"
+        }
+      ]
     }
   ]
 }
