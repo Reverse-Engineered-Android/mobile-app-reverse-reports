@@ -1,0 +1,180 @@
+{
+  "database": "MicroMsgPriority.db",
+  "verification": {
+    "opened": true,
+    "mode": "SQLiteDatabase.openDatabase OPEN_READONLY with SQLiteCipherSpec=null",
+    "key_path": "MD5(UIN + login username + D3/device string), first 7 hex characters, UTF-8 bytes",
+    "copy_before_open": true,
+    "integrity": "ok",
+    "page_size": 4096,
+    "page_count": 36,
+    "freelist_count": 0,
+    "encoding": "UTF-8",
+    "sqlite_master_objects": 23,
+    "tables": 16,
+    "indexes": 7
+  },
+  "table_counts": {
+    "C2CChatUsage": 198,
+    "C2CChatUsageResult": 79,
+    "C2CMsgAutoDownloadFile": 2,
+    "C2CMsgAutoDownloadRes": 0,
+    "C2CMsgFileUsage": 4,
+    "C2CMsgImgUsage": 0,
+    "PriorityConfig": 9,
+    "consumemsgtemp": 79,
+    "consumemsgtemp2": 79,
+    "lsptemp": 79,
+    "opentemp": 79,
+    "opentemp2": 79,
+    "sendmsgtemp": 79,
+    "sendmsgtemp2": 79,
+    "staytimetemp": 79,
+    "staytimetemp2": 79
+  },
+  "total_rows": 1003,
+  "columns": {
+    "C2CChatUsage": [
+      "chat:TEXT",
+      "date:INTEGER",
+      "chattype:INTEGER",
+      "opencount:INTEGER",
+      "sendmsgcount:INTEGER",
+      "staytime:INTEGER",
+      "consumemsgcount:INTEGER"
+    ],
+    "C2CChatUsageResult": [
+      "chat:TEXT",
+      "openrmf:DOUBLE",
+      "staytimedev:DOUBLE",
+      "sendmsgrmf:DOUBLE",
+      "consumemsgrmf:DOUBLE",
+      "totallsp:DOUBLE",
+      "rank:INTEGER"
+    ],
+    "C2CMsgAutoDownloadFile": [
+      "id:TEXT",
+      "fromuser:TEXT",
+      "realuser:TEXT",
+      "restype:INTEGER",
+      "createtime:INTEGER",
+      "reason:INTEGER",
+      "status:INTEGER",
+      "downloadtime:INTEGER",
+      "msgsvrid:LONG",
+      "filesize:INTEGER",
+      "fileext:TEXT",
+      "opentime:INTEGER",
+      "priority:FLOAT",
+      "prioritytype:INTEGER",
+      "fileid:TEXT"
+    ],
+    "C2CMsgAutoDownloadRes": [
+      "msgid:INTEGER",
+      "fromuser:TEXT",
+      "realuser:TEXT",
+      "restype:INTEGER",
+      "createtime:INTEGER",
+      "reason:INTEGER",
+      "status:INTEGER",
+      "downloadtime:INTEGER",
+      "msgsvrid:LONG",
+      "imgsize:INTEGER",
+      "opentime:INTEGER",
+      "priority:FLOAT",
+      "prioritytype:INTEGER"
+    ],
+    "C2CMsgFileUsage": [
+      "chat:TEXT",
+      "talker:TEXT",
+      "date:INTEGER",
+      "dayreceivecount:INTEGER",
+      "dayclickcount:INTEGER",
+      "weekreceivecount:INTEGER",
+      "weekclickcount:INTEGER",
+      "monthreceivecount:INTEGER",
+      "monthclickcount:INTEGER",
+      "dayclickrate:FLOAT",
+      "weekclickrate:FLOAT",
+      "monthclickrate:FLOAT"
+    ],
+    "C2CMsgImgUsage": [
+      "chat:TEXT",
+      "talker:TEXT",
+      "date:INTEGER",
+      "dayreceivecount:INTEGER",
+      "dayclickcount:INTEGER",
+      "weekreceivecount:INTEGER",
+      "weekclickcount:INTEGER",
+      "monthreceivecount:INTEGER",
+      "monthclickcount:INTEGER",
+      "dayclickrate:FLOAT",
+      "weekclickrate:FLOAT",
+      "monthclickrate:FLOAT"
+    ],
+    "PriorityConfig": [
+      "type:INTEGER",
+      "version:INTEGER"
+    ],
+    "consumemsgtemp": [
+      "chat:TEXT",
+      "consumemsgtotalcount:REAL",
+      "consumemsgfrequency:REAL",
+      "consumemsgrecent:REAL"
+    ],
+    "consumemsgtemp2": [
+      "chat:TEXT",
+      "consumemsgtotalcountdev:REAL",
+      "consumemsgfrequencydev:REAL",
+      "consumemsgrecentdev:REAL"
+    ],
+    "lsptemp": [
+      "chat:TEXT",
+      "rank:INT"
+    ],
+    "opentemp": [
+      "chat:TEXT",
+      "opentotalcount:REAL",
+      "openfrequency:REAL",
+      "openrecent:REAL"
+    ],
+    "opentemp2": [
+      "chat:TEXT",
+      "opentotalcountdev:REAL",
+      "openfrequencydev:REAL",
+      "openrecentdev:REAL"
+    ],
+    "sendmsgtemp": [
+      "chat:TEXT",
+      "sendmsgtotalcount:REAL",
+      "sendmsgfrequency:REAL",
+      "sendmsgrecent:REAL"
+    ],
+    "sendmsgtemp2": [
+      "chat:TEXT",
+      "sendmsgtotalcountdev:REAL",
+      "sendmsgfrequencydev:REAL",
+      "sendmsgrecentdev:REAL"
+    ],
+    "staytimetemp": [
+      "chat:TEXT",
+      "staytimetotal:REAL",
+      "staytimeperopen:REAL"
+    ],
+    "staytimetemp2": [
+      "chat:TEXT",
+      "staytimetotaldev:REAL",
+      "staytimeperopendev:REAL"
+    ]
+  },
+  "indexes": [
+    "C2CMsgAutoDownloadFile_Priority_CreateTime",
+    "C2CMsgAutoDownloadRes_Priority_CreateTime",
+    "sqlite_autoindex_C2CChatUsageResult_1",
+    "sqlite_autoindex_C2CChatUsage_1",
+    "sqlite_autoindex_C2CMsgAutoDownloadFile_1",
+    "sqlite_autoindex_C2CMsgFileUsage_1",
+    "sqlite_autoindex_C2CMsgImgUsage_1"
+  ],
+  "privacy": "Only schema names/types and row counts are published; no chat identifiers, user identifiers, message IDs, timestamps, priorities, or values are exported."
+}

@@ -2,7 +2,7 @@
 
 ## 结论摘要
 
-1. 当前数据目录共发现 **68 个 `.db` 文件**。57 个是可直接读取的 SQLite；11 个具有非 SQLite 文件头。`EnMicroMsg.db` 历史快照和 8 个独立库快照已用 SQLCipher v1 解密并通过 `integrity_check=ok`；`MicroMsgPriority.db`、当前 `EnMicroMsg.db` 全量和 `FTS5IndexMicroMsg_encrypt.db` 仍是内容级未完成项。FTS 与 Priority 的独立 key/打开链已经由 smali 还原，但不冒充已解密。
+1. 当前数据目录共发现 **68 个 `.db` 文件**。57 个是可直接读取的 SQLite；11 个具有非 SQLite 文件头。`EnMicroMsg.db` 历史快照、8 个 SQLCipher v1 独立小库和 `MicroMsgPriority.db` 的 WCDB default 快照均已解密并通过 `integrity_check=ok`；`FTS5IndexMicroMsg_encrypt.db` 当前全量已沿源码 key/打开链完成内容级只读验证。剩余未完成项只有当前 `EnMicroMsg.db` 全量。
 2. `EnMicroMsg.db` 的历史快照已按静态代码还原的 SQLCipher v1 参数解密：251 张表，100,506 条消息、16,674 个联系人、819 个会话和 221 个群聊记录；消息时间覆盖 2015-12-26 至 2026-09-22。当前库已增长到 5.84 GB，公开报告只引用历史快照的聚合结果。
 3. `SnsMicroMsg.db` 是明文 SQLite。当前快照有 372 条朋友圈主记录、171 条用户/相册扩展记录、2 条广告拉取记录、2 条广告朋友圈记录和 5 条封面记录；另有评论、媒体、草稿、标签等表但当前为空。
 4. 小程序缓存分为两层：`AppBrandComm.db` 解密后有 54 张表、772 行，覆盖属性、manifest、启动/使用、KV、插件、安全存储和预下载统计；`lite_main.db` 保存包、鉴权、基础库、动态配置、采样配置和触发动作，已解析实例包含 18 个包、21 份配置、30 份采样配置和 2 个触发动作。
@@ -60,12 +60,14 @@
 - `WxFileIndex.db` 解密后含 6 表、317,265 行。`WxFileIndex3` 为主索引（消息 ID/用户名/类型/路径/大小/时间/哈希/磁盘占用/链接 UUID/详情等），其余表负责 talker 脏标记、下载迁移、链接化、刷新队列和注册表；不输出用户名、路径、哈希或文件详情。
 - `enFavorite.db` 解密后含 `FavItemInfo`、`FavSearchInfo`、`FavEditInfo`、`FavCdnInfo`、`FavTagInfo`、`FavConfigInfo`、`FavDelInfo` 七表，当前均为 0 行；Schema 明确收藏内容、搜索文本、编辑/CDN 状态、标签、配置和删除同步字段。
 - `Edge.db` 解密后有 `EdgeComputingCacheDataModel_Instance` 和 `EdgeComputingCacheDataModel_Normal` 两表，共 2 行；列为 `configID TEXT, reportTimeEC LONG, data TEXT`，不公开配置 ID、时间线或 data。
+- `MicroMsgPriority.db` 按 `UIN + 登录用户名 + D3/device` 的 MD5 前 7 字符 key 和 WCDB default 路径只读打开，`integrity_check=ok`；共 23 个对象、16 表/1,003 行。内容是 C2C 会话打开/发送/停留/消费统计、排名特征、文件/图片使用率、自动下载优先级任务和 `PriorityConfig` 版本状态；只发布 Schema 与聚合，不公开 chat/talker、消息 ID、时间、优先级或值。
 
 ### 消息全文搜索索引
 
-- `FTS5IndexMicroMsg_encrypt.db` 当前为 1.10 GB，静态代码证明它是消息/联系人/收藏/小程序等 FTS5 存储的加密索引，而不是消息主库的替代副本。
+- `FTS5IndexMicroMsg_encrypt.db` 当前为 1.10 GB，已只读打开为 160 个 `sqlite_master` 对象、270,018 页；它是消息/联系人/收藏/小程序等 FTS5 存储的加密索引，而不是消息主库的替代副本。
 - 其 key 路径优先读取 `t3.Ad`；缺失时由 UIN、当前/兼容 D3 和登录用户名拼接后取 MD5 前 7 字符，并以 WCDB 默认 cipher spec 打开。具体 smali 位置和 flags 见 `evidence/database-source.md`。
-- 当前只公开文件角色、key 公式、打开参数和候选验证边界；不公开索引词、文档 ID、消息正文或由索引反推的联系人/会话内容。
+- 内容聚合为消息索引 2,857,312 条、联系人 12,998 条、聊天室成员映射 280 条/成员边 37,638 条、客服联系人 281 条、小程序 110 条、服务通知 16 条、TopHits 5 条、Feature 133 条、Finder 关注 6 条；收藏和 AI 历史当前为 0。完整脱敏计数见 `evidence/fts-aggregates.json`。
+- 只公开文件角色、key 公式、打开参数和表级聚合；不公开索引词、文档 ID、消息正文或由索引反推的联系人/会话内容。
 
 ## 登录认证
 
@@ -105,9 +107,9 @@
 ## 限制与未完成项
 
 - `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db`、`EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 的本地快照已通过 `PRAGMA cipher_compatibility=1` 打开并导出只读明文校验；实际 key 不公开。
-- `MicroMsgPriority.db` 尚无内容级解密证据；其静态 key、WCDB page size 4096/defaultVersion 打开路径、D3 cache 证据、280 组 SQLCipher 兼容失败和 168 组微信 WCDB default 只读失败见 `evidence/decryption-attempts.md`。`FTS5IndexMicroMsg_encrypt.db` 的独立 `t3.Ad` / UIN + D3 + username key 路径已经定位，但大库一致快照与内容级解密仍未完成。
+- `MicroMsgPriority.db` 已按 WCDB default 路径完成内容级只读验证；其 key 推导、动态复核、探针防伪命中修正和脱敏 Schema 聚合见 `evidence/decryption-attempts.md`、`evidence/database-source.md`、`evidence/priority-aggregates.json`。
 - 当前 `EnMicroMsg.db` 为 5.84 GB，历史解密快照只有 197 MB；本报告不把历史行数冒充当前全量行数。
-- `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引；需要在应用停止写入时复制并解密，才能列出 FTS 表和索引词分布。
+- `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引，当前全量已经内容级只读打开；如需词项分布或消息级取证，仍需应用停止写入时的一致快照。
 - `WxFileIndex.db` 已解密并验证 6 表/317,265 行；仍不公开任何文件名、用户名、哈希或内容详情。
 - 未主动触发真实登录、支付、人脸核验或小游戏，因此没有真实交易/认证请求或响应。
 - 服务端评分、远程 feature gate、动态 UDR 模块和加密配置不能仅靠静态分析穷尽。

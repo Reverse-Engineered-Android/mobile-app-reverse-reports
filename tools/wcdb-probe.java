@@ -1,6 +1,10 @@
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.FileReader;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
@@ -73,6 +77,24 @@ final class WcdbProbe {
         return spec;
     }
 
+    private static void copyFile(File source, File destination) throws Exception {
+        InputStream input = new FileInputStream(source);
+        try {
+            OutputStream output = new FileOutputStream(destination);
+            try {
+                byte[] buffer = new byte[65536];
+                int count;
+                while ((count = input.read(buffer)) != -1) {
+                    output.write(buffer, 0, count);
+                }
+            } finally {
+                output.close();
+            }
+        } finally {
+            input.close();
+        }
+    }
+
     private static void initializeCso() throws Exception {
         String libraryDirectory = System.getenv("WDB_LIB_DIR");
         System.load(new File(libraryDirectory, "libcso.so").getPath());
@@ -114,7 +136,26 @@ final class WcdbProbe {
     }
 
     private static String probe(String databasePath, byte[] key) {
+        File temporaryDatabase = null;
         try {
+            if (databasePath == null || databasePath.length() == 0) {
+                throw new IllegalArgumentException("empty database path");
+            }
+            File databaseFile = new File(databasePath);
+            if (!databaseFile.isFile() || databaseFile.length() == 0) {
+                throw new IllegalArgumentException("database file must exist and be non-empty");
+            }
+            File openFile = databaseFile;
+            if ("1".equals(System.getenv("WDB_COPY_BEFORE_OPEN"))) {
+                File temporaryDirectory = databaseFile.getAbsoluteFile().getParentFile();
+                String configuredDirectory = System.getenv("WDB_TMP_DIR");
+                if (configuredDirectory != null && configuredDirectory.length() > 0) {
+                    temporaryDirectory = new File(configuredDirectory);
+                }
+                temporaryDatabase = File.createTempFile("wcdb-probe-", ".db", temporaryDirectory);
+                copyFile(databaseFile, temporaryDatabase);
+                openFile = temporaryDatabase;
+            }
             Class<?> databaseClass = Class.forName("com.tencent.wcdb.database.SQLiteDatabase");
             Method open = null;
             for (Method method : databaseClass.getMethods()) {
@@ -131,7 +172,7 @@ final class WcdbProbe {
                 throw new IllegalStateException("missing WCDB read-only openDatabase");
             }
             Object cipherSpec = createCipherSpec();
-            Object database = open.invoke(null, databasePath, key, cipherSpec, null, 1, null, 0);
+            Object database = open.invoke(null, openFile.getPath(), key, cipherSpec, null, 1, null, 0);
             try {
                 List<String> master = query(database, "SELECT type || ':' || name FROM sqlite_master ORDER BY type, name");
                 String integritySql = System.getenv("WDB_SKIP_INTEGRITY") == null
@@ -142,7 +183,20 @@ final class WcdbProbe {
                 List<String> pageCount = query(database, "PRAGMA page_count");
                 List<String> freelistCount = query(database, "PRAGMA freelist_count");
                 List<String> encoding = query(database, "PRAGMA encoding");
+                String pageCountValue = pageCount.isEmpty() ? "" : pageCount.get(0);
+                int parsedPageCount = -1;
+                try {
+                    parsedPageCount = Integer.parseInt(pageCountValue);
+                } catch (NumberFormatException ignored) {
+                }
+                if (master.isEmpty()) {
+                    throw new IllegalStateException("candidate opened without a SQLite schema");
+                }
+                if (parsedPageCount <= 0) {
+                    throw new IllegalStateException("candidate opened with an empty page handle");
+                }
                 String countFilter = System.getenv("WDB_COUNT_TABLES");
+                boolean includeColumns = "1".equals(System.getenv("WDB_INCLUDE_COLUMNS"));
                 List<String> visibleTables = new ArrayList<String>();
                 List<String> ftsTables = new ArrayList<String>();
                 for (String entry : master) {
@@ -184,6 +238,33 @@ final class WcdbProbe {
                     }
                     tableCounts.append('"').append(jsonEscape(tableName)).append("\":").append(countValue);
                 }
+                StringBuilder columns = new StringBuilder();
+                if (includeColumns) {
+                    for (int index = 0; index < visibleTables.size(); index++) {
+                        if (index > 0) {
+                            columns.append(',');
+                        }
+                        String tableName = visibleTables.get(index);
+                        StringBuilder columnEntries = new StringBuilder();
+                        try {
+                            List<String> tableInfo = query(database,
+                                    "PRAGMA table_info(" + sqlIdentifier(tableName) + ")");
+                            for (int column = 0; column < tableInfo.size(); column++) {
+                                if (column > 0) {
+                                    columnEntries.append(',');
+                                }
+                                String[] fields = tableInfo.get(column).split("\t", -1);
+                                String columnName = fields.length > 1 ? fields[1] : "";
+                                String columnType = fields.length > 2 ? fields[2] : "";
+                                columnEntries.append('"').append(jsonEscape(columnName))
+                                        .append(':').append(jsonEscape(columnType)).append('"');
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                        columns.append('"').append(jsonEscape(tableName)).append("\":[")
+                                .append(columnEntries).append(']');
+                    }
+                }
                 StringBuilder ftsAggregates = new StringBuilder();
                 Method execSQL = findMethod(database.getClass(), "execSQL", 1);
                 for (int index = 0; index < ftsTables.size(); index++) {
@@ -221,10 +302,11 @@ final class WcdbProbe {
                 return "{\"opened\":true,\"table_count\":" + master.size()
                         + ",\"integrity\":\"" + jsonEscape(integrity.isEmpty() ? "" : integrity.get(0))
                         + "\",\"page_size\":\"" + jsonEscape(pageSize.isEmpty() ? "" : pageSize.get(0))
-                        + "\",\"page_count\":\"" + jsonEscape(pageCount.isEmpty() ? "" : pageCount.get(0))
+                        + "\",\"page_count\":\"" + jsonEscape(pageCountValue)
                         + "\",\"freelist_count\":\"" + jsonEscape(freelistCount.isEmpty() ? "" : freelistCount.get(0))
                         + "\",\"encoding\":\"" + jsonEscape(encoding.isEmpty() ? "" : encoding.get(0))
                         + "\",\"table_counts\":{" + tableCounts + "}"
+                        + ",\"columns\":{" + columns + "}"
                         + ",\"fts_aggregates\":{" + ftsAggregates + "}"
                         + ",\"tables\":[" + tables + "]}";
             } finally {
@@ -245,6 +327,10 @@ final class WcdbProbe {
             }
             return "{\"opened\":false,\"error\":\"" + jsonEscape(cause.getClass().getName())
                     + "\",\"message\":\"" + jsonEscape(message) + "\"}";
+        } finally {
+            if (temporaryDatabase != null) {
+                temporaryDatabase.delete();
+            }
         }
     }
 
@@ -252,16 +338,25 @@ final class WcdbProbe {
         if (args.length != 2) {
             throw new IllegalArgumentException("usage: WcdbProbe <database> <candidate-file>");
         }
+        File databaseFile = new File(args[0]);
+        if (args[0].length() == 0 || !databaseFile.isFile() || databaseFile.length() == 0) {
+            throw new IllegalArgumentException("database file must exist and be non-empty");
+        }
         initializeCso();
         File candidateFile = new File(args[1]);
+        if (args[1].length() == 0 || !candidateFile.isFile() || candidateFile.length() == 0) {
+            throw new IllegalArgumentException("candidate file must exist and be non-empty");
+        }
         BufferedReader reader = new BufferedReader(new FileReader(candidateFile));
         try {
             String line;
             int index = 0;
+            int candidates = 0;
             while ((line = reader.readLine()) != null) {
                 if (line.length() == 0 || line.charAt(0) == '#') {
                     continue;
                 }
+                candidates++;
                 int separator = line.indexOf('\t');
                 String keyText = separator < 0 ? line : line.substring(separator + 1);
                 byte[] key = keyText.equals("@null") ? null : keyText.getBytes(StandardCharsets.UTF_8);
@@ -272,6 +367,9 @@ final class WcdbProbe {
                     break;
                 }
                 index++;
+            }
+            if (candidates == 0) {
+                throw new IllegalArgumentException("candidate file contains no candidates");
             }
         } finally {
             reader.close();

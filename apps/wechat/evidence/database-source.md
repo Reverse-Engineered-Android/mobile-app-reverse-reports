@@ -109,15 +109,15 @@
 
 D3 primary 由 `cp/g0` / `cp/u0` 的认证缓存提供。`cp/u0.smali:31-117` 使用 id `"a"` 的 UTF-8 `UUID.nameUUIDFromBytes` 作为目录名，并在 `.auth_cache/<uuid>/0..4` 中轮转保存带 CRC32 的值；对应目录可由 `"a"` 确定性重算。`cp/h0.smali:29-59` 的兼容回退读取 `CompatibleInfo.cfg` 的项 `258`，相同 fallback 值会被转换为 null，最终仍由 `cp/w0.g(true)` 使用字面量 fallback。`cp/p.smali:289-323` 证明该文件路径为 `MicroMsg/CompatibleInfo.cfg`。
 
-授权快照复核显示 primary D3 目录存在但没有缓存文件，`CompatibleInfo.cfg` 为 0 字节。因此当前状态只能得到 fallback D3，不能证明 `MicroMsgPriority.db` 创建时也使用该值。
+授权快照复核显示 primary D3 目录存在但没有缓存文件，`CompatibleInfo.cfg` 为 0 字节。后续用 14 个 UIN 形态、4 个登录用户名/null 形态和 3 个 D3/null/空形态做 WCDB default 只读验证，其中一个组合成功打开快照；这证明 key 输入落在源码公式枚举范围内，但不反向证明数据库创建时使用的是 primary、fallback 或空 D3。
 
 它使用的 WCDB 默认参数也与通用库不同。`tx3/h.smali:83-105` 调用不含 `SQLiteCipherSpec` 的 `SQLiteDatabase.openOrCreateDatabase(String, byte[], ...)`；`SQLiteDatabase.smali:1352-1373` 将 null spec 传给打开链，`Database.smali:1689-1721` 的 `setCipherKey(byte[])` 固定 page size 4096 并选择 `CipherVersion.defaultVersion`。因此不能把 `kh5/f.smali:94-110` 的 page size 1024 / SQLCipher v1 参数直接套用于该库。
 
 来源：`smali-classes11/tx3/h.smali:131-209`：取得 native connection 后调用 `PriorityJni.nativeInit`，并创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。`smali-classes12/ox3/m.smali:187-281` 初始化多个 C2C 图片/优先级任务组件，`ox3/m.smali:995-1010` 明确维护 `C2CMsgAutoDownloadRes.createtime`。
 
-动态只读复核工具见 `../../tools/wcdb-probe.java`。`tools/wcdb-probe.java:51-89` 调用微信 `libcso.so`/`libWCDB.so` 的 JNI 初始化链；`tools/wcdb-probe.java:91-149` 使用相同 null cipher spec，但改用 `SQLiteDatabase.openDatabase(..., OPEN_READONLY, ...)`，避免 `openOrCreateDatabase` 在失败尝试中创建或截断临时文件；`tools/wcdb-probe.java:151-179` 仅发布候选序号和脱敏聚合。该动态结果只用于验证打开路径，不替代上述 smali 对创建路径的证明。
+动态只读复核工具见 `../../tools/wcdb-probe.java`。`../../tools/wcdb-probe.java:67-136` 构造可选 SQLCipher compatibility spec、可选逐候选隔离副本并调用微信 `libcso.so`/`libWCDB.so` 的 JNI 初始化链；`../../tools/wcdb-probe.java:138-197` 使用相同 null cipher spec 和 `SQLiteDatabase.openDatabase(..., OPEN_READONLY, ...)`，并在输出前排除空路径、零长度文件、空 schema 和零页伪命中；`../../tools/wcdb-probe.java:198-301` 仅发布行数、列名/类型、索引名和聚合；候选入口 `../../tools/wcdb-probe.java:337-373` 只输出候选序号和脱敏结果/异常。该动态结果用于验证打开路径，不替代上述 smali 对创建路径的证明。
 
-当前快照的 D3 primary cache 为空、兼容 cache 为 0 字节；现有输入候选与 WCDB/SQLCipher 参数组合均未命中，故只发布 key 公式和静态 Schema，不声称内容已解密。
+当前快照的 D3 primary cache 为空、兼容 cache 为 0 字节；但按上述 key 公式枚举的 WCDB default 只读输入有一个命中，快照以 `integrity_check=ok`、page size 4096、36 页打开并得到 23 个对象/16 表/1,003 行，见 `priority-aggregates.json`。SQLCipher compatibility 1/2/3/4 组合仍全部失败，说明该库不沿用主库的 SQLCipher v1 路径。
 
 ## FTS5 搜索索引特殊 key 与打开路径
 
@@ -138,4 +138,4 @@ pk/k.g(bytes).substring(0, 7)
 - `smali-classes11/b41/d.smali:26-45` 将 `EnMicroMsg.db`、`EnMicroMsg.dberr*` 和 `FTS5IndexMicroMsg_encrypt.db` 归入同一文件分类动作，但不参与 key 派生。
 - `smali-classes11/f94/c.smali:26-116` 证明修复入口会删除主文件及 `-journal`、`-wal`、`-shm` 后重启，说明这些 sidecar 属于同一数据库生命周期。
 
-`tools/wcdb-probe.java:51-149` 增加了同样的 null cipher spec 只读打开能力；`:151-224` 可输出可见表计数，并在显式启用时用 `fts5vocab` 仅输出词项/文档/出现次数聚合，不输出索引词或文档内容。当前公开证据仍只到静态 key/打开链，未把 FTS 文件标为内容级解密。
+`../../tools/wcdb-probe.java:67-197` 增加了同样的 null cipher spec 只读打开能力、逐候选隔离副本和伪命中拒绝；`../../tools/wcdb-probe.java:198-301` 输出可见表计数/列类型，并可尝试用 `fts5vocab` 仅输出词项/文档/出现次数聚合，不输出索引词或文档内容。动态复核先在 15,126,528 字节授权快照上以 `integrity_check=ok` 打开，随后对当前全量文件执行相同的只读 key/打开路径并取得 160 个 `sqlite_master` 对象、270,018 页及表级行数聚合，见 `fts-aggregates.json`。因此 FTS 标为“当前全量内容级只读打开已验证”，但不公开词项或文档内容。

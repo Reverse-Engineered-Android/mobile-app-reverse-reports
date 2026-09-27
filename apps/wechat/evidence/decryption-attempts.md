@@ -26,16 +26,18 @@
 - `smali-classes11/kh5/b0.smali:1523-1716`：遍历 `IMEISave.a()` 的 device ID，拼接 UIN，取摘要前 7 个十六进制字符，再调用 `kh5/f.w()`。
 - `smali-classes11/kh5/f.smali:94-110`：SQLCipher v1、page size 1024 参数。
 
-`MicroMsgPriority.db` 是唯一尚未完成内容级解密的独立小库。`tx3/h.smali:37-105` 证明它直接把 UIN 字符串、登录用户名和 device 字符串拼接，经 MD5 后取前 7 个十六进制字符并以字节串作为 SQLCipher 口令；`tx3/h.smali:143-209` 创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。其无 `SQLiteCipherSpec` 的 WCDB 打开链固定使用 page size 4096 和 `CipherVersion.defaultVersion`，依据见 `database-source.md`。
+`MicroMsgPriority.db` 已完成内容级解密。`tx3/h.smali:37-105` 证明它直接把 UIN 字符串、登录用户名和 device 字符串按该顺序拼接，经 MD5 后取前 7 个十六进制字符并以字节串作为口令；`tx3/h.smali:143-209` 创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。其无 `SQLiteCipherSpec` 的 WCDB 打开链固定使用 page size 4096 和 `CipherVersion.defaultVersion`，依据见 `database-source.md`。
 
-`FTS5IndexMicroMsg_encrypt.db` 使用与 `MicroMsgPriority.db` 相似的“缓存 key 或 UIN + D3 + 登录用户名”输入，但入口独立：`com/tencent/mm/plugin/fts/p.smali:104-178` 优先读取 `t3.Ad`，缺失时计算 MD5 前 7 字符并持久化；`p.smali:215-275` 以 null cipher spec 和 key 字节串打开。当前 1.10 GB 文件仍在应用写入路径上，未在停止写入时取得完整一致快照，因此没有进行内容级行/词项导出；该状态不等于 key 路径未知。
+`FTS5IndexMicroMsg_encrypt.db` 使用与 `MicroMsgPriority.db` 相似的“缓存 key 或 UIN + D3 + 登录用户名”输入，但入口独立：`com/tencent/mm/plugin/fts/p.smali:104-178` 优先读取 `t3.Ad`，缺失时计算 MD5 前 7 字符并持久化；`p.smali:215-275` 以 null cipher spec 和 key 字节串打开。15,126,528 字节授权快照先以只读方式打开并通过 `integrity_check=ok`；随后当前 1.10 GB 全量文件沿同一路径只读打开，得到 160 个 `sqlite_master` 对象、270,018 页以及消息/联系人/群成员/小程序等 FTS 表行数聚合，见 `fts-aggregates.json`。全量复核为避免大库长时间检查而跳过 `integrity_check`，且不导出索引词、文档 ID 或消息正文。
 
-2026-09-28 先执行 280 组只读打开验证：14 个 UIN 形态候选、2 个用户名形态（包含 Java null 拼接结果）、2 个当前/fallback D3 形态，以及 WCDB default、SQLCipher compatibility 1/2/3/4 共 5 组参数。随后使用微信自身的 `libcso.so`、`libWCDB.so` 和 `SQLiteDatabase` 做精确默认路径复核：`../../tools/wcdb-probe.java:51-89` 加载原生库并初始化 `CsoLoader`，`../../tools/wcdb-probe.java:91-149` 以 `SQLiteCipherSpec=null`、只读 flag 调用 `SQLiteDatabase.openDatabase`，与 `SQLiteDatabase.smali:1352-1373`、`Database.smali:1689-1721` 的 page size 4096/defaultVersion 路径保持一致。
+2026-09-28 先执行 280 组只读打开验证：14 个 UIN 形态候选、2 个用户名形态（包含 Java null 拼接结果）、2 个当前/fallback D3 形态，以及 WCDB default、SQLCipher compatibility 1/2/3/4 共 5 组参数；SQLCipher compatibility 组合均未命中。随后使用微信自身的 `libcso.so`、`libWCDB.so` 和 `SQLiteDatabase` 做精确默认路径复核：`../../tools/wcdb-probe.java:67-136` 加载原生库并初始化 `CsoLoader`，`../../tools/wcdb-probe.java:138-197` 以 `SQLiteCipherSpec=null`、只读 flag 调用 `SQLiteDatabase.openDatabase`，与 `SQLiteDatabase.smali:1352-1373`、`Database.smali:1689-1721` 的 page size 4096/defaultVersion 路径保持一致。
 
-精确复核使用 14 个 UIN 形态、4 个登录用户名/null 形态和 3 个 D3/null/空形态，共 168 组。输入文件是 147,456 字节、SHA-256 `7ecfeb84dadd702fc61a44f5c824fd48f69359454acf7290a8aa22fbe7861805` 的授权快照；每轮只读打开独立临时副本，源文件哈希保持不变。168 组均返回 `com.tencent.wcdb.database.SQLiteCantOpenDatabaseException`，没有可验证打开结果。`../../tools/wcdb-probe.java:151-179` 只输出候选序号、对象计数、PRAGMA 聚合或异常类，不输出 key/UIN/用户名/D3。
+精确复核使用 14 个 UIN 形态、4 个登录用户名/null 形态和 3 个 D3/null/空形态，共 168 组。输入文件是 147,456 字节、SHA-256 `7ecfeb84dadd702fc61a44f5c824fd48f69359454acf7290a8aa22fbe7861805` 的授权快照。前 6 组返回 `com.tencent.wcdb.database.SQLiteCantOpenDatabaseException`，第 7 个候选（候选序号 6）成功打开；探针随后停止，因此有效结果为 6 次未命中加 1 次命中。结果为 `integrity_check=ok`、page size 4096、36 页、23 个对象、16 表/1,003 行，脱敏 Schema/计数见 `priority-aggregates.json`。
 
-由 id `"a"` 确定性重算的 D3 primary cache 目录当前没有缓存文件，`MicroMsg/CompatibleInfo.cfg` 为 0 字节，因此创建该库时的 D3 仍不可重建。所有 SQLCipher 兼容组合和微信 WCDB 默认只读组合均未命中；不输出候选值，也不把静态 Schema 当作已解密内容。
+早期探针曾把 `table_count=0,page_count=0` 的空句柄误报为成功，随后还暴露出输入路径会在多次 WCDB 尝试间消失，导致后续错误不能再计作 key 未命中。修正后的 `../../tools/wcdb-probe.java:138-197` 拒绝空文件、空 schema 和零页，`WDB_COPY_BEFORE_OPEN=1` 在每次打开前复制隔离输入；`../../tools/wcdb-probe.java:337-373` 只输出候选序号、对象/列/行聚合或异常类，不输出 key/UIN/用户名/D3。最终复核前后源文件大小保持 147,456 字节，逐候选副本不影响源快照。
+
+由 id `"a"` 确定性重算的 D3 primary cache 目录当前没有缓存文件，`MicroMsg/CompatibleInfo.cfg` 为 0 字节，因此不能从当前缓存反推创建时究竟使用 primary、fallback 或空 D3。成功结果只证明枚举范围内有一个 key/输入组合正确；不输出候选值。
 
 ## 边界
 
-未解密只证明当前可访问证据不足，不证明文件损坏。下一步应取得 `MicroMsgPriority.db` 创建时的 D3 primary/兼容项 `258` 或等价密钥材料，再按 `tx3/h.smali` 的直接打开路径做只读验证；`FTS5IndexMicroMsg_encrypt.db` 应取得 `t3.Ad` 的历史值，或在应用停止写入时按 `com/tencent/mm/plugin/fts/p.smali` 的输入顺序重建候选并做只读复核。当前 `EnMicroMsg.db` 与 FTS 大库仍需在应用停止写入时另做受控复制。
+当前所有独立加密小库和 FTS 全量均已有内容级只读证据。剩余边界是 `EnMicroMsg.db` 当前 5.84 GB 全量仍需在应用停止写入时按已验证 SQLCipher v1 路径做受控复制；FTS 如需词项分布或消息级取证，应另行取得一致快照并执行更细的最小化查询。历史快照的行数不冒充当前全量行数。

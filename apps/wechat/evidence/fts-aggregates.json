@@ -1,0 +1,51 @@
+{
+  "database": "FTS5IndexMicroMsg_encrypt.db",
+  "verification": {
+    "opened": true,
+    "candidate_index": 0,
+    "mode": "SQLiteDatabase.openDatabase OPEN_READONLY with SQLiteCipherSpec=null",
+    "integrity": "skipped",
+    "page_size": 4096,
+    "page_count": 270018,
+    "freelist_count": 197,
+    "encoding": "UTF-8",
+    "sqlite_master_objects": 160
+  },
+  "fts_content_rows": {
+    "FTS5IndexAIHistoryChat_content": 0,
+    "FTS5IndexAIHistory_content": 0,
+    "FTS5IndexChatroomMember_content": 280,
+    "FTS5IndexContact_content": 12998,
+    "FTS5IndexFavorite_content": 0,
+    "FTS5IndexFeature_content": 133,
+    "FTS5IndexFinderFollow_content": 6,
+    "FTS5IndexKefuContact_content": 281,
+    "FTS5IndexMessage_content": 2857312,
+    "FTS5IndexServiceNotify_content": 16,
+    "FTS5IndexTopHits_content": 5,
+    "FTS5IndexWeApp_content": 110
+  },
+  "fts_docsize_rows": {
+    "FTS5IndexContact_docsize": 12998,
+    "FTS5IndexMessage_docsize": 2857312
+  },
+  "metadata_rows": {
+    "FTS5ChatRoomMembers": 37638,
+    "FTS5ContactLabels": 3835,
+    "FTS5MetaAIHistory": 0,
+    "FTS5MetaAIHistoryChat": 0,
+    "FTS5MetaChatroomMember": 280,
+    "FTS5MetaContact": 12998,
+    "FTS5MetaFavorite": 0,
+    "FTS5MetaFeature": 133,
+    "FTS5MetaFinderFollow": 6,
+    "FTS5MetaKefuContact": 281,
+    "FTS5MetaMessage": 2857312,
+    "FTS5MetaSOSHistory": 2,
+    "FTS5MetaServiceNotify": 16,
+    "FTS5MetaTopHits": 5,
+    "FTS5MetaWeApp": 110,
+    "FTS5NativeQueryClickRecallInfo": 13,
+    "Feature": 41
+  }
+}

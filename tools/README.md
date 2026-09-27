@@ -12,7 +12,7 @@ Python 工具只使用标准库；Java 助手通过反射调用样本运行库�
 | `assemble_xhs_shield.py` | 用合成/私有输入重放小红书 shield 外层 |
 | `xor_strings.py` | 恢复单字节 XOR 字符串 |
 | `sanitize.py` | 发布前扫描凭据、路径、IP、UUID 和坐标 |
-| `wcdb-probe.java` | 在 Android/ART 中通过微信 WCDB 只读验证候选输入，并可输出脱敏表计数/FTS 词项统计，不输出 key 或内容 |
+| `wcdb-probe.java` | 在 Android/ART 中通过微信 WCDB 只读验证候选输入，并可输出脱敏表计数/列类型/FTS 词项统计，不输出 key 或内容；拒绝空/缺失/零长度文件及空 schema/零页伪命中，`WDB_COPY_BEFORE_OPEN=1` 可为每次尝试复制隔离输入 |
 
 示例：
 

@@ -139,13 +139,30 @@
 
 `EdgeComputingCacheDataModel_Instance` 0 行、`EdgeComputingCacheDataModel_Normal` 2 行，两表列均为 `configID TEXT, reportTimeEC LONG, data TEXT`。`m92/d.smali`/`m92/d.java` 同时创建 `_Instance` 与 `_Normal` 两种表名，`im/s2.java:initAutoDBInfo` 给出列类型与 `rowid` 主键；不公开 configID、精确 reportTimeEC 或 data。
 
-## MicroMsgPriority.db 静态 Schema
+## MicroMsgPriority.db 内容级 Schema
 
-内容级解密尚未完成，因此只标为结构已证实：
+授权快照已按 `tx3/h.smali:37-105` 的 `UIN + 登录用户名 + D3/device` key 和 WCDB default 打开链只读验证：`integrity_check=ok`，23 个对象（16 表、7 索引）、36 页、共 1,003 行。完整脱敏列名/类型和计数见 `evidence/priority-aggregates.json`。
 
-- `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`，来源 `tx3/h.smali:143-209`。
-- `C2CMsgAutoDownloadRes` 含 `createtime`，代码按 90 天清理旧记录，来源 `ox3/m.smali:995-1010` 的 `DELETE ... WHERE createtime < ?`。
-- `ox3/m.smali:187-281` 初始化 C2C 图片预下载、优先级任务、预加载和报告组件；部分实际表由 `PriorityJni.nativeInit` 创建，静态 Java 证据不足以穷尽原生表列，因此不伪造完整 Schema。
+| 表 | 行数 | 内容边界 |
+| --- | ---: | --- |
+| `C2CChatUsage` | 198 | 会话按日期的打开、发送、停留和消息消费计数 |
+| `C2CChatUsageResult` | 79 | 上述特征的归一化/偏差、总分和排名 |
+| `C2CMsgFileUsage` | 4 | 文件消息日/周/月接收、点击与点击率 |
+| `C2CMsgImgUsage` | 0 | 图片消息同类使用率 Schema，当前为空 |
+| `C2CMsgAutoDownloadFile` | 2 | 文件自动下载任务、状态、大小、打开时间、优先级和优先级类型 |
+| `C2CMsgAutoDownloadRes` | 0 | 图片/资源自动下载任务 Schema，当前为空 |
+| `PriorityConfig` | 9 | `type/version` 版本状态 |
+| `consumemsgtemp*` | 158 | 消息消费总量、频率、近期值及偏差特征 |
+| `opentemp*` | 158 | 打开总量、频率、近期值及偏差特征 |
+| `sendmsgtemp*` | 158 | 发送总量、频率、近期值及偏差特征 |
+| `staytimetemp*` | 158 | 停留总量、每次打开时长及偏差特征 |
+| `lsptemp` | 79 | 会话排序临时分 |
+
+`PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)` 同时由 `tx3/h.smali:143-209` 静态证实。`C2CMsgAutoDownloadRes` 的 `createtime` 由 `ox3/m.smali:995-1010` 的 90 天清理 SQL 证实。动态 Schema 是内容级证据，原生表由 `PriorityJni.nativeInit` 创建的来源仍见 `evidence/database-source.md`。
+
+## FTS5IndexMicroMsg_encrypt.db 内容聚合
+
+当前全量文件已按 `com/tencent/mm/plugin/fts/p.smali:104-275` 的 key/打开链只读验证，共 160 个 `sqlite_master` 对象、270,018 页。主要 FTS5 内容表计数为：`FTS5IndexMessage_content=2,857,312`、`FTS5IndexContact_content=12,998`、`FTS5IndexChatroomMember_content=280`、`FTS5IndexKefuContact_content=281`、`FTS5IndexWeApp_content=110`、`FTS5IndexFeature_content=133`、`FTS5IndexServiceNotify_content=16`、`FTS5IndexTopHits_content=5`、`FTS5IndexFinderFollow_content=6`；收藏与 AI 历史内容表当前为 0。元数据还包括 `FTS5ChatRoomMembers=37,638`、`FTS5ContactLabels=3,835`、`FTS5MetaSOSHistory=2` 和 `FTS5NativeQueryClickRecallInfo=13`。完整 JSON 见 `evidence/fts-aggregates.json`，不输出索引词、文档 ID 或消息正文。
 
 ## 支付 KV
 

@@ -25,15 +25,17 @@
 | SQLCipher v1/page 1024 | `evidence/database-source.md` |
 | device ID + UIN key 派生 | `evidence/database-source.md` |
 | FTS/Priority 的 `t3.Ad` 或 UIN + D3 + username key 路径 | `evidence/database-source.md`、`evidence/decryption-attempts.md` |
+| FTS 当前全量只读打开及表级内容聚合 | `evidence/fts-aggregates.json`、`evidence/decryption-attempts.md` |
+| `MicroMsgPriority.db` WCDB default 内容级 Schema/行数聚合 | `evidence/priority-aggregates.json`、`evidence/decryption-attempts.md` |
 | SQLCipher v1 独立库快照解密与剩余边界 | `evidence/decryption-attempts.md` |
-| 微信 WCDB default 只读动态复核与 FTS 聚合输出 | `../../tools/wcdb-probe.java:51-224`、`evidence/decryption-attempts.md` |
+| 微信 WCDB default 只读动态复核、防伪命中和脱敏 Schema 输出 | `../../tools/wcdb-probe.java:67-301`、`../../tools/wcdb-probe.java:337-373`、`evidence/decryption-attempts.md` |
 | 8 个独立库的脱敏表/列/行/长度/年份聚合 | `evidence/database-aggregates.json` |
 | 68 库逐库状态/大小/内容角色 | [database-inventory.md](database-inventory.md) |
 | 表/列/行数/时间/类型聚合 | [schema.md](schema.md) |
 | 登录设备、认证、钱包绑定/缓存聚合 | [schema.md](schema.md) |
 | AppBrand ORM/表注册 | `evidence/database-source.md` |
 
-当前 8 个独立加密小库的导出均通过 `integrity_check=ok`；`MicroMsgPriority.db` 仅完成静态 key/Schema 还原，280 组 SQLCipher 兼容和 168 组微信 WCDB default 只读输入均未命中。`FTS5IndexMicroMsg_encrypt.db` 已定位独立 key/打开链，但未完成一致快照和内容级解密，两者均不标为已解密。
+当前 9 个独立加密小库快照均通过 `integrity_check=ok`：8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 完成内容级 Schema/行数聚合。`FTS5IndexMicroMsg_encrypt.db` 也已完成当前全量内容级只读打开和表级聚合；当前仅 `EnMicroMsg.db` 全量未复核。
 
 ## 支付
 

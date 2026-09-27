@@ -4,7 +4,7 @@
 
 - **明文 SQLite**：文件头为 `SQLite format 3`，只读 `integrity_check=ok`，可枚举表/列/行数。
 - **SQLCipher v1 快照已解密**：主库历史副本已按源码还原参数解密，并有独立明文副本。
-- **独立加密已解密快照**：文件头不是 SQLite，但已用 SQLCipher v1 打开独立快照并通过 `integrity_check=ok`，可枚举表/列/行数。
+- **独立加密已解密快照**：文件头不是 SQLite，但已按该库源码对应的 SQLCipher v1 或 WCDB default 路径打开独立快照并通过 `integrity_check=ok`，可枚举表/列/行数。
 - **独立加密未解密**：文件头不是 SQLite，当前没有可验证的内容级打开结果；内容角色只按文件名和静态代码标注，不冒充解密结果。
 - **大库未解密**：当前文件太大，未创建超过 1 GB 的完整副本；历史小快照或 Schema 线索单独标注。
 
@@ -15,18 +15,18 @@
 | 数据库 | 当前大小 | 状态 | 已明确内容 |
 | --- | ---: | --- | --- |
 | `MicroMsg/<opaque-id>/EnMicroMsg.db` | 5,836,770,304 | SQLCipher v1 历史快照已解密 | 消息、联系人、会话、群聊、AppMessage、账号配置、小程序配置、钱包缓存、设备绑定；历史快照 251 表/100,506 消息 |
-| `MicroMsg/<opaque-id>/FTS5IndexMicroMsg_encrypt.db` | 1,104,314,368 | 加密大库未解密 | 全文搜索索引；源码明确使用加密 FTS5 库 |
+| `MicroMsg/<opaque-id>/FTS5IndexMicroMsg_encrypt.db` | 1,104,314,368 | 当前全量内容级只读打开已验证 | 全文搜索索引；160 对象/270,018 页，消息 2,857,312、联系人 12,998、聊天室成员 280、小程序 110 等表级聚合 |
 | `MicroMsg/<opaque-id>/WxFileIndex.db` | 104,028,160 | 快照已解密 | 文件索引/文件元数据；6 表、317,265 行 |
 
 ## 独立加密库
 
-| 数据库 | 大小 | 解密状态 | 静态已明确的内容角色 |
+| 数据库 | 大小 | 解密状态 | 已明确内容 |
 | --- | ---: | --- | --- |
 | `MicroMsg/<resource-id>/EnResDown.db` | 68,608 | 快照已解密 | 资源下载记录；`ResDownloaderRecordTable=151` |
 | `MicroMsg/<opaque-id>/WxExpt.db` | 825,344 | 快照已解密 | `ExptItem=959`、`ExptKeyMapId=1873`，实验/feature 配置 |
 | `MicroMsg/<opaque-id>/newuba.db` | 122,880 | 快照已解密 | `NewUserBehaviourCache=3`，UBA/行为分析缓存 |
 | `MicroMsg/<opaque-id>/WxCgiReport.db` | 3,072 | 快照已解密 | `CgiReportLocalItemDataCache=0`，当前无缓存行 |
-| `MicroMsg/<opaque-id>/MicroMsgPriority.db` | 147,456 | 未解密 | 消息/任务优先级状态；静态证实 `PriorityConfig` 和原生任务表 |
+| `MicroMsg/<opaque-id>/MicroMsgPriority.db` | 147,456 | 快照已解密（WCDB default） | 消息/任务优先级状态；23 对象、16 表/1,003 行，覆盖 C2C 使用统计、文件/图片/自动下载优先级和临时排序特征 |
 | `MicroMsg/<opaque-id>/AppBrandComm.db` | 4,092,928 | 快照已解密 | 小程序公共业务数据库；54 表、772 行，26 表非空 |
 | `MicroMsg/<opaque-id>/enFavorite.db` | 29,696 | 快照已解密 | 收藏；7 表、当前 0 行 |
 | `MicroMsg/<opaque-id>/Edge.db` | 10,240 | 快照已解密 | Edge/边缘计算缓存；2 表、2 行 |
@@ -102,4 +102,4 @@
 - `IMEISave.smali:15-145` 证明历史 device ID 来自加密 `KeyInfo.bin`，并额外加入当前/兼容 device ID。
 - 实际 key、UIN、device ID、`KeyInfo.bin` 内容均不公开。
 - 2026-09-27 对 `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db` 的本地快照执行 `PRAGMA cipher_compatibility=1`，四库均成功导出并通过 `integrity_check=ok`；过程、静态打开链和脱敏聚合见 `evidence/decryption-attempts.md`、`evidence/database-aggregates.json`。
-- `EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 已在只读副本上解密导出并通过 `integrity_check=ok`；`MicroMsgPriority.db` 仍未内容级解密，微信 WCDB default 的 168 组只读输入也全部未命中，其“内容角色”只来自静态代码。
+- 9 个独立加密小库快照均已完成内容级只读验证；其中 8 个按 SQLCipher v1 导出，`MicroMsgPriority.db` 按 WCDB default 打开并通过 `integrity_check=ok`，结果见 `evidence/priority-aggregates.json`。`FTS5IndexMicroMsg_encrypt.db` 已按 `com/tencent/mm/plugin/fts/p.smali:104-275` 的独立路径对当前全量做内容级只读打开，结果见 `evidence/fts-aggregates.json`。当前唯一未做全量内容级复核的是增长中的 `EnMicroMsg.db`。
