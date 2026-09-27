@@ -59,6 +59,16 @@ prefix 排序，物理 cell 顺序不保证排序。工具把偶数页上的类�
 目录页，并检查 offset/span 边界、单元是否重叠和 prefix 排序；不输出 key、
 value 或道路/POI 内容。类型 `0x0d` 页使用不同的布局，不能套用 `0x05` 规则。
 
+## Native reader 边界
+
+`libamapnsq.so` 中的容器读取入口先比较文件头前 8 字节与 `DICE-AM\0`，随后按
+大端读取头部字段。静态反汇编显示它读取偏移 `0x64`、`0x6c`、`0x74`、`0x7c`、
+`0x84`、`0x8c`、`0x94`、`0x9c`、`0xa4` 的 40 位值，以及偏移 `0xac`、`0xb0`
+的 32 位值；这些字段与页/块索引或长度参数相关，但公开证据不足以给每个字段
+赋予道路、POI 或路线语义。库还暴露 SQLite/ZipVFS、`zipvfs_block_size`、
+`chunksize` 以及 zlib/ZSTD 压缩调用，说明 `DICE-AM` 是应用自有的分页容器，
+而不是可直接当作普通 SQLite 文件读取。
+
 ## 已知与未知
 
 | 项目 | 状态 |
