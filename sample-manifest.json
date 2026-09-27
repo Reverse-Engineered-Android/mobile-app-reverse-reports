@@ -52,6 +52,30 @@
           "sha256": "7274a03d16a223fb8d99a05e6e65071be1000e98586defb9b00a959b00e33122"
         }
       ]
+    },
+    {
+      "app": "WeChat",
+      "package": "com.tencent.mm",
+      "version_name": "8.0.68",
+      "version_code": 3003,
+      "files": [
+        {
+          "name": "WeChat_8.0.68_APKPure.xapk",
+          "sha256": "1ecc00602a31cefd64e0e121db5232b1bfa8893795ee39516088b51ddf847208"
+        }
+      ]
+    },
+    {
+      "app": "WeChat",
+      "package": "com.tencent.mm",
+      "version_name": "8.0.78",
+      "version_code": 3180,
+      "files": [
+        {
+          "name": "base.apk",
+          "sha256": "41f7dc1f720767fa78fa20dd13ea034b817bbf6ebd23dfd1324c647499c9c1ba"
+        }
+      ]
     }
   ]
 }
