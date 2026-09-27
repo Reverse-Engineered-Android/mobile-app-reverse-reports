@@ -1111,7 +1111,7 @@
       "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "decryption_note": "user-scoped password is transformed by Trusted Terminal; source password is not recoverable from static DEX",
       "purpose": "account-scoped social chat messages",
       "object_count": 0,
       "row_count": 0,
@@ -1125,7 +1125,7 @@
       "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "decryption_note": "user-scoped password is transformed by Trusted Terminal; source password is not recoverable from static DEX",
       "purpose": "account-scoped social contacts",
       "object_count": 0,
       "row_count": 0,
@@ -1139,7 +1139,7 @@
       "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "decryption_note": "user-scoped password is transformed by Trusted Terminal; source password is not recoverable from static DEX",
       "purpose": "account-scoped discussion contacts",
       "object_count": 0,
       "row_count": 0,
@@ -2480,12 +2480,98 @@
       "bytes": 1024,
       "sha256": "fa67b4898b821ab5cae7e68e515af5262b2a9a931ee7ea6f450904e3343cc961",
       "format": "sqlcrypto",
-      "status": "undecrypted_sqlcrypto",
-      "decryption_note": "protected public-life database key outside recovered DEX",
+      "status": "decrypted_sqlcrypto",
+      "decryption_note": "password entry recovered from LifeDatabaseHelper; password and decrypted file withheld",
       "purpose": "public-life home/settings/broadcast/plugin state",
-      "object_count": 0,
+      "object_count": 7,
       "row_count": 0,
-      "objects": []
+      "objects": [
+        {
+          "name": "android_metadata",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "locale"
+          ]
+        },
+        {
+          "name": "life_biz_template_subscribe_status",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "bizTemplateId",
+            "status",
+            "updateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "life_broadcast_msg",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "contentId",
+            "id",
+            "isServerDelete",
+            "msgId",
+            "msgInfo",
+            "msgTime",
+            "publicId",
+            "userId"
+          ]
+        },
+        {
+          "name": "life_home",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "publicData",
+            "publicId",
+            "userId"
+          ]
+        },
+        {
+          "name": "life_msg_plugin",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "pluginData",
+            "pluginId",
+            "pluginMonitor",
+            "pluginType",
+            "pluginUpdateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "life_msg_plugin_relation",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "bId",
+            "bType",
+            "id",
+            "msgId",
+            "pluginId",
+            "pluginType",
+            "updateTime",
+            "userId"
+          ]
+        },
+        {
+          "name": "life_setting",
+          "type": "table",
+          "row_count": 0,
+          "columns": [
+            "id",
+            "publicId",
+            "settingData",
+            "userId"
+          ]
+        }
+      ]
     },
     {
       "id": 45,
@@ -2576,7 +2662,7 @@
       "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "decryption_note": "user-scoped password is transformed by Trusted Terminal; source password is not recoverable from static DEX",
       "purpose": "account-scoped social mobile data",
       "object_count": 0,
       "row_count": 0,
@@ -2667,7 +2753,7 @@
       "sha256": "5fad52b84f0b3a690a36f76d62fd99223a6c85a1cea426c56d87f7618fe8b273",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "user-scoped helper password transformation is outside recovered DEX",
+      "decryption_note": "user-scoped password is transformed by Trusted Terminal; source password is not recoverable from static DEX",
       "purpose": "account-scoped timeline data",
       "object_count": 0,
       "row_count": 0,
@@ -2948,7 +3034,7 @@
       "sha256": "aa9b6cb968c0c44ba1daec4b564e43b281c3174bc61bcd96420b81c34a934783",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "decryption_note": "index key is MD5 of protected source-database password; source password is not recoverable from static DEX",
       "purpose": "protected FTS index: contacts/friends",
       "object_count": 0,
       "row_count": 0,
@@ -2962,7 +3048,7 @@
       "sha256": "fcc64e9d982221e49471f66f05f190e0cd4a2c3f66c4ff9835757159870e0e72",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "decryption_note": "index key is MD5 of protected source-database password; source password is not recoverable from static DEX",
       "purpose": "protected FTS index: mobile contacts",
       "object_count": 0,
       "row_count": 0,
@@ -2976,7 +3062,7 @@
       "sha256": "a6d3cc8892baa6febc0ca31576f92135cd27bc8f7a92700f7f2d6661e88c8fe6",
       "format": "sqlcrypto",
       "status": "undecrypted_sqlcrypto",
-      "decryption_note": "protected client-FTS key outside recovered DEX",
+      "decryption_note": "index key is MD5 of protected source-database password; source password is not recoverable from static DEX",
       "purpose": "protected FTS index: user global labels",
       "object_count": 0,
       "row_count": 0,

@@ -11,8 +11,14 @@
 | 结论 | 源位置 |
 | --- | --- |
 | SQLCrypto `key`/`rekey` | `jadx4/sources/com/alibaba/sqlcrypto/sqlite/SQLiteConnection.java:1121`, `:1131` |
+| SQLCrypto `buildKey` | `jadx4/sources/com/alibaba/sqlcrypto/sqlite/SQLiteConnection.java:299`; `native/libdatabase_sqlcrypto.so` VA `0xc9274`, format VA `0x98b05` |
+| FTS key derivation | `jadx5/sources/com/alipay/android/phone/businesscommon/globalsearch/fts/FTSSearcher.java:987-989`; `libap_local_search.so` VA `0xae3ec` → `0xb69b4`, `PRAGMA key` VA `0x88638` |
+| MD5 primitive | `jadx12/sources/com/alipay/mobile/common/utils/MD5Util.java:38-50`, `:234-248` |
+| Social password protection boundary | `jadx13/sources/com/alipay/mobile/personalbase/db/EncryptOrmliteSqliteOpenHelper.java:297-322`, `:889-910`; `AlipaySecurityEncryptorUtils.java:44-58`; `BlueShieldSecurityEncryptor.java:203-226` |
+| Scan cache password boundary | `jadx14/sources/com/alipay/mobile/scan/util/db/UnifiedScanDbHelper.java:47`; `jadx14/sources/com/alipay/mobile/scan/npc/cache/NPayCodeCache.java:562-569` |
 | 状态库 password interface | `classes15.dex` → state dataset DB helper `:49`, `:53` |
 | Flare/Privacy/Invoke password interface | `jadx9/sources/com/alipay/fusion/localrecord/flare/FlareRecordDbHelper.java:26`; `jadx7/sources/com/alipay/android/phone/mobilesdk/permission/fortress/invoke/InvokeRecordDbHelper.java:26`; `jadx7/sources/com/alipay/android/phone/mobilesdk/permission/fortress/auth/AuthStatusDBHelper.java:26` |
+| Public-life database password/interface | `jadx12/sources/com/alipay/mobile/life/model/db/LifeDatabaseHelper.java:39-53`; decrypted `public_life.db` schema contains six business tables plus `android_metadata` |
 | MobileAiX password generation/storage | `jadx15/sources/com/alipay/mobileaixdatacenter/util/PasswordUtils.java:29-41`, `:64-69` |
 | Login RSA and server validation | `jadx14/sources/com/alipay/mobile/security/accountmanager/service/AccountServiceImpl.java:78` |
 | User-token request/result | `jadx14/sources/com/alipay/mobile/securitycommon/aliauth/model/UserTokenRequest.java:9`; `UserTokenResult.java:9` |

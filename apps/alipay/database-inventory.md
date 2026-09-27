@@ -1,6 +1,6 @@
 # 61 个数据库逐项清单
 
-`sha256` 是源文件完整性标识；路径中的账号维度已脱敏。对象数/行数只统计已恢复容器。未恢复库的“行数”为 `N/A`，不代表空库。
+`sha256` 是源文件完整性标识；路径中的账号维度已脱敏。对象数/行数只统计已恢复容器，行数包含 `android_metadata`、`sqlite_sequence` 等系统表；`schema.md` 的高价值表行数只计业务行。未恢复库的“行数”为 `N/A`，不代表空库。
 
 | ID | 文件（脱敏） | 格式/状态 | 对象 | 行数 | 内容结论 |
 | ---: | --- | --- | ---: | ---: | --- |
@@ -47,7 +47,7 @@
 | 41 | `databases/open_platform_apps.db` | 普通 SQLite / 可读 | 7 | 605 | open-platform app install and stage state |
 | 42 | `databases/permission_fortress_invoke_record-main.db` | SQLCrypto / 已解密 | 3 | 6 | middleware permission invocation records |
 | 43 | `databases/publicHome.db` | 普通 SQLite / 可读 | 4 | 11 | public-account home/follow state |
-| 44 | `databases/public_life.db` | SQLCrypto / 未解密 | 0 | N/A | public-life home/settings/broadcast/plugin state |
+| 44 | `databases/public_life.db` | SQLCrypto / 已解密 | 7 | 0 | 生活号主页、设置、广播和插件状态；6 个业务表均为空 |
 | 45 | `databases/push_msg.db` | 普通 SQLite / 可读 | 5 | 9 | push message and merge/id-map state |
 | 46 | `databases/socialmobiledb<account-id>.db` | SQLCrypto / 未解密 | 0 | N/A | account-scoped social mobile data |
 | 47 | `databases/sync_dispatch.db` | 普通 SQLite / 可读 | 4 | 1436 | sync dispatch and uplink queue |
@@ -73,7 +73,6 @@
 | MobileAiX | 3 | 密码为运行时随机值，且由 `AlipaySecurityEncryptor` 加密保存；当前 DEX 未含底层 `EncryptDataUtils`。 |
 | 社交/时间线 | 5 | 构造器确认用户维度密码入口，但基类转换/保护域不在当前 DEX 证据内。 |
 | 扫码业务缓存 | 1 | 密码来自 Trusted Terminal 的受保护自定义数据槽。 |
-| 沙箱 FTS | 3 | 客户端 FTS 密钥/索引保护实现不在当前 DEX 证据内。 |
-| 公共生活 | 1 | 数据库 helper/密钥入口未在当前 DEX 证据内恢复。 |
+| 沙箱 FTS | 3 | 已恢复“源数据库 password → MD5 索引键”调用链；源 password/Trusted Terminal 保护变换仍未恢复。 |
 
-五个 `sc_edge` 文件不是 SQLCipher/SQLCrypto：文件头是 `unqlite`，已打开为键值容器；键和值只保留类别/计数，值不公开。
+未恢复 SQLCrypto 合计 12 个：`scan_biz.db` 1 个、MobileAiX 3 个、账号维度社交/时间线库 5 个、FTS `index.db` 3 个。FTS 的源 password 经 `MD5Util.encrypt` 派生索引键，但源 password 来自 Trusted Terminal 保护变换；因此不把文件名中的账号维度当作密码。五个 `sc_edge` 文件不是 SQLCipher/SQLCrypto：文件头是 `unqlite`，已打开为键值容器；键和值只保留类别/计数，值不公开。

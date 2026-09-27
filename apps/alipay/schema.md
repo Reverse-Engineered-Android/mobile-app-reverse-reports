@@ -27,6 +27,9 @@
 | `PrivacyLocalRecord-widgetProvider.db` | 同上 | 0 | 同上 |
 | `job_state.db` | `state_data` | 251 | job/namespace/content/extinfo/timestamp/uid |
 | `permission_fortress_invoke_record-main.db` | `MiddlewareInvokeLocalRecordDAO_table` | 5 | 权限、接口、授权状态、调用结果 |
+| `public_life.db` | `life_home` 等 6 个业务表 | 0 | 生活号主页、设置、广播、插件和模板订阅状态；当前快照无业务行 |
+
+`public_life.db` 的密码入口来自 `LifeDatabaseHelper`；解密后包含 `life_home`、`life_broadcast_msg`、`life_setting`、`life_msg_plugin`、`life_msg_plugin_relation`、`life_biz_template_subscribe_status` 六个业务表，另有 `android_metadata`。七张业务/元数据表当前均为 0 行，因此内容结论是“容器与 schema 已恢复、当前快照无业务内容”，而不是数据库损坏或未解密。
 
 ## 敏感字段处理
 

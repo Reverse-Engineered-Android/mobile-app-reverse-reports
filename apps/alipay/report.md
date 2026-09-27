@@ -19,8 +19,8 @@
 | 状态 | 数量 | 说明 |
 | --- | ---: | --- |
 | 普通 SQLite，可读 | 36 | 已枚举表、列、DDL 和聚合行数 |
-| SQLCrypto，已恢复 | 7 | 已恢复 schema/行数；密码和解密文件不公开 |
-| SQLCrypto，未恢复 | 13 | 静态代码确认密码来自运行时保护域或派生值 |
+| SQLCrypto，已恢复 | 8 | 已恢复 schema/行数；密码和解密文件不公开 |
+| SQLCrypto，未恢复 | 12 | 静态代码确认密码来自运行时保护域或派生值 |
 | UnQLite 键值库 | 5 | 打开容器并确认单键/单值，值为不透明密文 |
 
 这覆盖清单中的全部 61 个数据库；“未恢复”不等于内容为空，而是静态证据不足以安全、确定地取得该库密码或值密钥。
@@ -36,14 +36,24 @@
 - `native/libdatabase_sqlcrypto.codec.disasm.txt:539`、`:563`，AES 解密/加密调用；
 - `jadx4/sources/com/alibaba/sqlcrypto/sqlite/SQLiteConnection.java:1121`、`:1131`，Java `PRAGMA key`/`rekey` 接口。
 
-已恢复的 7 个库来自静态常量或受保护接口：`job_state.db`、`FlareRecord-main.db`、4 个 `PrivacyLocalRecord-*` 库和 `permission_fortress_invoke_record-main.db`。恢复输出仅在私有分析目录用于统计，公开报告不提供输出。
+已恢复的 8 个库来自静态常量、helper 密码入口或受保护接口：`job_state.db`、`FlareRecord-main.db`、4 个 `PrivacyLocalRecord-*` 库、`permission_fortress_invoke_record-main.db` 和 `public_life.db`。恢复输出仅在私有分析目录用于统计，公开报告不提供输出。
+
+### 两条密钥派生路径
+
+- **SQLCrypto 连接密钥**：`SQLiteConnection.setEncryptKey()` 直接把 `mConfiguration.password` 放入 `PRAGMA key`/`rekey`（`jadx4/sources/com/alibaba/sqlcrypto/sqlite/SQLiteConnection.java:1121-1133`）。对已恢复库的离线页解密验证使用密码 UTF-8 前 16 字节、不足补 `{` 的 AES-128 页密钥；这是本样本的验证结果，不应外推为所有 SQLCrypto 文件的通用派生规则。
+- **`buildKey` 不是上述连接密钥的已证实来源**：`libdatabase_sqlcrypto.so` 的 `Java_com_alibaba_sqlcrypto_sqlite_SQLiteConnection_buildKey`（VA `0xc9274`）使用 `%s-%d-%s-%s` 拼入固定标签、CPU family、输入串和固定混淆常量，再调用 `MessageDigest`/`digest` 得到 32 位小写 MD5（格式字符串 VA `0x98b05`；Java 声明 `jadx4/sources/com/alibaba/sqlcrypto/sqlite/SQLiteConnection.java:299`）。当前静态调用图没有把该返回值接到 `mConfiguration.password` 或 `setEncryptKey`，所以不把 `buildKey` 结果当作本样本 SQLCrypto 文件的解密密钥；固定常量本身不公开。
+- **FTS `index.db` 密钥**：`FTSSearcher` 将 `SqliteDbModel.getPassword()` 写入 `originDBEncryptKey`（`jadx5/sources/com/alipay/android/phone/businesscommon/globalsearch/fts/FTSSearcher.java:987-989`）。`libap_local_search.so` 从该配置字段调用 `get_index_security_key`（VA `0xae3ec` → `0xb69b4`），JNI 调用 `MD5Util.encrypt(String)`；`MD5Util.encrypt` 返回 UTF-8 输入的 MD5 小写 hex（`jadx12/sources/com/alipay/mobile/common/utils/MD5Util.java:38-50`、`:234-248`），随后原生层使用 `PRAGMA key='%s'`（VA `0x88638`）。因此 FTS 索引键是 **源数据库 password 再做 MD5**；它不是 `buildKey` 的 `%s-%d-%s-%s` 路径。
+- **社交源密码边界**：社交 helper 的 password 由 `AlipaySecurityEncryptorUtils.encrypt(userId)` 产生（`jadx13/sources/com/alipay/mobile/personalbase/db/EncryptOrmliteSqliteOpenHelper.java:297-322`、`:889-910`）；该工具委托 `BlueShieldSecurityEncryptor.staticSafeEncrypt` 的 Trusted Terminal 模块（`AlipaySecurityEncryptorUtils.java:44-58`；`BlueShieldSecurityEncryptor.java:203-226`）。所以 FTS 证据支持的表达是 `MD5(TrustedTerminal保护变换(userId))`，而不是 `MD5(userId)`；保护变换输出/密钥未恢复。
+
+三个 FTS 文件的首个 16 字节密文块相同、第二块不同；这与相同索引密钥和相同首块明文相容，也与上述共同 password 来源相容，但公开报告不据此恢复或公布任何密钥。
 
 ### 未恢复边界
 
 - MobileAiX 三个库的密码由 97 字符随机值生成并以 `AlipaySecurityEncryptor` 保存（`jadx15/sources/com/alipay/mobileaixdatacenter/util/PasswordUtils.java:29`、`:41`、`:64`）；密文位于 `files/antsp/mobileaix_default`，但 `EncryptDataUtils` 的实现不在当前 DEX 集合中。
-- `scan_biz.db` 的密码是运行时 `BizCacheConfig.sha1Key`，而该值从 Trusted Terminal 的受保护自定义数据槽读取（`jadx14/sources/com/alipay/mobile/scan/util/Utils.java:173`）。
-- 社交库构造器直接传入用户维度字符串（例如 `ChatEncryptOrmliteHelper.java:134-145`），但基类转换/保护域实现未随当前 DEX 证据出现，故不从文件名猜测密码。
-- 三个沙箱 FTS `index.db`、`public_life.db` 和五个 `sc_edge` UnQLite 值不具有公开的静态密钥/解析入口。
+- `scan_biz.db` 的密码是运行时 `sha1Key`；`UnifiedScanDbHelper` 将其直接传入 `setPassword`（`jadx14/sources/com/alipay/mobile/scan/util/db/UnifiedScanDbHelper.java:47`），而该值来自 Trusted Terminal 的受保护自定义数据槽 `codecsignkey`（`jadx14/sources/com/alipay/mobile/scan/npc/cache/NPayCodeCache.java:562-569`）。
+- 社交/账号维度的 `chatmsgdb<account-id>.db`、`contactsdb<account-id>.db`、`discussioncontactdb<account-id>.db`、`socialmobiledb<account-id>.db`、`timelinedb<account-id>.db`：构造器传入用户维度字符串（例如 `ChatEncryptOrmliteHelper.java:134-145`），但实际 password 受 Trusted Terminal 保护变换控制，故不从文件名猜测密码。
+- `public_life.db` 已由 `LifeDatabaseHelper` 的密码入口解密；6 个业务表和 `android_metadata` 当前均为 0 行，内容边界见 `schema.md`。
+- 三个沙箱 FTS `index.db` 的源 password 和 MD5 派生输入受保护；五个 `sc_edge` UnQLite 文件是值不透明的键值容器。
 
 ## 登录与授权
 
