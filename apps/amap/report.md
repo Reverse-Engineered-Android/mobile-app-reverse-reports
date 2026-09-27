@@ -7,9 +7,9 @@
 | 本地 SQLite | `bedstone.db`、`girf_sync.db` 可由应用自己的 native 路径读取，完整性检查通过 | 已验证 |
 | 内容边界 | 可列出表结构、对象类别和聚合计数；真实行值全部排除 | 已验证 |
 | 离线地图 | `AM-zlib` 外层是按块 ID 存放的 zlib 帧，块 ID 排序可重建 `DICE-AM` 页面镜像 | 已验证 |
-| `DICE-AM` | 已确认魔数、4096 字节页、8192 字节逻辑块和头字段关系；页面树/记录单元语义未完整恢复 | 结构已证实 |
-| 在线导航 | 已确认导航 allowlist、POST 字节数组接口和请求模型字段；未公开真实 body | 已验证 |
-| 导航算法 | 已确认离线路线请求、图边校验、端点/途经点/重规划入口；未证明具体最短路算法和代价函数 | 证据边界 |
+| `DICE-AM` | 已确认 32 位块计数、页对、类型 `0x05` 目录/cell 结构；道路/POI 记录语义未解码 | 结构已证实 |
+| 在线导航 | 已确认 legacy URL、AOS 表单编码和 native opaque POST 三类边界；未公开真实 body | 已验证 |
+| 导航算法 | 静态证据确认 Dijkstra-family 堆/最小键搜索和重规划入口；精确代价与变体未证明 | 证据边界 |
 
 ## 样本与方法
 
@@ -61,24 +61,29 @@ APK 的 SHA-256、大小和版本见 [README](README.md)。分析按以下顺序
 2 字节大端压缩长度和标准 zlib 流组成；解压块固定为 8192 字节。block ID 是
 `2,4,...,6180` 的完整偶数序列，但文件顺序未排序，按 ID 排序后可得到
 25,313,280 字节的 `DICE-AM` 镜像。`DICE-AM\0` 的页大小为 4096 字节，
-头中 16 位块计数与 `块数 × 8192 = 镜像大小` 关系已核对。
+头部偏移 18..21 的 **32 位**块计数与 `块数 × 8192 = 镜像大小` 关系已核对；
+偏移 26..27 的 XOR 混淆字段解码为 8192。每个逻辑块是一个页对，类型 `0x05`
+目录页已确认 offset 表、12 字节 cell 和 8 字节 prefix 排序；类型 `0x0d` 页
+及道路/POI 语义仍不同或未恢复。
 
-这支持离线地图的封装和可重建性，不等于已经恢复道路拓扑、页树、溢出单元或
+这支持离线地图的封装和部分目录结构，不等于已经恢复道路拓扑、溢出单元或
 完整记录语义。详见 [offline-map.md](offline-map.md)。
 
 ## 在线导航
 
-Java 层确认了导航相关 endpoint allowlist 和 native HTTP 回调接口：
-POST 回调接收 `byte[]` opaque body。`POIForRequest`、`POIInfo`、`RouteOption`
-和 `RerouteOption` 暴露请求/重规划模型字段。endpoint、字段分组、路线类型和
-重规划原因见 [network-navigation.md](network-navigation.md)。
+Java 层确认了导航相关 endpoint allowlist、legacy URL 参数模型、AOS
+`application/x-www-form-urlencoded` 序列化和 native HTTP 回调接口。POST 回调
+接收 `byte[]` opaque body，不能从接口本身推成 JSON/protobuf。`POIForRequest`、
+`POIInfo`、`RouteOption` 和 `RerouteOption` 暴露请求/重规划模型字段。endpoint、
+字段分组、路线类型和重规划原因见 [network-navigation.md](network-navigation.md)。
 
 ## 导航算法边界
 
-native 符号和字符串确认了离线路线执行、图边输入校验、端点/途经点绑定和
-重规划计划入口。现有证据支持“图边遍历 + 链接匹配 + 途经/旅程点绑定 +
-重规划候选”的概念模型，但不足以证明 Dijkstra/A*、精确边代价、候选路线生成
-或在线/离线分派细节。详见 [algorithm.md](algorithm.md)。
+native 符号、字符串和静态反汇编确认了 Dijkstra-family 的最小键/堆式搜索、
+方向性前沿、链接/端点绑定、途经/旅程点绑定和重规划计划入口。该分类仍不足以
+证明标准 Dijkstra 或 A* 变体、精确边代价、候选路线生成或在线/离线分派细节。
+旧报告中的 OpenCV 图持久化字符串不是路线证据，已移除。详见
+[algorithm.md](algorithm.md)。
 
 ## 脱敏与发布边界
 

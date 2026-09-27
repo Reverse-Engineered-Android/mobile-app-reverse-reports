@@ -24,20 +24,36 @@
 | `dice::RouteEngine::bindViaPoint` | 有途经点绑定 |
 | `dice::RouteEngine::bindJourneyPoint` | 有旅程点绑定 |
 | `dice::RouteEngine::getReroutePlan` | 有重规划计划生成入口 |
-| `Graph edges should start with 2 integers and a float` | 图边输入至少有整数端点/属性和浮点字段 |
+| `dice::BindDijstra::SetHead` / `SetTerminal` | 有起点、终点/终端绑定入口 |
+| `dice::BindDijstra::GetRoutePath` | 有路径提取入口 |
+| `dice::RouteDJHeap::splitBlock` / `minRoadsToBlock` | 有按最小键组织的堆/前沿结构 |
+| `dice::NormalSearch::normalDJSearch` / `sideDJSearch` | 有正向/侧向 Dijkstra-family 搜索入口 |
+| `dice::MutiThreadEngine::doSearchFromStart` | 有多线程从起点搜索编排 |
+| `dice::RouteSearch::specDJStart` | 有专用 DJ 搜索入口 |
 
-## 尚未证明的内容
+## Dijkstra-family 证据边界
 
-现有样本证据**不足以**证明：
+静态字符串、符号和反汇编可确认的是 **Dijkstra-family 堆/最小键最短路引擎**：
+搜索区存在两个方向的 frontier，反复提取较低 key，节点记录的 key 位于 `+20`，
+并伴随链接状态标记和路径扩展。`RouteDJHeap` 附近的 24 字节节点记录和有序
+pointer/frontier 数组支持这一分类。该分类不等价于已还原完整实现。
 
-- 使用 Dijkstra、A*、双向搜索或其它具体最短路算法；
+仍不足以证明：
+
+- 是否严格使用标准 Dijkstra、双向 Dijkstra、A* 或其它变体；
 - 边代价由距离、时间、收费、实时交通或权重的何种组合计算；
 - 候选路线数量、并行道路比较、罚分和排序策略；
 - 离线/在线结果如何合并、降级或选择；
 - 图节点、页树、溢出单元和道路属性的逐字段编码。
 
-因此不要把这些未证实内容写成“算法已还原”。公开报告只保留可由符号、模型
-字段和结构检查直接支持的事实，并把算法实现细节标为待验证。
+因此可发布结论是“Dijkstra-family 堆/最小键搜索已由静态证据证实”，而不是
+“完整路线算法已还原”。边代价、tie-break、候选路线和在线/离线分派仍为边界。
+
+## 已排除的误导证据
+
+字符串 `Graph edges should start with 2 integers and a float` 位于 OpenCV
+持久化代码（`icvReadGraph`、`opencv-sequence-tree` 附近），与 `libamaptbt.so`
+路线引擎无调用关系；它不是导航图边格式证据，已从结论中移除。
 
 ## 可复核的下一步
 

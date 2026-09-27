@@ -16,6 +16,33 @@
 
 同一 allowlist 还包含公交、出租车、支付和搜索类路径；本文只记录导航接口。
 
+## 请求格式边界
+
+应用中至少存在三种不同边界，不能混为一种 JSON schema：
+
+### Legacy URL 请求
+
+`RouteCarParamUrlWrapper` 组装导航 URL，已见路径为
+`ws/mapapi/navigation/auto/?`。签名字段名包含 `fromX`、`fromY`、`toX`、`toY`；
+参数覆盖起点/终点/途经点、POI 标识/类型/类型码/名称、策略、车辆尺寸/重量/
+载荷/轴、GPS/航向/匹配/速度/精度、路线模式/版本/刷新/内容选项。默认输出标记
+为 binary。这里只记录字段名和编码边界，不公开任何真实值。
+
+### AOS POST 表单
+
+`EtaRouteRequest` 对应 `ws/shield/maps/mapapi/navigation/etaroute`，
+`AddressRequest` 对应 `ws/shield/maps/mapapi/navigation/address`。
+`NavigationRequestHolder` 还会追加 `channel`、`diu`、`div`、`lon`、`lat`、
+`x`、`y`、`policy2`、`multi_routes`、`ver`、`sdk_version` 等公共参数字段。
+
+`AosRequest.paramsToString` 调用的序列化规则是 UTF-8、`&` 分隔键值、`=` 连接
+键值；配置的 URL-safe 字节直接保留，空格编码为 `+`，其余字节使用大写百分号
+编码。`AosPostRequest.processParams` 把序列化结果作为 UTF-8 body。默认 content type 是
+`application/x-www-form-urlencoded`。可选路径还包括 AMap gzip
+`X-Gw-Compress`、XXTEA 加密策略、`is_bin=1` 和安全签名头。
+
+### Native POST 边界
+
 `com.autonavi.jni.ae.route.observer.HttpInterface` 的关键签名是：
 
 ```java
@@ -23,8 +50,9 @@ boolean requestHttpPost(int requestId, int type, String url, byte[] body);
 ```
 
 这说明 native 路线层把请求 body 作为 opaque `byte[]` 交给 Java/网络层。
-现有证据没有给出该字节流的完整 schema，因此不把它误写成 JSON、protobuf 或
-可直接重放的请求格式；真实 body、请求头、签名和响应均不公开。
+`RouteService.decodeRouteData(byte[])` 只证明响应由 native 二进制解码入口
+处理；现有证据没有给出该字节流的完整 schema，因此不把它误写成 JSON、
+protobuf 或可直接重放的请求格式。真实 body、请求头、签名和响应均不公开。
 
 ## 路线请求模型
 
