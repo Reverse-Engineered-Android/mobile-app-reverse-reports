@@ -24,11 +24,14 @@
 | --- | --- |
 | SQLCipher v1/page 1024 | `evidence/database-source.md` |
 | device ID + UIN key 派生 | `evidence/database-source.md` |
-| 剩余加密库测试范围与未命中边界 | `evidence/decryption-attempts.md` |
+| SQLCipher v1 独立库快照解密与剩余边界 | `evidence/decryption-attempts.md` |
+| 8 个独立库的脱敏表/列/行/长度/年份聚合 | `evidence/database-aggregates.json` |
 | 68 库逐库状态/大小/内容角色 | [database-inventory.md](database-inventory.md) |
 | 表/列/行数/时间/类型聚合 | [schema.md](schema.md) |
 | 登录设备、认证、钱包绑定/缓存聚合 | [schema.md](schema.md) |
 | AppBrand ORM/表注册 | `evidence/database-source.md` |
+
+当前 8 个独立加密小库的导出均通过 `integrity_check=ok`；`MicroMsgPriority.db` 仅完成静态 key/Schema 还原，不把它标为已解密。
 
 ## 支付
 

@@ -1,0 +1,3635 @@
+{
+  "002_AppBrandComm.plain.db": {
+    "integrity": "ok",
+    "table_count": 54,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "usernameHash",
+            "non_null": 11,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 11,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "AppBrandAppLaunchUsernameDuplicateRecord2",
+        "rows": 11
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "fetchType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "path",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "query",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "scene",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "data",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandBackgroundFetchData",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "token",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandBackgroundFetchDataToken",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "key",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "value",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandCommonKVBinaryData",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 111,
+            "length_min": 27,
+            "name": "key",
+            "non_null": 153,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 47073,
+            "length_min": 1,
+            "name": "value",
+            "non_null": 153,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "AppBrandCommonKVData",
+        "rows": 153
+      },
+      {
+        "columns": [
+          {
+            "name": "recordId",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 20,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "versionType",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 20,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 1113,
+            "length_min": 1064,
+            "name": "commonUseInfo",
+            "non_null": 20,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "name": "saveIndex",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 0,
+            "length_min": 0,
+            "name": "appPath",
+            "non_null": 20,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "AppBrandCommonUseApp",
+        "rows": 20
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "isDarkMode",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "screenshotFilePath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandFakeNativeSplashScreenshot",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 26,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 26,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "AppBrandIdentifierInfo",
+        "rows": 26
+      },
+      {
+        "columns": [
+          {
+            "length_max": 42,
+            "length_min": 42,
+            "name": "key",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 3,
+            "length_min": 3,
+            "name": "data",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "dataType",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "size",
+            "non_null": 11,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "AppBrandKVData",
+        "rows": 11
+      },
+      {
+        "columns": [
+          {
+            "name": "recordId",
+            "non_null": 38,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "brandId",
+            "non_null": 38,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "versionType",
+            "non_null": 38,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 38,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "name": "scene",
+            "non_null": 38,
+            "type": "INTEGER"
+          },
+          {
+            "name": "usedInThirdPartyAppRecently",
+            "non_null": 38,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 8,
+            "length_min": 0,
+            "name": "thirdPartyAppUsingDesc",
+            "non_null": 2,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandLauncherLayoutItem",
+        "rows": 38
+      },
+      {
+        "columns": [
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 8,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "versionType",
+            "non_null": 8,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 8,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "AppBrandLocalUsageRecord",
+        "rows": 8
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "wechatPluginApp",
+            "non_null": 99,
+            "type": "INTEGER"
+          },
+          {
+            "name": "appServiceType",
+            "non_null": 99,
+            "type": "INTEGER"
+          },
+          {
+            "name": "maxFileStorageSize",
+            "non_null": 99,
+            "type": "INTEGER"
+          },
+          {
+            "name": "lastLaunchTime",
+            "non_null": 99,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "AppBrandMessInfoRecord",
+        "rows": 99
+      },
+      {
+        "columns": [
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 25,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 25,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "prefetchUpdateTime",
+            "non_null": 25,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "AppBrandPrefetchWxaAttrsMarkTable",
+        "rows": 25
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "recommendCard",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandRecommendCard",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "screenshotPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "screenshotLastModified",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "screenshotMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "nickname",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "iconUrl",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "enterPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "savedImgPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "isGuideShown",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "showSourceView",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "AppBrandScreenshotInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "isSeparatedPluginsUsed",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "AppBrandSeparatedPluginsCompatMarkTable",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 2,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "versionType",
+            "non_null": 2,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 2,
+            "type": "LONG",
+            "year_max": 2021,
+            "year_min": 2021
+          },
+          {
+            "name": "orderSequence",
+            "non_null": 2,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandStarApp",
+        "rows": 2
+      },
+      {
+        "columns": [
+          {
+            "name": "recordId",
+            "non_null": 8,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 8,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "versionType",
+            "non_null": 8,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 8,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "AppBrandTaskRecentApp",
+        "rows": 8
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "versionMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandTestCodeVersionMarkTable",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 83,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 71,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "version",
+            "non_null": 71,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 32,
+            "length_min": 32,
+            "name": "versionMd5",
+            "non_null": 71,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 32,
+            "length_min": 32,
+            "name": "NewMd5",
+            "non_null": 66,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "checksum",
+            "non_null": 71,
+            "type": "LONG"
+          },
+          {
+            "length_max": 84,
+            "length_min": 76,
+            "name": "pkgPath",
+            "non_null": 71,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "createTime",
+            "non_null": 71,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "name": "debugType",
+            "non_null": 71,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 211,
+            "length_min": 165,
+            "name": "downloadURL",
+            "non_null": 66,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "startTime",
+            "non_null": 71,
+            "type": "LONG"
+          },
+          {
+            "name": "endTime",
+            "non_null": 71,
+            "type": "LONG"
+          }
+        ],
+        "name": "AppBrandWxaPkgManifestRecord",
+        "rows": 71
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "version",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "versionMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "NewMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "checksum",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "pkgPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "createTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "debugType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "downloadURL",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "startTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "endTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "versionDesc",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "AppBrandWxaPkgManifestRecordWithDesc",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 20,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "version",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "name": "packageType",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 32,
+            "length_min": 0,
+            "name": "packageKey",
+            "non_null": 20,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "source",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "name": "hitCount",
+            "non_null": 20,
+            "type": "INTEGER"
+          },
+          {
+            "name": "reportId",
+            "non_null": 20,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "AppBrandWxaPkgPreDownloadStatistics2",
+        "rows": 20
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "chatRoomsId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "chatRooms",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "ChatRoomsInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "extJson",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "DevPkgLaunchExtInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 21,
+            "length_min": 21,
+            "name": "businessAppInfoKey",
+            "non_null": 1,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 290,
+            "length_min": 290,
+            "name": "respBuff",
+            "non_null": 1,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "name": "duration",
+            "non_null": 1,
+            "type": "LONG"
+          },
+          {
+            "name": "lastUpdateTime",
+            "non_null": 1,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "LaunchBusinessWxaAppInfo",
+        "rows": 1
+      },
+      {
+        "columns": [
+          {
+            "name": "appIdHash",
+            "non_null": 11,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 4,
+            "length_min": 4,
+            "name": "launchAction",
+            "non_null": 11,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "length_max": 4920,
+            "length_min": 4920,
+            "name": "jsapiInfo",
+            "non_null": 11,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "hostInfo",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          },
+          {
+            "length_max": 42,
+            "length_min": 42,
+            "name": "actionsheetInfo",
+            "non_null": 11,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "length_max": 815,
+            "length_min": 815,
+            "name": "operationInfo",
+            "non_null": 11,
+            "type": "BLOB",
+            "value_type": "blob"
+          },
+          {
+            "length_max": 758,
+            "length_min": 69,
+            "name": "opConfig",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "expiredAtTimestampSeconds",
+            "non_null": 11,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 28,
+            "length_min": 28,
+            "name": "openId",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "showThirdBusiTips",
+            "non_null": 11,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 2,
+            "length_min": 2,
+            "name": "switchList",
+            "non_null": 11,
+            "type": "BLOB",
+            "value_type": "blob"
+          }
+        ],
+        "name": "LaunchWxaAppRespTable",
+        "rows": 11
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "bluetoothDeviceId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "wechatToken",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "entryPackage",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "isBlocked",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "MonitoredBluetoothDeviceInfoV2",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "voipRoomId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "voipRecordPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "voipExtraData",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "OpenVoiceServiceVoipRecord",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "token",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appid",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "nickname",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "iconUrl",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "OuterWidgetAppInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "timestamp",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "PersistentWxaSyncInvalidCodeCmd",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "timestamp",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "PersistentWxaSyncInvalidContactCmd",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 13,
+            "length_min": 13,
+            "name": "key",
+            "non_null": 2,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "version",
+            "non_null": 2,
+            "type": "INTEGER"
+          },
+          {
+            "name": "scene",
+            "non_null": 2,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 2,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "PkgUpdateStats",
+        "rows": 2
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 8,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "type",
+            "non_null": 8,
+            "type": "INTEGER"
+          },
+          {
+            "name": "hit",
+            "non_null": 8,
+            "type": "INTEGER"
+          },
+          {
+            "name": "hitTimeMS",
+            "non_null": 8,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "PkgUsageLRURecord",
+        "rows": 8
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "version",
+            "non_null": 10,
+            "type": "INTEGER"
+          },
+          {
+            "name": "hit",
+            "non_null": 10,
+            "type": "INTEGER"
+          },
+          {
+            "name": "hitTimeMS",
+            "non_null": 10,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          }
+        ],
+        "name": "PluginCodeUsageLRURecord",
+        "rows": 10
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "versionDesc",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "devKey",
+            "non_null": 0,
+            "type": "LONG"
+          }
+        ],
+        "name": "PluginDevLaunchInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "startTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "endTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "sceneList",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "cgiList",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "PredownloadBlockCgiRequest",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "version",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "retryTimes",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "retriedCount",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "retryInterval",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "networkType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "pkgMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "packageKey",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "packageType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "lastRetryTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "firstTimeTried",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "splitDownloadURLCgi",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "scene",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "cmdSequence",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "localRequestKey",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "localRequestUsername",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "localRequestAppId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "PredownloadCmdGetCodePersistentInfo2",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "version",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "pkgMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "pkgPath",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "PredownloadEncryptPkgInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "scene",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "launchProtoBlob",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          },
+          {
+            "name": "startTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "endTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "LONG"
+          }
+        ],
+        "name": "PredownloadIssueLaunchWxaAppResponse",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "decryptKey",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "pkgMd5",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "PushWxaPkgDecryptKeyTable",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "createTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "receiveTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "expireTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "opType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "msgId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "busiType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "msgType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "dataJson",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "TipsMsgInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 27,
+            "length_min": 27,
+            "name": "commLibVersionId",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 3,
+            "length_min": 3,
+            "name": "appVersionId",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 69,
+            "length_min": 18,
+            "name": "pageURL",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 10,
+            "type": "LONG"
+          },
+          {
+            "name": "accessTime",
+            "non_null": 10,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 180,
+            "length_min": 123,
+            "name": "cacheFilePath",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "WxaAppWebRenderingCacheAccessStatsTable",
+        "rows": 10
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "appType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "versionType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "permissionBytes",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "gameRewardsData",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "gameCircleData",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          }
+        ],
+        "name": "WxaAppidABTestInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "usernameHash",
+            "non_null": 11,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 15,
+            "length_min": 3,
+            "name": "nickname",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 4,
+            "length_min": 0,
+            "name": "shortNickname",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 149,
+            "length_min": 145,
+            "name": "brandIconURL",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 136,
+            "length_min": 132,
+            "name": "roundedSquareIconURL",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 90,
+            "length_min": 84,
+            "name": "bigHeadURL",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 91,
+            "length_min": 84,
+            "name": "smallHeadURL",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 68,
+            "length_min": 8,
+            "name": "signature",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "appOpt",
+            "non_null": 11,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 72,
+            "length_min": 27,
+            "name": "registerSource",
+            "non_null": 7,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 13217,
+            "length_min": 1813,
+            "name": "appInfo",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 45989,
+            "length_min": 1556,
+            "name": "versionInfo",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 1813,
+            "length_min": 473,
+            "name": "passThroughInfo",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 2745,
+            "length_min": 196,
+            "name": "stablePassThroughInfo",
+            "non_null": 10,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 238,
+            "length_min": 74,
+            "name": "bindWxaInfo",
+            "non_null": 4,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 1751,
+            "length_min": 1591,
+            "name": "dynamicInfo",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "reserved",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "syncTimeSecond",
+            "non_null": 11,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 48,
+            "length_min": 34,
+            "name": "syncVersion",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "bizMenu",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "lastLaunchAppTime",
+            "non_null": 11,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "name": "basicInfoVersion",
+            "non_null": 11,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxaAttrAvailableBackupTable",
+        "rows": 11
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "reportId",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "launchFallbackDirectlyMinVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxaAttrVersionServerNotifyRecord",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "usernameHash",
+            "non_null": 99,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 19,
+            "length_min": 19,
+            "name": "username",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 20,
+            "length_min": 2,
+            "name": "nickname",
+            "non_null": 97,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 9,
+            "length_min": 0,
+            "name": "shortNickname",
+            "non_null": 95,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 176,
+            "length_min": 144,
+            "name": "brandIconURL",
+            "non_null": 96,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 164,
+            "length_min": 131,
+            "name": "roundedSquareIconURL",
+            "non_null": 95,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 110,
+            "length_min": 83,
+            "name": "bigHeadURL",
+            "non_null": 96,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 111,
+            "length_min": 84,
+            "name": "smallHeadURL",
+            "non_null": 96,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 120,
+            "length_min": 4,
+            "name": "signature",
+            "non_null": 96,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "appOpt",
+            "non_null": 99,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 77,
+            "length_min": 27,
+            "name": "registerSource",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 21435,
+            "length_min": 1599,
+            "name": "appInfo",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 101179,
+            "length_min": 234,
+            "name": "versionInfo",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 45717,
+            "length_min": 366,
+            "name": "passThroughInfo",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 5847,
+            "length_min": 123,
+            "name": "stablePassThroughInfo",
+            "non_null": 84,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 10889,
+            "length_min": 37,
+            "name": "bindWxaInfo",
+            "non_null": 50,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 1751,
+            "length_min": 1563,
+            "name": "dynamicInfo",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "reserved",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "syncTimeSecond",
+            "non_null": 99,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 48,
+            "length_min": 32,
+            "name": "syncVersion",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "bizMenu",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "lastLaunchAppTime",
+            "non_null": 99,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "name": "basicInfoVersion",
+            "non_null": 99,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxaAttributesTable",
+        "rows": 99
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "permissionDemo",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "versiontime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "checkDemoNickName",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "checkDemoBasicInfoVersion",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "syncCheckDemoInfo",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxaCheckDemoInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 16,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 4920,
+            "length_min": 4920,
+            "name": "permissionProtoBlob",
+            "non_null": 16,
+            "type": "BLOB",
+            "value_type": "blob"
+          }
+        ],
+        "name": "WxaJsApiPluginInfo",
+        "rows": 16
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "pluginAppID",
+            "non_null": 1,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "pluginAppVersion",
+            "non_null": 1,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 6,
+            "length_min": 6,
+            "name": "pluginStringVersion",
+            "non_null": 1,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "WxaPluginCodeVersionInfo",
+        "rows": 1
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "length_max": 90,
+            "length_min": 90,
+            "name": "securityKeySalt",
+            "non_null": 11,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "WxaSecurityStorageInfo",
+        "rows": 11
+      },
+      {
+        "columns": [
+          {
+            "name": "shareKeyHash",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "btnState",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "msgState",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "content",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "contentColor",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "updatePeroid",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "msgType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "weAppSourceUserName",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          }
+        ],
+        "name": "WxaUpdateableMsg",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 1,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "appVersion",
+            "non_null": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "templateId",
+            "non_null": 1,
+            "type": "LONG"
+          }
+        ],
+        "name": "WxaVersionTemplateIdMapping",
+        "rows": 1
+      },
+      {
+        "columns": [
+          {
+            "length_max": 18,
+            "length_min": 18,
+            "name": "appId",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "issueTimestampMs",
+            "non_null": 99,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 43748,
+            "length_min": 55,
+            "name": "exptInfo",
+            "non_null": 99,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "source",
+            "non_null": 99,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxaWeDataExptInfo",
+        "rows": 99
+      },
+      {
+        "columns": [
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "RecordId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "AppId",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "AppName",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "UserName",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "IconUrl",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "BriefIntro",
+            "non_null": 0,
+            "type": "TEXT",
+            "value_type": "null"
+          },
+          {
+            "name": "isSync",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "debugType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "createTime",
+            "non_null": 0,
+            "type": "LONG"
+          }
+        ],
+        "name": "WxagGameInfo",
+        "rows": 0
+      }
+    ],
+    "total_rows": 772
+  },
+  "008_WxExpt.plain.db": {
+    "integrity": "ok",
+    "table_count": 2,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "exptId",
+            "non_null": 959,
+            "type": "INTEGER"
+          },
+          {
+            "name": "groupId",
+            "non_null": 959,
+            "type": "INTEGER"
+          },
+          {
+            "name": "exptSeq",
+            "non_null": 959,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 10628,
+            "length_min": 206,
+            "name": "exptContent",
+            "non_null": 959,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "startTime",
+            "non_null": 959,
+            "type": "LONG",
+            "year_max": 2022,
+            "year_min": 2022
+          },
+          {
+            "name": "endTime",
+            "non_null": 959,
+            "type": "LONG",
+            "year_max": 2098,
+            "year_min": 2098
+          },
+          {
+            "name": "exptType",
+            "non_null": 959,
+            "type": "INTEGER"
+          },
+          {
+            "name": "subType",
+            "non_null": 959,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 36,
+            "length_min": 36,
+            "name": "exptCheckSum",
+            "non_null": 959,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "bucketSrc",
+            "non_null": 959,
+            "type": "LONG"
+          },
+          {
+            "length_max": 36,
+            "length_min": 36,
+            "name": "paramHashVal",
+            "non_null": 959,
+            "type": "TEXT",
+            "value_type": "text"
+          }
+        ],
+        "name": "ExptItem",
+        "rows": 959
+      },
+      {
+        "columns": [
+          {
+            "length_max": 64,
+            "length_min": 11,
+            "name": "exptKey",
+            "non_null": 1873,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "exptId",
+            "non_null": 1873,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "ExptKeyMapId",
+        "rows": 1873
+      }
+    ],
+    "total_rows": 2832
+  },
+  "009_WxCgiReport.plain.db": {
+    "integrity": "ok",
+    "table_count": 1,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "localItemReportId",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "length_max": null,
+            "length_min": null,
+            "name": "itemInfo",
+            "non_null": 0,
+            "type": "BLOB",
+            "value_type": "null"
+          },
+          {
+            "name": "businessId",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "reportTime",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "delayTime",
+            "non_null": 0,
+            "type": "LONG"
+          }
+        ],
+        "name": "CgiReportLocalItemDataCache",
+        "rows": 0
+      }
+    ],
+    "total_rows": 0
+  },
+  "010_newuba.plain.db": {
+    "integrity": "ok",
+    "table_count": 1,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "cacheTime",
+            "non_null": 3,
+            "type": "LONG",
+            "year_max": 2026,
+            "year_min": 2026
+          },
+          {
+            "length_max": 1376,
+            "length_min": 1042,
+            "name": "reportStr",
+            "non_null": 3,
+            "type": "TEXT",
+            "value_type": "text"
+          },
+          {
+            "name": "isKeyView",
+            "non_null": 3,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "NewUserBehaviourCache",
+        "rows": 3
+      }
+    ],
+    "total_rows": 3
+  },
+  "Edge.plain.db": {
+    "integrity": "ok",
+    "table_count": 2,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "configID",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "reportTimeEC",
+            "non_null": 0,
+            "type": "LONG"
+          },
+          {
+            "name": "data",
+            "non_null": 0,
+            "type": "TEXT"
+          }
+        ],
+        "name": "EdgeComputingCacheDataModel_Instance",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 7,
+            "length_min": 7,
+            "name": "configID",
+            "non_null": 2,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 13,
+            "length_min": 13,
+            "name": "reportTimeEC",
+            "non_null": 2,
+            "type": "LONG"
+          },
+          {
+            "length_max": 122,
+            "length_min": 88,
+            "name": "data",
+            "non_null": 2,
+            "type": "TEXT"
+          }
+        ],
+        "name": "EdgeComputingCacheDataModel_Normal",
+        "rows": 2
+      }
+    ],
+    "total_rows": 2
+  },
+  "EnResDown.plain.db": {
+    "integrity": "ok",
+    "table_count": 1,
+    "tables": [
+      {
+        "columns": [
+          {
+            "length_max": 11,
+            "length_min": 8,
+            "name": "urlKey_hashcode",
+            "non_null": 151,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 14,
+            "length_min": 9,
+            "name": "urlKey",
+            "non_null": 151,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 131,
+            "length_min": 71,
+            "name": "url",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 4,
+            "length_min": 1,
+            "name": "fileVersion",
+            "non_null": 151,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "networkType",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "maxRetryTimes",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "retryTimes",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 66,
+            "length_min": 61,
+            "name": "filePath",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "status",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 8,
+            "length_min": 1,
+            "name": "contentLength",
+            "non_null": 151,
+            "type": "LONG"
+          },
+          {
+            "name": "contentType",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 10,
+            "length_min": 1,
+            "name": "expireTime",
+            "non_null": 151,
+            "type": "LONG"
+          },
+          {
+            "length_max": 32,
+            "length_min": 32,
+            "name": "md5",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 14,
+            "length_min": 14,
+            "name": "groupId1",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 3,
+            "length_min": 3,
+            "name": "groupId2",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "priority",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "fileUpdated",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "deleted",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 3,
+            "length_min": 2,
+            "name": "resType",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 5,
+            "length_min": 1,
+            "name": "subType",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 5,
+            "length_min": 1,
+            "name": "reportId",
+            "non_null": 151,
+            "type": "LONG"
+          },
+          {
+            "length_max": 0,
+            "length_min": 0,
+            "name": "sampleId",
+            "non_null": 151,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 72,
+            "length_min": 70,
+            "name": "eccSignature",
+            "non_null": 120,
+            "type": "BLOB"
+          },
+          {
+            "length_max": 32,
+            "length_min": 32,
+            "name": "originalMd5",
+            "non_null": 120,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "fileCompress",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "fileEncrypt",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 16,
+            "length_min": 16,
+            "name": "encryptKey",
+            "non_null": 9,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 4,
+            "length_min": 1,
+            "name": "keyVersion",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "EID",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 8,
+            "length_min": 1,
+            "name": "fileSize",
+            "non_null": 151,
+            "type": "LONG"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "needRetry",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "name": "appId",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "wvCacheType",
+            "non_null": 151,
+            "type": "INTEGER"
+          },
+          {
+            "name": "packageId",
+            "non_null": 0,
+            "type": "TEXT"
+          }
+        ],
+        "name": "ResDownloaderRecordTable",
+        "rows": 151
+      }
+    ],
+    "total_rows": 151
+  },
+  "WxFileIndex.plain.db": {
+    "integrity": "ok",
+    "table_count": 6,
+    "tables": [
+      {
+        "columns": [
+          {
+            "length_max": 8,
+            "length_min": 2,
+            "name": "msgId",
+            "non_null": 317257,
+            "type": "LONG"
+          },
+          {
+            "length_max": 24,
+            "length_min": 6,
+            "name": "username",
+            "non_null": 317257,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 11,
+            "length_min": 1,
+            "name": "msgType",
+            "non_null": 317257,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 2,
+            "length_min": 1,
+            "name": "msgSubType",
+            "non_null": 317257,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 204,
+            "length_min": 22,
+            "name": "path",
+            "non_null": 317257,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 9,
+            "length_min": 2,
+            "name": "size",
+            "non_null": 317257,
+            "type": "LONG"
+          },
+          {
+            "length_max": 13,
+            "length_min": 13,
+            "name": "msgtime",
+            "non_null": 317257,
+            "type": "LONG"
+          },
+          {
+            "length_max": 20,
+            "length_min": 20,
+            "name": "hash",
+            "non_null": 265569,
+            "type": "BLOB"
+          },
+          {
+            "length_max": 9,
+            "length_min": 4,
+            "name": "diskSpace",
+            "non_null": 317257,
+            "type": "LONG"
+          },
+          {
+            "length_max": 16,
+            "length_min": 16,
+            "name": "linkUUID",
+            "non_null": 21879,
+            "type": "BLOB"
+          },
+          {
+            "length_max": 2,
+            "length_min": 1,
+            "name": "subIdx",
+            "non_null": 317257,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 198,
+            "length_min": 7,
+            "name": "detail",
+            "non_null": 1590,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "flags",
+            "non_null": 317257,
+            "type": "LONG"
+          },
+          {
+            "length_max": 19,
+            "length_min": 8,
+            "name": "svrId",
+            "non_null": 317257,
+            "type": "LONG"
+          }
+        ],
+        "name": "WxFileIndex3",
+        "rows": 317257
+      },
+      {
+        "columns": [
+          {
+            "length_max": 8,
+            "length_min": 8,
+            "name": "msgId",
+            "non_null": 2,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 20,
+            "length_min": 20,
+            "name": "username",
+            "non_null": 2,
+            "primary_key_order": 2,
+            "type": "TEXT"
+          }
+        ],
+        "name": "WxFileIndexDirtyWithTalker",
+        "rows": 2
+      },
+      {
+        "columns": [
+          {
+            "name": "id",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "originalPath",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "targetPath",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "indexRowId",
+            "non_null": 0,
+            "type": "INT"
+          },
+          {
+            "name": "msgId",
+            "non_null": 0,
+            "type": "INT"
+          },
+          {
+            "name": "username",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "status",
+            "non_null": 0,
+            "type": "INT"
+          }
+        ],
+        "name": "WxFileIndexDownloadMigration",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "id",
+            "non_null": 1,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 54,
+            "length_min": 54,
+            "name": "originalPath",
+            "non_null": 1,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 54,
+            "length_min": 54,
+            "name": "targetPath",
+            "non_null": 1,
+            "type": "TEXT"
+          },
+          {
+            "length_max": 1,
+            "length_min": 1,
+            "name": "status",
+            "non_null": 1,
+            "type": "INT"
+          }
+        ],
+        "name": "WxFileIndexLinkify",
+        "rows": 1
+      },
+      {
+        "columns": [
+          {
+            "name": "indexRowId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "WxFileIndexRefresh",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "length_max": 5,
+            "length_min": 1,
+            "name": "id",
+            "non_null": 5,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "length_max": 13,
+            "length_min": 1,
+            "name": "value",
+            "non_null": 5,
+            "type": "BLOB"
+          }
+        ],
+        "name": "WxFileIndexRegistry",
+        "rows": 5
+      }
+    ],
+    "total_rows": 317265
+  },
+  "enFavorite.plain.db": {
+    "integrity": "ok",
+    "table_count": 7,
+    "tables": [
+      {
+        "columns": [
+          {
+            "name": "dataId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "TEXT"
+          },
+          {
+            "name": "favLocalId",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "cdnUrl",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "cdnKey",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "totalLen",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "offset",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "status",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "path",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "dataType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "modifyTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "extFlag",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "attrFlag",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "retryTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "FavCdnInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "configId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "value",
+            "non_null": 0,
+            "type": "TEXT"
+          }
+        ],
+        "name": "FavConfigInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "favId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "delTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "delSource",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "oriXml",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "clientVersion",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "delType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "itemType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "delFlag",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "FavDelInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "localId",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "modItem",
+            "non_null": 0,
+            "type": "BLOB"
+          },
+          {
+            "name": "time",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "scene",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "FavEditInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "localId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "id",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "localSeq",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateSeq",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "flag",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "sourceId",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "itemStatus",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "sourceType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "sourceCreateTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "updateTime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "fromUser",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "toUser",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "realChatName",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "favProto",
+            "non_null": 0,
+            "type": "BLOB"
+          },
+          {
+            "name": "xml",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "ext",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "edittime",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "tagProto",
+            "non_null": 0,
+            "type": "BLOB"
+          },
+          {
+            "name": "sessionId",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "datatotalsize",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "transferCtx",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "targetID",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "subType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "starType",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "starBizKey",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "svrRepairReupload",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "FavItemInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "localId",
+            "non_null": 0,
+            "primary_key_order": 1,
+            "type": "INTEGER"
+          },
+          {
+            "name": "content",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "tagContent",
+            "non_null": 0,
+            "type": "TEXT"
+          },
+          {
+            "name": "time",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "type",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "subtype",
+            "non_null": 0,
+            "type": "INTEGER"
+          }
+        ],
+        "name": "FavSearchInfo",
+        "rows": 0
+      },
+      {
+        "columns": [
+          {
+            "name": "id",
+            "non_null": 0,
+            "type": "INTEGER"
+          },
+          {
+            "name": "name",
+            "non_null": 0,
+            "type": "TEXT"
+          }
+        ],
+        "name": "FavTagInfo",
+        "rows": 0
+      }
+    ],
+    "total_rows": 0
+  }
+}

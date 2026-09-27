@@ -2,10 +2,10 @@
 
 ## 结论摘要
 
-1. 当前数据目录共发现 **68 个 `.db` 文件**。57 个是可直接读取的 SQLite；11 个具有非 SQLite 文件头，其中 `EnMicroMsg.db`、`FTS5IndexMicroMsg_encrypt.db` 两个大库单列，另外 9 个独立加密库（含 104 MB 的 `WxFileIndex.db`）不能用已验证的主库 key/SQLCipher 参数打开。
+1. 当前数据目录共发现 **68 个 `.db` 文件**。57 个是可直接读取的 SQLite；11 个具有非 SQLite 文件头。`EnMicroMsg.db` 历史快照和 8 个独立库快照已用 SQLCipher v1 解密并通过 `integrity_check=ok`；`MicroMsgPriority.db`、当前 `EnMicroMsg.db` 全量和 `FTS5IndexMicroMsg_encrypt.db` 仍是未完成项。
 2. `EnMicroMsg.db` 的历史快照已按静态代码还原的 SQLCipher v1 参数解密：251 张表，100,506 条消息、16,674 个联系人、819 个会话和 221 个群聊记录；消息时间覆盖 2015-12-26 至 2026-09-22。当前库已增长到 5.84 GB，公开报告只引用历史快照的聚合结果。
 3. `SnsMicroMsg.db` 是明文 SQLite。当前快照有 372 条朋友圈主记录、171 条用户/相册扩展记录、2 条广告拉取记录、2 条广告朋友圈记录和 5 条封面记录；另有评论、媒体、草稿、标签等表但当前为空。
-4. 小程序缓存分为两层：`AppBrandComm.db` 保存 AppBrand 业务数据库，当前公开证据恢复至少 23 个表名；`lite_main.db` 保存包、鉴权、基础库、动态配置、采样配置和触发动作，已解析实例包含 18 个包、21 份配置、30 份采样配置和 2 个触发动作。
+4. 小程序缓存分为两层：`AppBrandComm.db` 解密后有 54 张表、772 行，覆盖属性、manifest、启动/使用、KV、插件、安全存储和预下载统计；`lite_main.db` 保存包、鉴权、基础库、动态配置、采样配置和触发动作，已解析实例包含 18 个包、21 份配置、30 份采样配置和 2 个触发动作。
 5. 支付路径不是单一 JSON API，而是“业务 CGI + PayMars/MMTLS + PSK/session + 签名证书”的组合。静态映射确认 `genprepay`、`payauthapp`、`jsapipay`、`tinyapppay`、`scanqrcodepay`、`h5pay`、`offlinepayconfirm`、`payorderquery`、绑定/短信/数字证书等完整链路。
 6. 登录认证由 `ManualAuth` / `AutoAuth` Protobuf 进入 `MMProtocalJni`，再经签名、RSA/AES 或 Hybrid ECDH 封包和 Mars/MMTLS 传输。脱离真实 UIN、device ID、session/autoauth key、cookie、路由和签名材料不能直接重放 CGI。
 7. 设备风控信号包括设备标识、安装/构建信息、ADB/开发者状态、Root/Hook 痕迹、触摸轨迹、相机/音频/显示状态和 Normsg 不透明安全数据。静态分析能证明采集或进入上传结构，但不能还原服务端评分权重。
@@ -48,10 +48,18 @@
 
 ### 小程序与支付缓存
 
-- `AppBrandComm.db` 由 AppBrand ORM 注册；已恢复表包括包启动扩展、使用记录、星标/常用/最近任务、包 manifest、属性、KV 存储、截图、蓝牙设备监控和安全存储信息。
+- `AppBrandComm.db` 解密后有 54 张表、772 行，其中 26 张非空：`AppBrandCommonKVData=153`、`WxaAttributesTable=99`、`AppBrandMessInfoRecord=99`、`AppBrandWxaPkgManifestRecord=71`、`AppBrandLauncherLayoutItem=38`、`WxaWeDataExptInfo=99`。表覆盖包启动扩展、使用记录、星标/常用/最近任务、manifest、属性、KV、插件、截图、蓝牙设备监控、安全存储和预下载统计；不输出 appId、username、路径或值。
+- `WxExpt.db` 解密后有 `ExptItem=959`、`ExptKeyMapId=1873`；`WxCgiReport.db` 只有 1 张空的本地 CGI 报告缓存表；`newuba.db` 有 3 条行为缓存，`reportStr` 长度为 1,042–1,376 字节，内容值不公开。
 - `ceee…/lite_main.db` 的 `LiteAppInfo=18`、`LiteAppConfigInfo=21`、`LiteAppSamplingConfigInfo=30`、`LiteAppTriggerActions=2`、`LiteAppBaselibInfo=1`。
 - `wxpay_kit` 下两个 `lite_main.db` 当前为空，但 Schema 明确包含 `LiteAppAuthInfo`、`signatureKey`、`packageConfigPath`、`configJson` 等包鉴权/配置字段。
 - 三个 `@pay.db` 中一个有 KV `storage` 和 `size` 表，其余为空。公开报告只说明字段形状和行数，不输出 key/value。
+
+### 资源下载、文件索引、收藏与 Edge 缓存
+
+- `EnResDown.db` 解密后仅含 `ResDownloaderRecordTable`，151 行；字段覆盖 URL/版本、重试与状态、路径/大小/类型、过期时间、MD5/签名、压缩/加密、keyVersion、appId/packageId 等下载控制信息，不输出 URL、路径、哈希、key 或业务 ID。
+- `WxFileIndex.db` 解密后含 6 表、317,265 行。`WxFileIndex3` 为主索引（消息 ID/用户名/类型/路径/大小/时间/哈希/磁盘占用/链接 UUID/详情等），其余表负责 talker 脏标记、下载迁移、链接化、刷新队列和注册表；不输出用户名、路径、哈希或文件详情。
+- `enFavorite.db` 解密后含 `FavItemInfo`、`FavSearchInfo`、`FavEditInfo`、`FavCdnInfo`、`FavTagInfo`、`FavConfigInfo`、`FavDelInfo` 七表，当前均为 0 行；Schema 明确收藏内容、搜索文本、编辑/CDN 状态、标签、配置和删除同步字段。
+- `Edge.db` 解密后有 `EdgeComputingCacheDataModel_Instance` 和 `EdgeComputingCacheDataModel_Normal` 两表，共 2 行；列为 `configID TEXT, reportTimeEC LONG, data TEXT`，不公开配置 ID、时间线或 data。
 
 ## 登录认证
 
@@ -90,10 +98,11 @@
 
 ## 限制与未完成项
 
-- 9 个小库采用独立加密或非标准容器，已验证 key 和 SQLCipher v1/2/3/4 参数组合均未打开；没有把文件名推断当作解密内容。
+- `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db`、`EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 的本地快照已通过 `PRAGMA cipher_compatibility=1` 打开并导出只读明文校验；实际 key 不公开。
+- `MicroMsgPriority.db` 尚无内容级解密证据；其静态 key、WCDB page size 4096/defaultVersion 打开路径、D3 cache 证据和 280 组失败边界见 `evidence/decryption-attempts.md`。
 - 当前 `EnMicroMsg.db` 为 5.84 GB，历史解密快照只有 197 MB；本报告不把历史行数冒充当前全量行数。
 - `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引；需要在应用停止写入时复制并解密，才能列出 FTS 表和索引词分布。
-- `WxFileIndex.db` 未解密，只能确认其为文件索引容器。
+- `WxFileIndex.db` 已解密并验证 6 表/317,265 行；仍不公开任何文件名、用户名、哈希或内容详情。
 - 未主动触发真实登录、支付、人脸核验或小游戏，因此没有真实交易/认证请求或响应。
 - 服务端评分、远程 feature gate、动态 UDR 模块和加密配置不能仅靠静态分析穷尽。
 

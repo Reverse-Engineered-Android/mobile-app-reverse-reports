@@ -13,4 +13,4 @@
 - [Schema 与聚合](schema.md)
 - [证据索引](evidence.md)
 
-证据分为“已验证”“结构已证实”“静态推断”三级。9 个独立加密库（包括 `WxFileIndex.db`）和两个加密大库尚未完成内容级解密，报告明确标为未完成，不用文件名推测冒充解密结果。
+证据分为“已验证”“结构已证实”“静态推断”三级。`EnMicroMsg.db` 历史快照和 8 个独立加密快照已通过 SQLCipher v1 解密并校验；`MicroMsgPriority.db` 仍缺一个历史设备组件而未完成内容级解密，当前 `EnMicroMsg.db` 全量和 `FTS5IndexMicroMsg_encrypt.db` 也未复制/解密。报告明确区分这些状态，不用文件名推测冒充解密结果。

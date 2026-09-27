@@ -4,7 +4,8 @@
 
 - **明文 SQLite**：文件头为 `SQLite format 3`，只读 `integrity_check=ok`，可枚举表/列/行数。
 - **SQLCipher v1 快照已解密**：主库历史副本已按源码还原参数解密，并有独立明文副本。
-- **独立加密未解密**：文件头不是 SQLite；主库 key、SQLCipher v1/2/3/4 参数组合均未打开。该类包含小库和 `WxFileIndex.db`；内容角色只按文件名和静态代码标注，不冒充解密结果。
+- **独立加密已解密快照**：文件头不是 SQLite，但已用 SQLCipher v1 打开独立快照并通过 `integrity_check=ok`，可枚举表/列/行数。
+- **独立加密未解密**：文件头不是 SQLite，当前没有可验证的内容级打开结果；内容角色只按文件名和静态代码标注，不冒充解密结果。
 - **大库未解密**：当前文件太大，未创建超过 1 GB 的完整副本；历史小快照或 Schema 线索单独标注。
 
 当前源目录共 68 个数据库：57 个明文 SQLite、11 个非 SQLite 头加密库；后者由 2 个加密大库和 9 个独立加密库组成（`WxFileIndex.db` 属于独立加密类）。路径中的账号目录、UIN、AppId/设备 hash 已统一写为 `<opaque-id>`。
@@ -15,20 +16,20 @@
 | --- | ---: | --- | --- |
 | `MicroMsg/<opaque-id>/EnMicroMsg.db` | 5,836,770,304 | SQLCipher v1 历史快照已解密 | 消息、联系人、会话、群聊、AppMessage、账号配置、小程序配置、钱包缓存、设备绑定；历史快照 251 表/100,506 消息 |
 | `MicroMsg/<opaque-id>/FTS5IndexMicroMsg_encrypt.db` | 1,104,314,368 | 加密大库未解密 | 全文搜索索引；源码明确使用加密 FTS5 库 |
-| `MicroMsg/<opaque-id>/WxFileIndex.db` | 104,028,160 | 独立加密未解密 | 文件索引/文件元数据容器 |
+| `MicroMsg/<opaque-id>/WxFileIndex.db` | 104,028,160 | 快照已解密 | 文件索引/文件元数据；6 表、317,265 行 |
 
 ## 独立加密库
 
 | 数据库 | 大小 | 解密状态 | 静态已明确的内容角色 |
 | --- | ---: | --- | --- |
-| `MicroMsg/<resource-id>/EnResDown.db` | 68,608 | 未解密 | 资源下载/下发记录 |
-| `MicroMsg/<opaque-id>/WxExpt.db` | 825,344 | 未解密 | 实验/feature 配置 |
-| `MicroMsg/<opaque-id>/newuba.db` | 122,880 | 未解密 | UBA/行为分析缓存 |
-| `MicroMsg/<opaque-id>/WxCgiReport.db` | 3,072 | 未解密 | CGI 调用报告/遥测 |
-| `MicroMsg/<opaque-id>/MicroMsgPriority.db` | 147,456 | 未解密 | 消息/任务优先级状态 |
-| `MicroMsg/<opaque-id>/AppBrandComm.db` | 4,092,928 | 未解密 | 小程序公共业务数据库；当前公开证据恢复至少 23 个表名 |
-| `MicroMsg/<opaque-id>/enFavorite.db` | 29,696 | 未解密 | 收藏 |
-| `MicroMsg/<opaque-id>/Edge.db` | 10,240 | 未解密 | Edge/边缘缓存状态 |
+| `MicroMsg/<resource-id>/EnResDown.db` | 68,608 | 快照已解密 | 资源下载记录；`ResDownloaderRecordTable=151` |
+| `MicroMsg/<opaque-id>/WxExpt.db` | 825,344 | 快照已解密 | `ExptItem=959`、`ExptKeyMapId=1873`，实验/feature 配置 |
+| `MicroMsg/<opaque-id>/newuba.db` | 122,880 | 快照已解密 | `NewUserBehaviourCache=3`，UBA/行为分析缓存 |
+| `MicroMsg/<opaque-id>/WxCgiReport.db` | 3,072 | 快照已解密 | `CgiReportLocalItemDataCache=0`，当前无缓存行 |
+| `MicroMsg/<opaque-id>/MicroMsgPriority.db` | 147,456 | 未解密 | 消息/任务优先级状态；静态证实 `PriorityConfig` 和原生任务表 |
+| `MicroMsg/<opaque-id>/AppBrandComm.db` | 4,092,928 | 快照已解密 | 小程序公共业务数据库；54 表、772 行，26 表非空 |
+| `MicroMsg/<opaque-id>/enFavorite.db` | 29,696 | 快照已解密 | 收藏；7 表、当前 0 行 |
+| `MicroMsg/<opaque-id>/Edge.db` | 10,240 | 快照已解密 | Edge/边缘计算缓存；2 表、2 行 |
 
 第 9 个独立加密小库是 `WxFileIndex.db`，已在上表列出。
 
@@ -100,5 +101,5 @@
 - key 候选由 `kh5/b0.smali:1658-1716` 还原：遍历历史 device ID，与 UIN 拼接后取摘要前 7 个十六进制字符。
 - `IMEISave.smali:15-145` 证明历史 device ID 来自加密 `KeyInfo.bin`，并额外加入当前/兼容 device ID。
 - 实际 key、UIN、device ID、`KeyInfo.bin` 内容均不公开。
-- 2026-09-27 对 `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db` 的本地快照执行了 SQLCipher v1/兼容首页 HMAC 候选测试，均未命中；过程和边界见 `evidence/decryption-attempts.md`。
-- 9 个独立加密库未解密；它们的“内容角色”是静态代码/文件名分类，不是行级解密结果。
+- 2026-09-27 对 `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db` 的本地快照执行 `PRAGMA cipher_compatibility=1`，四库均成功导出并通过 `integrity_check=ok`；过程、静态打开链和脱敏聚合见 `evidence/decryption-attempts.md`、`evidence/database-aggregates.json`。
+- `EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 已在只读副本上解密导出并通过 `integrity_check=ok`；`MicroMsgPriority.db` 仍未内容级解密，其“内容角色”来自静态代码。
