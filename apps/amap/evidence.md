@@ -37,8 +37,10 @@ initDecrypt
 | `libamapsync.so:0x4aebc` | 计算 16 字节摘要 |
 | `libamapsync.so:0x4ab70` | 将 16 字节格式化为 32 位十六进制文本 |
 
-`girf_sync.db` 的动态 key 探测通过应用实现成功打开副本，但探测不打印 key；
-不公开任何 passphrase、AES key、摘要或独立候选公式。完整动态过程也不进入公开仓库。
+`girf_sync.db` 的 key 构造路径已由应用 native 实现和独立离线推导交叉验证：
+输入由库内常量拼接，摘要算法为 HMAC-MD5，输出为 32 位小写十六进制文本；
+使用该结果只读打开副本时 `PRAGMA integrity_check` 为 `ok`。探测不打印 key、
+输入常量、摘要或任何行值，完整动态过程和秘密材料不进入公开仓库。
 
 ## 离线容器证据
 
