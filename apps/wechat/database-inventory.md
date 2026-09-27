@@ -102,4 +102,4 @@
 - `IMEISave.smali:15-145` 证明历史 device ID 来自加密 `KeyInfo.bin`，并额外加入当前/兼容 device ID。
 - 实际 key、UIN、device ID、`KeyInfo.bin` 内容均不公开。
 - 2026-09-27 对 `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db` 的本地快照执行 `PRAGMA cipher_compatibility=1`，四库均成功导出并通过 `integrity_check=ok`；过程、静态打开链和脱敏聚合见 `evidence/decryption-attempts.md`、`evidence/database-aggregates.json`。
-- `EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 已在只读副本上解密导出并通过 `integrity_check=ok`；`MicroMsgPriority.db` 仍未内容级解密，其“内容角色”来自静态代码。
+- `EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 已在只读副本上解密导出并通过 `integrity_check=ok`；`MicroMsgPriority.db` 仍未内容级解密，微信 WCDB default 的 168 组只读输入也全部未命中，其“内容角色”只来自静态代码。

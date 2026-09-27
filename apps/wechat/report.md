@@ -99,7 +99,7 @@
 ## 限制与未完成项
 
 - `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db`、`EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 的本地快照已通过 `PRAGMA cipher_compatibility=1` 打开并导出只读明文校验；实际 key 不公开。
-- `MicroMsgPriority.db` 尚无内容级解密证据；其静态 key、WCDB page size 4096/defaultVersion 打开路径、D3 cache 证据和 280 组失败边界见 `evidence/decryption-attempts.md`。
+- `MicroMsgPriority.db` 尚无内容级解密证据；其静态 key、WCDB page size 4096/defaultVersion 打开路径、D3 cache 证据、280 组 SQLCipher 兼容失败和 168 组微信 WCDB default 只读失败见 `evidence/decryption-attempts.md`。
 - 当前 `EnMicroMsg.db` 为 5.84 GB，历史解密快照只有 197 MB；本报告不把历史行数冒充当前全量行数。
 - `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引；需要在应用停止写入时复制并解密，才能列出 FTS 表和索引词分布。
 - `WxFileIndex.db` 已解密并验证 6 表/317,265 行；仍不公开任何文件名、用户名、哈希或内容详情。

@@ -28,7 +28,11 @@
 
 `MicroMsgPriority.db` 是唯一尚未完成内容级解密的独立小库。`tx3/h.smali:37-105` 证明它直接把 UIN 字符串、登录用户名和 device 字符串拼接，经 MD5 后取前 7 个十六进制字符并以字节串作为 SQLCipher 口令；`tx3/h.smali:143-209` 创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。其无 `SQLiteCipherSpec` 的 WCDB 打开链固定使用 page size 4096 和 `CipherVersion.defaultVersion`，依据见 `database-source.md`。
 
-2026-09-28 又执行 280 组只读打开验证：14 个 UIN 形态候选、2 个用户名形态（包含 Java null 拼接结果）、2 个当前/fallback D3 形态，以及 WCDB default、SQLCipher compatibility 1/2/3/4 共 5 组参数。由 id `"a"` 确定性重算的 D3 primary cache 目录当前没有缓存文件，`MicroMsg/CompatibleInfo.cfg` 为 0 字节，因此创建该库时的 D3 仍不可重建。所有组合均未得到可验证打开结果；不输出候选值，也不把静态 Schema 当作已解密内容。
+2026-09-28 先执行 280 组只读打开验证：14 个 UIN 形态候选、2 个用户名形态（包含 Java null 拼接结果）、2 个当前/fallback D3 形态，以及 WCDB default、SQLCipher compatibility 1/2/3/4 共 5 组参数。随后使用微信自身的 `libcso.so`、`libWCDB.so` 和 `SQLiteDatabase` 做精确默认路径复核：`../../tools/wcdb-probe.java:51-89` 加载原生库并初始化 `CsoLoader`，`../../tools/wcdb-probe.java:91-149` 以 `SQLiteCipherSpec=null`、只读 flag 调用 `SQLiteDatabase.openDatabase`，与 `SQLiteDatabase.smali:1352-1373`、`Database.smali:1689-1721` 的 page size 4096/defaultVersion 路径保持一致。
+
+精确复核使用 14 个 UIN 形态、4 个登录用户名/null 形态和 3 个 D3/null/空形态，共 168 组。输入文件是 147,456 字节、SHA-256 `7ecfeb84dadd702fc61a44f5c824fd48f69359454acf7290a8aa22fbe7861805` 的授权快照；每轮只读打开独立临时副本，源文件哈希保持不变。168 组均返回 `com.tencent.wcdb.database.SQLiteCantOpenDatabaseException`，没有可验证打开结果。`../../tools/wcdb-probe.java:151-179` 只输出候选序号、对象计数、PRAGMA 聚合或异常类，不输出 key/UIN/用户名/D3。
+
+由 id `"a"` 确定性重算的 D3 primary cache 目录当前没有缓存文件，`MicroMsg/CompatibleInfo.cfg` 为 0 字节，因此创建该库时的 D3 仍不可重建。所有 SQLCipher 兼容组合和微信 WCDB 默认只读组合均未命中；不输出候选值，也不把静态 Schema 当作已解密内容。
 
 ## 边界
 

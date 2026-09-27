@@ -1,6 +1,6 @@
 # 工具
 
-工具只使用 Python 标准库，不包含样本或生产秘密。
+Python 工具只使用标准库；Java 助手通过反射调用样本运行库。所有工具均不包含样本或生产秘密。
 
 | 脚本 | 用途 |
 | --- | --- |
@@ -12,6 +12,7 @@
 | `assemble_xhs_shield.py` | 用合成/私有输入重放小红书 shield 外层 |
 | `xor_strings.py` | 恢复单字节 XOR 字符串 |
 | `sanitize.py` | 发布前扫描凭据、路径、IP、UUID 和坐标 |
+| `wcdb-probe.java` | 在 Android/ART 中通过微信 WCDB 只读验证候选输入，仅输出脱敏聚合 |
 
 示例：
 
@@ -23,4 +24,5 @@ python3 apps/amap/tools/amzlib_inspect.py --help
 python3 apps/amap/tools/dice_container_inspect.py --help
 XHS_RC4_KEY='synthetic-value' python3 tools/assemble_xhs_shield.py --app-id 1 --build 4896 --device-id FAKE --token-type 0
 python3 tools/sanitize.py .
+javac -d /tmp/wcdb-classes tools/wcdb-probe.java
 ```

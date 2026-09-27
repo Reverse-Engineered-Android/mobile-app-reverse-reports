@@ -115,4 +115,6 @@ D3 primary 由 `cp/g0` / `cp/u0` 的认证缓存提供。`cp/u0.smali:31-117` �
 
 来源：`smali-classes11/tx3/h.smali:131-209`：取得 native connection 后调用 `PriorityJni.nativeInit`，并创建 `PriorityConfig(type INTEGER PRIMARY KEY, version INTEGER)`。`smali-classes12/ox3/m.smali:187-281` 初始化多个 C2C 图片/优先级任务组件，`ox3/m.smali:995-1010` 明确维护 `C2CMsgAutoDownloadRes.createtime`。
 
+动态只读复核工具见 `../../tools/wcdb-probe.java`。`tools/wcdb-probe.java:51-89` 调用微信 `libcso.so`/`libWCDB.so` 的 JNI 初始化链；`tools/wcdb-probe.java:91-149` 使用相同 null cipher spec，但改用 `SQLiteDatabase.openDatabase(..., OPEN_READONLY, ...)`，避免 `openOrCreateDatabase` 在失败尝试中创建或截断临时文件；`tools/wcdb-probe.java:151-179` 仅发布候选序号和脱敏聚合。该动态结果只用于验证打开路径，不替代上述 smali 对创建路径的证明。
+
 当前快照的 D3 primary cache 为空、兼容 cache 为 0 字节；现有输入候选与 WCDB/SQLCipher 参数组合均未命中，故只发布 key 公式和静态 Schema，不声称内容已解密。
