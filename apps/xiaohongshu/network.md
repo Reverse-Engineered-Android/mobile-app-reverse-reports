@@ -100,7 +100,7 @@ onboarding_pages birthday progress_bar login_exp_map
 
 其余登录态的 Java 可见使用边界如下：
 
-| 状态 | 已确认来源/用途 | 未闭环边界 |
+| 状态 | 已确认来源/用途 | 静态可见边界 |
 | --- | --- | --- |
 | `session` / `secure_session` | 登录响应映射到 `UserInfo.sessionNum/secureSession`；session 进入 `sid` 与 `x-legacy-sid` | `secure_session` 的普通 API 传输位置未找到 |
 | `id_token` | 登录响应 `user_extra_info.id_token` 映射到 `UserInfo.idToken`，进入 `xy-common-params.id_token` | 无 |
@@ -130,7 +130,7 @@ onboarding_pages birthday progress_bar login_exp_map
 - ECDH 曲线为 `secp256r1`；客户端公钥以十六进制传输，解码后是 33 字节压缩点（前缀 `02/03` + 32 字节 X）。
 - `LongLink.C2Java.getSharedKeyECDH` 解析服务端十六进制公钥，调用 `KeyAgreement.getInstance("ECDH")` 得到 shared secret。
 - 数据保护回调使用 `AES/CBC/PKCS5Padding`；native 压缩函数是 gzip。
-- `Options.compress`/`encrypt` 是 protobuf enum，范围均为 `0..1`。shared secret 如何进一步派生 AES key/IV，以及最终外层 frame 的长度/命令头，尚未逐字节闭环，因此不把该链路描述为可直接重放的客户端。
+- `Options.compress`/`encrypt` 是 protobuf enum，范围均为 `0..1`。shared secret 到 AES key/IV 的运行时秘密派生和最终外层 frame 头不作为公开实现，因此不把该链路描述为可直接重放的客户端。
 
 ### protobuf wire schema
 
