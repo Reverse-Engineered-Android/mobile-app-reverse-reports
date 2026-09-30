@@ -66,10 +66,40 @@ Java 层可见采集器：
 
 native 层还检测/采集 root、模拟器、Xposed、VirtualApp、ptrace/TracerPid、maps、EGL/GPU、Widevine deviceUniqueId、系统属性和 APK 签名/CRC。指纹 native 可自行 HTTP 上报，不能只 hook Java OkHttp。
 
+### native 上报容器
+
+`libxyasf.so` 内的完整静态链路是：
+
+```text
+typed collectors
+  -> protobuf serialization
+  -> binary/image transform
+  -> OkHttp multipart POST
+  -> https://as.xiaohongshu.com/api/v1/d/upload
+```
+
+multipart 的静态常量确认 form-data part 名为 `file`、文件名 `image.jpg`、MIME `image/jpeg`；另有 `onReportStart/onReportSuccess/onReportFailed` 生命周期回调。这里的“image”是上传容器，不能直接等同于屏幕截图。
+
+protobuf schema 字符串按以下命名空间出现：
+
+| 命名空间 | 字段范围 |
+| --- | --- |
+| `Extension` | device_id、shumei_fingerprint、session_id、js_fingerprint |
+| `JavaRuntime` | install_apps、app_list |
+| `TelephonyNetwork` | carrier、国家码、cell/wifi IP、SSID、IMEI/MEI、ICCID、baseband、carrier code、WiFi/WAP MAC |
+| `Motion` | sensor_list |
+| `State` | accessibility_enabled_services |
+| `System` | 语言、CPU ABI、进程、Build、设备/Android ID、IMSI、平台、命令/API 进程列表 |
+| `App` | identifier、version、build、私有文件路径、APK 路径、channel |
+| `Model` | name、version、fid |
+
+原始采集结构还包括屏幕尺寸/density、内存、电池、位置、加速度计、陀螺仪、root、ptrace、maps 和注入库名。字段名和采集能力已恢复；protobuf 字段号、JPEG/二进制变换算法和签名后的完整 wire bytes 未完整复原。
+
 ## 4. JS 指纹与伴随组件
 
 - 隐藏 WebView/独立服务运行 `fpjs2.min.js`。
 - 结果使用 AES-CBC 加密写入本地 JS 指纹缓存，任务结束后清理。
+- WebView monitor context 的 Java 模型可携带用户 ID/token、hash 过期信息、用户/track session、设备、屏幕、网络和 App build 字段。
 - `libtinyd.so` 和 `com.xingin.tiny.daemon` 具备伴随/守护特征。
 - Petal 混淆通过加密注解字节、运行时解密包装器和 opcode 分发隐藏调用名。
 

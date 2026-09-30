@@ -1,8 +1,9 @@
 # 小红书 9.37.0
 
-研究对象是 `com.xingin.xhs` 9.37.0 的 base APK 与 ARM64 native libraries，并使用另一台设备上的 9.47.0 历史只读快照及 9.48.0 当前同步副本做跨版本存储格式复核。公开部分覆盖：
+研究对象是 `com.xingin.xhs` 9.37.0 的 base APK 与 ARM64 native libraries，并使用另一台设备上的 9.47.0 历史只读快照及 9.48.0 当前只读查询做跨版本存储格式复核。公开部分覆盖：
 
-- 主 API、登录/风控、内容元数据、联系人/位置与对象存储的网络协议。
+- 主 API、实时长连接、登录/风控、内容元数据、联系人/位置与对象存储的网络协议。
+- Mars STN 长连接、protobuf 字段号、ECDH/AES/gzip 协商与 ACK/推送消息格式。
 - `xy-common-params`、Shield、Tiny、登录 token 与 OAuth 的认证边界。
 - 上传下载的数据范围、对象存储 token 结构、分片和 CDN 变换。
 - Room/Tencent WCDB、MMKV、风险 SDK 数据库、Java serialization 与 gzip 存储格式。

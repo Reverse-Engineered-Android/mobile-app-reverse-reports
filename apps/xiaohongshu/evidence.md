@@ -21,8 +21,26 @@
 | Tiny API | `com.xingin.xhs.antispam.entities.TinyTokenApi` | `POST /api/sc/tt`，请求五字段，响应 `ts` map |
 | Shield Java 边界 | `com.xingin.shield.http.Native` | OkHttp interceptor JNI 入口 |
 | 主域/旁路域 | Retrofit builders、ModelProfile、HeraAbility | edith、rec、modelportrait、CDN 等 |
+| 实时长连接 | `com.xingin.longlink.*`, `libxhslonglink.so` | Mars STN TCP、protobuf、ECDH/AES/gzip、ACK/推送 |
 
 证据等级：**类与字段已确认**。`z2c.e.c(Request)` 进一步证明 `sid` 来自 `IUserService.getSessionId()`、`id_token` 来自 `IUserService.getIdToken()`；session 规范化为 `session.<sessionNum>`。
+
+## 实时长连接
+
+| 证据 | 地址/类 | 结论 |
+| --- | --- | --- |
+| Java 消息模型 | `BaseSendMessage`, `UpMessage`, `DownMessage`, `LoginMessage` | messageType、ackMode、cmd、messageId、body/extraInfo |
+| 登录模型 | `ClientInfo`, `LoginInfo` | 默认 `serializeType="protobuf"`；uid/sid/authType/domain/geoCode |
+| JNI 密码学 | `LongLink.C2Java` | secp256r1 ECDH、33 字节压缩公钥、AES/CBC/PKCS5 |
+| 传输栈 | `libxhslonglink.so` symbols | `mars::stn::LongLink`, task manager、DNS、heartbeat/reconnect |
+| 压缩/握手 | `TNBaseTunnel::Pack` | `Gzip::Compress`、handshake status、server key handling |
+| protobuf 常量 | `Options` `0xe3f8c`-`0xe3f9c` | fields 1..5 |
+| protobuf 常量 | `AuthInfo` `0xe2fd0`-`0xe2fdc` | fields 1..4 |
+| protobuf 常量 | `LoginPacket` `0xe2f90`-`0xe2fb4` | fields 1..12（缺省 7/8） |
+| protobuf 常量 | `CSStreamData` `0xe289c`-`0xe28b4` | fields 1..7 |
+| frame 常量 | `DataFrame`/`SignalFrame`/`SyncFrame` | data=100，ack=101 |
+
+字段号由 `readelf -Ws` 的 `k*FieldNumber` 符号读取 `.rodata` 32 位值确认；wire 类型由各 `SerializeWithCachedSizes` 调用的 `WriteString/WriteBytes/WriteMessage/WriteEnum/WriteInt32/WriteInt64` 交叉确认。证据等级：**protobuf schema 与 transport 类型已闭环**；shared secret 到 AES key/IV 的派生和外层 frame 头仍未逐字节闭环。
 
 ## Shield / Tiny native
 
@@ -103,6 +121,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 对象存在性 | `CapaPostTagService`, `CloudObject*` | cloudObjects -> notExistFileIds |
 | 发布网关 | `NoteService` | `POST/PUT /api/sns/v2/note`，`ReportParamModel` |
 | 下载回执 | `DownloadService` | `POST /api/sns/v1/note/file/download`，document_id/note_id |
+| 登录态使用点 | `UserInfo`, `zu/i`, Diandian/WebView models | sid/id_token、`x-access-token`、账号找回/人脸 user_token、device_password 模型边界 |
 
 证据等级：**请求/模型字段已确认**。对象 token、秒传、去重、存在性检查和 note 创建/编辑网关均已静态闭环。
 
@@ -145,7 +164,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 
 ### 2026-09-30 当前只读复核
 
-对照主机当前安装版本为 `9.48.0`。root SSH 只读查询确认同一存储族仍存在：WCDB/SQLCipher 加密库、明文 SQLite、风险 SDK SQLite、MMKV/Java serialization/gzip 容器。当前同步副本相较 9.47 历史快照的业务行数已增长（例如 `local_relation_user` 1010、`msgDB.message` 617、`prdownloader` 1920、DSL 模板 681），因此公开报告把两个时点分开，避免把动态计数误写成固定数据范围。
+对照主机当前安装版本为 `9.48.0`。root SSH 只读查询确认同一存储族仍存在：WCDB/SQLCipher 加密库、明文 SQLite、风险 SDK SQLite、MMKV/Java serialization/gzip 容器。隔离快照的实时表行数包括 `local_relation_user` 1010、`msgDB.message` 652、`prdownloader` 2025、DSL 模板 681、Petal 插件/补丁 14/33；它们相较 9.47 历史快照已变化，因此公开报告把两个时点分开，避免把动态计数误写成固定数据范围。
 
 ## 风控
 
@@ -160,6 +179,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 人脸核身 | turingcam、TuringV2、WBCF、活体、SM2 |
 | 推送策略 | `dim.db`, `gtc3*.db`, `pushg3.db`, `cg.db` |
 | 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同 |
+| native 上报 | `libxyasf.so` strings/JNI | protobuf 字段、multipart `file=image.jpg`、`POST /api/v1/d/upload` |
 
 ## 未闭环
 
@@ -168,7 +188,11 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 定制摘要压缩轮 | 未完整复原 |
 | 会话 token 派生/type 6-7 | 未完整复原 |
 | Tiny 加密 blob | 未离线闭环 |
-| `user_token`/`device_password` 和 native 剩余 token header 映射 | 未全部确认 |
-| XHS native 风控完整 URL/payload | 部分闭环；URL 片段运行时拼接 |
+| `user_token` Java 使用点 | 已枚举；native/反射路径可能仍有遗漏 |
+| `device_password` 普通 API/持久化调用点 | 未找到；模型/开关/设备注册风格 body 已确认 |
+| XHS native 风控 URL/transport/上传容器 | 已闭环 |
+| native protobuf 字段号与变换算法 | 字段名已恢复，字节级格式未完整复原 |
+| 长连接 protobuf 字段号和 wire 类型 | 已闭环 |
+| 长连接 key/IV 派生和外层 frame 头 | 未逐字节闭环 |
 
 所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。
