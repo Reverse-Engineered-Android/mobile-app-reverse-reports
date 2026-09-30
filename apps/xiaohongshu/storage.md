@@ -2,7 +2,7 @@
 
 ## 1. 分析范围与版本
 
-9.37.0 代码用于确认存储实现和口令来源；对照主机上的 9.47.0 历史数据及 9.48.0 当前同步副本通过 root SSH **只读**访问，用于验证格式、DB 类型和聚合数据范围。分析只读取应用私有数据并使用隔离副本，不写回、不改权限、不重启应用或设备。两组内容计数不能代表 9.37 的历史内容。
+9.37.0 代码用于确认存储实现和口令来源；对照主机上的 9.47.0 历史数据及 9.48.0 当前数据库通过 root SSH **只读**访问，用于验证格式、DB 类型和聚合数据范围。分析只读取应用私有数据并使用隔离副本，不写回、不改权限、不重启应用或设备。两组内容计数不能代表 9.37 的历史内容。
 
 对照快照只读结果：
 
@@ -15,19 +15,21 @@
 
 ### 两个对照时点
 
-2026-09-30 的包管理器只读查询显示当前安装为 `9.48.0`。当前同步副本的聚合计数与历史快照不同，说明这些表会随账号使用继续增长；下表只记录行数，不记录任何行内容。
+2026-09-30 的包管理器只读查询显示当前安装为 `9.48.0`。本次通过隔离 SQLCipher 快照做实时只读聚合查询；计数与历史快照不同，也说明这些表会随账号使用继续增长。下表只记录瞬时表行数，不记录任何行内容。
 
-| 数据集 | 9.47 历史快照 | 9.48 当前同步副本 |
+| 数据集 | 9.47 历史快照 | 9.48 当前只读查询 |
 | --- | ---: | ---: |
 | `local_relation_user` | 1005 | 1010 |
-| `msgDB.message` / `chat` / `group_chat` | 0 / 0 / 0 | 617 / 96 / 16 |
+| `msgDB.message` / `chat` / `group_chat` | 0 / 0 / 0 | 652 / 96 / 16 |
 | `msgDB.chat_set` / `user` | 4 / 0 | 5 / 498 |
 | `hedwig_conversations` | 0 | 2 |
-| 播放历史 `historyRecord` | 0 | 1077 |
-| `prdownloader` | 1145 | 1920 |
+| 播放历史 `historyRecord` | 0 | 1049 |
+| `prdownloader` | 1145 | 2025 |
 | DSL 模板 | 671 | 681 |
-| Petal 插件 / 补丁 | 12 / 33 | 12 / 33 |
-| 自定义埋点 / 监控构建 | 10 / 163 | 16 / 28559 + 526 |
+| Petal 插件 / 补丁 | 12 / 33 | 14 / 33 |
+| `analysisemitter` 表行数（custom/build/emitter） | 10 / 163 / 未分项 | 0 / 8673 / 1 |
+
+`analysisemitter` 的行值可能是复合 payload；表行数和 payload 内事件数不能混用。应用运行中会继续写表，因此这些数字只是同一时点的只读审计值。
 
 ## 2. 存储层次
 
@@ -54,23 +56,24 @@ SQLiteCipherSpec.kdfIteration = 64000
 
 ### 口令来源
 
-动态口令主要保存在 MMKV：
+动态口令保存在 MMKV/Preferences。下表列出容器和键名，但不展示任何 passphrase、key、IV 或恢复后的值：
 
-```text
-msg_db_password_updated
-hedwig_db_password_updated
-alpha_db_password_updated
-capa_db_password_updated
-hey_db_password_v2
-localRelationDB 对应的动态口令键
-```
+| 数据库 | MMKV/Preferences 容器 | 口令键 | 缺省值来源 |
+| --- | --- | --- | --- |
+| `msgDB` | `com.xingin.xhs_preferences` | `msg_db_password_updated` | DEX 静态数组 |
+| `localRelationDB` | `com.xingin.xhs_preferences` | `relation_db_password_updated` | 仅动态口令 |
+| `hedwig.db` | `im_hedwig` | `hedwig_db_password_updated` | DEX 静态数组 |
+| `xhs_alpha.db` | `com.xingin.xhs_preferences` | `alpha_db_password_updated` | 仅动态口令 |
+| `xhs_capa.db` | `com.xingin.xhs_preferences` | `capa_db_password_updated` | DEX 静态数组 |
+| `xhs_hey.db` | `com.xingin.xhs_preferences` | `hey_db_password_v2` | DEX 静态数组 |
+| `xhs_recent_used_resource.db` | `com.xingin.xhs_preferences` | `recent_used_resource_db_password` | 仅动态口令 |
 
-部分数据库在没有动态口令时使用 DEX 中的默认 passphrase；广告/缓存 DB 也存在静态数组。公开报告不展示任何 passphrase、key、IV 或恢复后的值。
+广告/下载/缓存族另有代码内静态 passphrase，公开报告不披露字节。MMKV 读取链已复核：定位 UTF-8 键后读取后续 varint 长度，取对应值块，并识别观测到的可选单字节长度前缀；最终以应用配置中的 `byte[]` 作为 SQLCipher passphrase。
 
 ### 解密步骤
 
 1. 从应用私有目录只读复制 DB、`-wal`、`-shm`，避免直接打开活动数据库。
-2. 从对应 MMKV/Preferences 读取 passphrase；若缺失，再按数据库配置类确认默认值。
+2. 从上表对应 MMKV/Preferences 读取 passphrase；若缺失，再按数据库配置类确认默认值。
 3. 使用 SQLCipher/WCDB compatibility 3 打开：page size 1024，KDF 64000。
 4. 校验 `sqlite_master`、Room identity、表结构和用户版本；错误 passphrase 不应产生空伪命中。
 5. 以普通 SQLite 导出，仅保留 schema、类型和聚合计数。
@@ -81,30 +84,30 @@ localRelationDB 对应的动态口令键
 
 ### 用户与关系
 
-- `localRelationDB`：9.47 快照有 1005 行 `local_relation_user`。
+- `localRelationDB`：9.47 快照有 1005 行 `local_relation_user`；9.48 当前只读查询为 1010 行。
 - 字段范围包括内部用户 ID、头像 URL、昵称、备注、小红书号/rid、关注状态、简介、关注时间和关系计数。
 - 这是该快照中最主要的个人信息集合；报告只保留表级字段和聚合计数。
 
 ### 消息与通知
 
 - 9.47 历史快照的 `msgDB`：chat、group_chat、message 均为 0 行，只有 4 行 `chat_set` 通知摘要。
-- 当前 9.48 同步副本已出现 617 条 message、96 个 chat、16 个 group_chat 和 5 条 chat_set；本次只读统计不展开消息正文或联系人字段。
+- 当前 9.48 只读查询已有 652 条 message、96 个 chat、16 个 group_chat、5 条 chat_set 和 498 条 user；本次不展开消息正文或联系人字段。
 - `hedwig.db` 从历史快照 0 条会话增长为当前 2 条；报告不复制会话内容。
 - 两个时点都没有把完整私信正文纳入公开证据。
 
 ### 内容与历史
 
-- `PlayHistoryRecordDB.historyRecord`：历史快照 0 行，当前同步副本 1077 行。
+- `PlayHistoryRecordDB.historyRecord`：历史快照 0 行，当前只读查询 1049 行。
 - `xhs_alpha.db`、`xhs_capa.db`、`xhs_hey.db`、`xhs_wk_cache.db`、`xhs_common_demotion_cache.db` 基本为 Room 元数据或空业务表。
 - 未观察到笔记正文、完整草稿或搜索词历史。
 
 ### 广告、下载、模板与插件
 
 - `xhs_advert.db`：8 组开屏广告计划及素材/下载配置。
-- `prdownloader.db`：历史快照 1145 条、当前同步副本 1920 条资源下载记录，记录 URL、路径、大小、进度、ETag 和状态。
-- `analysisemitter.sqlite`：历史快照 10 条自定义 payload 与 163 条监控构建事件；当前同步副本为 16 条自定义 payload、28559 条构建监控和 526 条 emitter 监控。
-- `xy_dsl_templates.db`：历史快照 671 条、当前同步副本 681 条模板，含名称、URL、版本、MD5、最低 App 版本和本地路径。
-- `petal_database`：12 条插件记录和 33 条补丁记录。
+- `prdownloader.db`：历史快照 1145 条、当前只读查询 2025 条资源下载记录，记录 URL、路径、大小、进度、ETag 和状态。
+- `analysisemitter.sqlite`：历史快照包含 10 条自定义 payload 与 163 条监控构建事件；当前 SQLite 表为 custom 0、build-monitor 8673、emitter-monitor 1 行。复合 payload 内事件数另行统计，不能和表行数混写。
+- `xy_dsl_templates.db`：历史快照 671 条、当前只读查询 681 条模板，含名称、URL、版本、MD5、最低 App 版本和本地路径。
+- `petal_database`：历史快照 12 条插件记录和 33 条补丁记录；当前只读查询为 14 条插件记录和 33 条补丁记录。
 
 ## 5. 风控/推送数据库格式
 

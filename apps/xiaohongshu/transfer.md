@@ -179,6 +179,32 @@ source keyword latitude longitude page size type [search_context]
 - 后续内容通过 `POST /api/sns/v2/note` 的 `common` + `image_info`/`video_info` 创建，详见 [network.md](network.md)。
 - `/api/media/v1/imageinfo` 和 `/api/media/v1/video/meta_info` 位于 debug service，查询 `fileKey/video_id + caller`，返回媒体元信息，不能视作所有内容流的通用上传接口。
 
+### 消息、WebView 与风控上报
+
+Diandian 的 `SendMessage.context` / `PayloadContextModel.context` 可包含：
+
+```text
+x-access-token x-user-id x-device-id x-ip-info x-app-version
+x-platform-info x-location-latitude x-location-longitude
+```
+
+`PayloadContextModel` 构造时把经纬度置空；`SendContext` 允许调用方填入可选经纬度。这是 Diandian 消息 envelope 的 context，不是所有普通 XHS API 的公共 header。
+
+WebView monitor context 还包含 `userId`, `userToken`, `hashExp`, `userSessionId`, app/device/build/screen/network/track-session 字段。字段存在表示可上报范围，不代表每个事件都发送全部字段。
+
+`libxyasf.so` 的 native 风控上传不属于对象存储：它把采集结果序列化/变换后，以 multipart `file` part 提交，文件名为 `image.jpg`、MIME 为 `image/jpeg`，目标是 `POST https://as.xiaohongshu.com/api/v1/d/upload`。具体采集字段见 [risk.md](risk.md)。
+
+### 实时长连接
+
+长连接不是文件上传接口，但会传输账号/设备握手和不透明业务 body。已确认的可上报范围是：
+
+- 登录握手：`uid`, `sid`, `authType`, `domain`, `geographicCode`，以及 `deviceId`, `osVersion`, `appVersion`, `fingerprint`, `deviceName`, `platform`, `os`。
+- 上行业务：`cmd`, `bizName`, `serviceId`, `alias`, `extraInfo` 和调用方给出的 `body byte[]`。
+- 下行业务：`bizName`、服务端时间及 `Event{data, mid, ext_info}`；另有 signal、ACK code/message/body、房间、标签、kick-out 和时间同步消息。
+- body 是业务序列化负载，字段内容由 `serviceId/bizName/cmd` 决定；静态逆向不能把每个 body 都解释为具体聊天或笔记内容。
+
+完整字段号、protobuf 类型、ECDH/AES/gzip 边界见 [network.md](network.md)。
+
 ## 3. 下载数据范围
 
 | 类别 | 来源/格式 | 本地范围 |
@@ -193,13 +219,13 @@ source keyword latitude longitude page size type [search_context]
 
 文档下载完成后还会调用 `POST /api/sns/v1/note/file/download`，form 字段为 `document_id`, `note_id`；这是下载成功回执，不是文件字节接口。文档预览信息来自 `GET /api/sns/v1/search/doc/preview` 的 `doc_id`。
 
-9.47 历史只读快照的 `prdownloader.db` 有 1145 条资源下载记录，2026-09-30 的 9.48 当前同步副本为 1920 条，主要为静态前端资源、广告图片和动态模板。它们不是同等数量的用户内容记录。
+9.47 历史只读快照的 `prdownloader.db` 有 1145 条资源下载记录，2026-09-30 的 9.48 当前只读查询为 2025 条，主要为静态前端资源、广告图片和动态模板。它们不是同等数量的用户内容记录。
 
 ## 4. 快照中未观察到的范围
 
 - 未发现笔记正文历史或完整发布草稿。
-- 9.47 历史快照的 `msgDB` message/chat 表为空，只有 4 条通知摘要；当前同步副本已有 617 条 message，但本次不展开正文。
-- 播放历史在历史快照为 0 行，当前同步副本为 1077 行。
+- 9.47 历史快照的 `msgDB` message/chat 表为空，只有 4 条通知摘要；当前只读查询已有 652 条 message，但本次不展开正文。
+- 播放历史在历史快照为 0 行，当前只读查询为 1049 行。
 - 搜索词历史没有有效业务行。
 - 位置缓存对象未包含实际坐标；Wi-Fi 扫描列表为空。
 
