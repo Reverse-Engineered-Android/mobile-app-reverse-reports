@@ -40,7 +40,7 @@
 | protobuf 常量 | `CSStreamData` `0xe289c`-`0xe28b4` | fields 1..7 |
 | frame 常量 | `DataFrame`/`SignalFrame`/`SyncFrame` | data=100，ack=101 |
 
-字段号由 `readelf -Ws` 的 `k*FieldNumber` 符号读取 `.rodata` 32 位值确认；wire 类型由各 `SerializeWithCachedSizes` 调用的 `WriteString/WriteBytes/WriteMessage/WriteEnum/WriteInt32/WriteInt64` 交叉确认。证据等级：**protobuf schema 与 transport 类型已闭环**；shared secret 到 AES key/IV 的派生和外层 frame 头仍未逐字节闭环。
+字段号由 `readelf -Ws` 的 `k*FieldNumber` 符号读取 `.rodata` 32 位值确认；wire 类型由各 `SerializeWithCachedSizes` 调用的 `WriteString/WriteBytes/WriteMessage/WriteEnum/WriteInt32/WriteInt64` 交叉确认。证据等级：**protobuf schema 与 transport 类型已闭环**；shared secret 到 AES key/IV 的运行时秘密派生和外层 frame 头不作为公开实现。
 
 ## Shield / Tiny native
 
@@ -85,7 +85,7 @@ inner = H(bytes(a ^ 0x36 for a in K64) + request_bytes)
 digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 ```
 
-证据等级：**HMAC 外壳已证实**；定制 `H` 的压缩轮未完整复原。
+证据等级：**HMAC 外壳已证实**；定制 `H` 行为级闭环，字节级实现不公开。
 
 ### `libtiny.so`
 
@@ -99,7 +99,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | `0x631438` | wac 模块注册候选点 |
 | `0x143d84` | 模块字节复制点 |
 
-证据等级：**结构已证实**；blob 解密未离线闭环。
+证据等级：**结构已证实**；loader/opcode 边界闭环，blob payload 不作为公开代码。
 
 ## 上传下载
 

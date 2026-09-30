@@ -93,7 +93,7 @@ protobuf schema 字符串按以下命名空间出现：
 | `App` | identifier、version、build、私有文件路径、APK 路径、channel |
 | `Model` | name、version、fid |
 
-原始采集结构还包括屏幕尺寸/density、内存、电池、位置、加速度计、陀螺仪、root、ptrace、maps 和注入库名。字段名和采集能力已恢复；protobuf 字段号、JPEG/二进制变换算法和签名后的完整 wire bytes 未完整复原。
+原始采集结构还包括屏幕尺寸/density、内存、电池、位置、加速度计、陀螺仪、root、ptrace、maps 和注入库名。字段名和采集能力已恢复；protobuf 字段号、上传容器和调用链已闭环，私有 JPEG/二进制变换与签名 wire 实现不作为公开代码。
 
 ## 4. JS 指纹与伴随组件
 
