@@ -1,6 +1,32 @@
 # 小红书逆向证据
 
-## `libxyass.so`
+## 样本指纹
+
+| 项目 | SHA-256 |
+| --- | --- |
+| XAPK | `42033a369835209738ee5b4b1ad6553e6289cac09fee8559fbf4286c9d490bbd` |
+| base APK | `0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c` |
+
+## 网络与认证
+
+| 证据 | 类/文件 | 结论 |
+| --- | --- | --- |
+| Retrofit method annotations | `fvc/f`, `fvc/o` | GET/POST |
+| form/query/header/part/body | `fvc/e`, `c`, `t`, `u`, `q`, `a` | URL-encoded form、query、header map、multipart、body |
+| 公共参数 | `z2c/e`, `it6/h` | 按 `key=value&...` 写入 `xy-common-params` |
+| 响应封装 | `EdithBaseResponse` | `{code, success, msg, data}` |
+| 登录 | `AccountApi`, `LoginLoginResponse` | 登录路径、form 字段和 token 状态 |
+| OAuth | `IOAuthService`, `AuthorizeData`, `AuthorizationData` | authorize/auth_info 字段 |
+| 风控 | `IRiskService`, `IVerifyCodeService` | 设备违规、账号异常、干预、解限和验证码路径 |
+| Tiny API | `com.xingin.xhs.antispam.entities.TinyTokenApi` | `POST /api/sc/tt`，请求五字段，响应 `ts` map |
+| Shield Java 边界 | `com.xingin.shield.http.Native` | OkHttp interceptor JNI 入口 |
+| 主域/旁路域 | Retrofit builders、ModelProfile、HeraAbility | edith、rec、modelportrait、CDN 等 |
+
+证据等级：**类与字段已确认**。登录 token 到每个请求 header 的完整映射未全部静态闭环。
+
+## Shield / Tiny native
+
+### `libxyass.so`
 
 | 地址 | 符号/函数 | 证据 |
 | ---: | --- | --- |
@@ -31,7 +57,7 @@ blob += rc4(rc4_key, payload)
 shield = "XY" + base64(blob)
 ```
 
-证据等级：**已验证**。`rc4_key` 是 native 静态/解密字符串，公开脚本通过环境变量传入，不展示原值。
+证据等级：**两组合成向量逐字节验证**。RC4 key 不公开。
 
 ### 摘要结构
 
@@ -41,9 +67,9 @@ inner = H(bytes(a ^ 0x36 for a in K64) + request_bytes)
 digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 ```
 
-证据等级：**结构已证实**。`0x7f224`、`0x7feec`、`0x8001c` 的参数和输出长度证明 HMAC 外壳；`H` 的逐轮结构未完整复原。
+证据等级：**HMAC 外壳已证实**；定制 `H` 的压缩轮未完整复原。
 
-## `libtiny.so`
+### `libtiny.so`
 
 | 地址 | 证据 |
 | ---: | --- |
@@ -55,14 +81,86 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | `0x631438` | wac 模块注册候选点 |
 | `0x143d84` | 模块字节复制点 |
 
-证据等级：**结构已证实**。静态模拟覆盖 JNI 和 opcode 分发；blob 解密仍是未知边界。
+证据等级：**结构已证实**；blob 解密未离线闭环。
 
-## 其他 JNI 表
+## 上传下载
 
-| 文件 | 位置 | 证据 |
-| --- | ---: | --- |
-| `libsecurebase.so` | `JNI_OnLoad 0xd13c`，表 `0x38000` | 2 个动态注册方法 |
-| `libeidjni.so` | 20 个 `Java_com_eidlink_jni_EIDReadCardJNI_*` | NFC/eID SDK |
-| `libturingmfa.so` | `JNI_OnLoad 0x1fcc4`，表 `0x56540` / `0x56690` | 14 + 1 个动态注册方法 |
+| 证据 | 类 | 结论 |
+| --- | --- | --- |
+| 上传配置 | `UploadConfig` | contentType、filePaths、tokenConfig、multipart、retry、copy、EXIF |
+| token 基类 | `MixedToken` | fileBytes/filePath/fileId，默认 1 MiB chunk |
+| 对象 token | `RobusterToken` | address/bucket/cloud/region/QoS、临时 secret/session token |
+| 上传 permit | `RobusterTokenPermit` | fileIds、时间、secret、token、uploadAddr、storage |
+| Qiniu 执行 | `c0` | `UploadManager.put(fileBytes|filePath, fileId, token)` |
+| 上传结果 | `UploaderResult`, `QuickUpload`, `UploadResponse` | ID、URL、scene、失败路径、结果列表 |
+| 联系人 | `com.xingin.utils.core.l`, `g38.b0`, `UserServices` | display_name/data1、11 位号码、300 条分页、加密上传 |
+| 联系人加密 | `com.xingin.utils.core.h1`, `f0`, `q` | AES/CBC/PKCS5 + Base64，设备派生 key |
+| 位置 | `LocationDevelopApi` | latitude/longitude form；开发/诊断组件 |
+| POI | `PoiSearchApi` | keyword、lat/lng、page/size/type/context |
+| 媒体元信息 | `ImageDetailInfoService`, `VideoDetailInfoService` | fileKey/video_id + caller |
 
-所有地址均相对于对应 ARM64 SO；仓库不包含 SO 或反汇编全量文件。
+证据等级：**请求/模型字段已确认**。`ITokenReqParam` 类定义和 note publish gateway 未被 JADX 输出，不补猜字段或路径。
+
+## 本地存储
+
+### 9.37 代码
+
+| 证据 | 类 | 结论 |
+| --- | --- | --- |
+| WCDB factory | `com.xingin.xhs.xhsstorage.safe.WCDBOpenHelperFactory` | Room open helper |
+| WCDB open | `WCDBOpenHelper` | passphrase + `SQLiteCipherSpec` |
+| DB builder | `nbc/e` | page size 1024、KDF 64000、WAL/FTS 配置 |
+| message DB | `com.xingin.chatbase.db.config.a` | MMKV 动态 passphrase/默认值 |
+| Hedwig DB | `com.xingin.chatbase.hedwig.database.a` | MMKV 动态 passphrase |
+| Alpha/Capa/Hey | 对应 `passphrase()` 实现 | MMKV 动态 passphrase |
+
+### 9.47 只读对照
+
+| 项目 | 聚合结果 |
+| --- | --- |
+| 加密 DB | 9 个成功重建 |
+| 明文 DB | 17 个直接可读 |
+| `localRelationDB` | 1005 行关系用户 |
+| `msgDB` | 0 消息、4 通知摘要 |
+| 播放历史 | 0 行 |
+| 广告计划 | 8 组 |
+| 下载记录 | 1145 行 |
+| 自定义埋点/监控 | 10 / 163 行 |
+| DSL 模板 | 671 行 |
+| 插件/补丁 | 12 / 33 行 |
+
+风险 DB 复核：
+
+- `dim.db`：AES-128-CBC/PKCS7 + 应用绑定标记 + Base64。
+- `gtc3-key.db`：TEE Keystore RSA 包装 AES key/IV。
+- `pushg3.db`：8 字节 ASCII 前缀 + gzip + 竖线记录。
+- `cg.db`：AES 加密的 Java serialized Getui/GTC/GBD 配置。
+
+证据等级：**格式、参数和聚合计数已复核**；真实行、ID、token、key 和坐标不进入仓库。
+
+## 风控
+
+| 面 | 证据 |
+| --- | --- |
+| 设备指纹 | `pt.a`、Java collectors、`libxyasf.so` |
+| 环境检测 | native strings/imports：root、ptrace、maps、Xposed、VirtualApp、Widevine |
+| JS 指纹 | `XhsJsService`、`fpjs2.min.js`、AES-CBC 缓存 |
+| 守护/混淆 | `libtinyd.so`、`com.xingin.tiny.daemon`、Petal 注解/opcode |
+| 账号风险 | `IRiskService`、登录风险状态、self-resolve |
+| 验证码 | Walify、ValidateActivity |
+| 人脸核身 | turingcam、TuringV2、WBCF、活体、SM2 |
+| 推送策略 | `dim.db`, `gtc3*.db`, `pushg3.db`, `cg.db` |
+
+## 未闭环
+
+| 项目 | 状态 |
+| --- | --- |
+| 定制摘要压缩轮 | 未完整复原 |
+| 会话 token 派生/type 6-7 | 未完整复原 |
+| Tiny 加密 blob | 未离线闭环 |
+| 所有 token header 映射 | 未全部确认 |
+| note publish gateway | 未确认 |
+| `ITokenReqParam` 字段名 | 类定义缺失 |
+| native 风控完整端点/payload | 未完整闭环 |
+
+所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。

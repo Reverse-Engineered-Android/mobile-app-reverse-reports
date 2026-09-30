@@ -38,3 +38,9 @@ RC4 key 位于 `libxyass.so` 的静态/解密字符串中。获取流程是：
 | `libtiny.so` 加密 blob | 未离线闭环 |
 
 [assemble_xhs_shield.py](../../tools/assemble_xhs_shield.py) 只重放已验证外层；不会把标准 HMAC-MD5 当成定制 H。
+
+## 本地数据库密码边界
+
+WCDB/SQLCipher 的已确认参数是 compatibility 3、page size 1024、KDF iterations 64000。passphrase 来自 MMKV/Preferences 或数据库配置类中的默认值；Getui/GTC 风险数据库另用 Android Keystore 的不可导出 RSA 私钥包装 AES key/IV。公开脚本不内置任何真实 passphrase、AES key、IV 或 RSA blob。
+
+联系人上传数据使用独立 AES/CBC/PKCS5 + Base64，key 由设备 ID 状态派生，IV 为应用常量。这里只记录算法和依赖，不展示常量、派生输入或可解密样例。
