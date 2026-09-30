@@ -1,6 +1,6 @@
 # 小红书 9.37.0
 
-研究对象是 `com.xingin.xhs` 9.37.0 的 base APK 与 ARM64 native libraries，并使用另一台设备上的 9.47.0 只读数据快照做跨版本存储格式复核。公开部分覆盖：
+研究对象是 `com.xingin.xhs` 9.37.0 的 base APK 与 ARM64 native libraries，并使用另一台设备上的 9.47.0 历史只读快照及 9.48.0 当前同步副本做跨版本存储格式复核。公开部分覆盖：
 
 - 主 API、登录/风控、内容元数据、联系人/位置与对象存储的网络协议。
 - `xy-common-params`、Shield、Tiny、登录 token 与 OAuth 的认证边界。

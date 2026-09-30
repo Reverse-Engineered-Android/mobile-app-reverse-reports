@@ -65,7 +65,7 @@ mlanguage SUE id_token
 
 ### 登录请求
 
-`AccountApi` 中已确认三类流程：
+`AccountApi` 中已确认四类流程：
 
 | 方法 | 路径 | 请求体 |
 | --- | --- | --- |
@@ -96,7 +96,7 @@ onboarding_pages birthday progress_bar login_exp_map
 
 其中 `session`、`secure_session`、`user_token`、`device_password` 是会话/设备绑定状态；`userid` 是账号关联标识。它们会被持久化，但普通 API 中各 token 的完整传输位置未全部静态闭环。
 
-`UserInfo.getSessionId()` 还揭示 session 的规范化形状：空值保持为空，已有 `session.` 前缀则原样保留，否则生成 `session.<sessionNum>`。`xy-common-params` 中存在 `sid` 键，但 `sid` 与该规范化 session 的赋值点位于混淆路径，因此只确认字段和格式，不把两者强行等同。
+`UserInfo.getSessionId()` 揭示 session 的规范化形状：空值保持为空，已有 `session.` 前缀则原样保留，否则生成 `session.<sessionNum>`。`z2c.e.c(Request)` 的 `sid` provider 直接调用 `IUserService.getSessionId()`，所以 `xy-common-params.sid` 与该规范化 session 已闭环。`id_token` provider 直接调用 `IUserService.getIdToken()`。Tiny 还把同一 session 写入 `x-legacy-sid`。
 
 ## 5. OAuth
 
@@ -116,8 +116,11 @@ onboarding_pages birthday progress_bar login_exp_map
 | `/api/sns/v2/user/account_info/anomalies` | GET | phone/nickname/avatar 摘要 |
 | `/api/sns/v2/user/account_info/anomalies/confirm` | POST | 确认异常 |
 | `/api/sns/v1/account/intervention` | GET `business_code`, `user_id` | intervention alert config |
+| `api/sns/v1/system_service/captcha_link` | GET | 验证码/核身入口链接与验证上下文 |
 | `/api/security/antispam/v1/restriction/self-resolve` | POST | 自助解限结果 |
 | `/api/sns/v1/user/login/risk/status` | POST | 登录风险状态 |
+
+self-resolve 响应已确认包含 `antispamVerifyCtrlResp`, `complaintUrl`, `resolveResult`, `verifyUuid`；这些字段用于返回验证控制、投诉入口、处置结果和后续验证标识，不应与业务鉴权 token 混同。
 
 ## 7. 请求保护
 
@@ -140,7 +143,41 @@ onboarding_pages birthday progress_bar login_exp_map
 
 Hera/推荐链可同时经过 Shield 和 Tiny。完整请求还可能经过公共参数、User-Agent、Referer、熔断、Cronet failover、优先级和 APM 拦截器。
 
-## 8. 证据等级与未知边界
+## 8. 笔记创建/编辑协议
+
+`com.xingin.capa.network.services.NoteService` 已闭环主发布网关：
+
+| 操作 | 方法/路径 | body |
+| --- | --- | --- |
+| 创建笔记 | `POST /api/sns/v2/note` | JSON `ReportParamModel` |
+| 编辑笔记 | `PUT /api/sns/v2/note` | JSON `ReportParamModel` |
+| 获取发布页详情 | `GET /api/sns/v10/note` | `note_id`, `source`, 可选 `edit_mode` |
+| 获取作者简要信息 | `GET /api/sns/capa/postgw/note_brife_info` | `note_id` |
+
+`ReportParamModel` 顶层格式：
+
+```json
+{
+  "common": {},
+  "image_info": {},
+  "video_info": {}
+}
+```
+
+`common` 已确认字段：
+
+```text
+capa_trace_info business_binds desc goods_info hash_tag ats note_id
+post_locs post_loc privacy_info product_reviews source template_icon
+template_resource_file_id template_resource_file_md5 template_title title
+topic_id type template_tags biz_relations
+```
+
+`image_info`：`images`, `music_info`, `soundtrack`。图片项包含 `file_id`, `width`, `height`, `metadata`, `original_metadata`, `stickers`, `fonts`, `prop_id`, `upload_channel`, `master_cloud_id`, `extra_info_json`, 可选 live photo `video_file_id/video_id`。
+
+`video_info` 主要字段：`file_id`, `fsize`, `format_width`, `format_height`, `cover`, `bgm`, `soundtrack`, `segments`, `timelines`, `transitions`, `chapters`, `template_data`, `photo_album`, `upload_channel`, `master_cloud_id`, `bucket`, `upload_region` 等。
+
+## 9. 证据等级与剩余边界
 
 | 项目 | 状态 |
 | --- | --- |
@@ -151,5 +188,7 @@ Hera/推荐链可同时经过 Shield 和 Tiny。完整请求还可能经过公�
 | Tiny 输入输出 header | 已确认 |
 | 定制摘要压缩轮 | 未完整复原 |
 | 会话 token 派生与 type 6/7 | 未完整复原 |
-| 所有登录 token 到请求头的映射 | 未全部闭环 |
-| 风控 native 完整上报端点与 payload | 未完整闭环 |
+| `sid` / `id_token` 公共参数来源 | 已闭环 |
+| note 创建/编辑网关与 body 顶层 | 已闭环 |
+| `user_token`/`device_password` 全部业务使用点 | 未逐一枚举 |
+| XHS native 风控完整 URL/payload | 部分闭环；`as.` 为运行时拼接候选 |

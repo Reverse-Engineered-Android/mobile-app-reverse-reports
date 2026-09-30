@@ -18,7 +18,43 @@ keepImageExif
 
 `filePaths` 指向待上传文件；`contentType` 决定 MIME；`keepImageExif` 表明可保留图片元数据；`openMultipart` 和 `retryCount` 控制分片与重试。`needCopyFile` 可能在上传前复制临时文件，避免源文件被修改或释放。
 
-`ITokenReqParam` 的类定义未被 JADX 输出，但构造点可确认默认业务类型为 SNS、scene 为 comment，并有额外版本/布尔参数。其精确字段名不作推测。
+`ITokenReqParam` 已从 `classes11.dex` 单类恢复，字段为：
+
+```text
+bid: int
+scene: String
+tokenCount: int
+isDebug: boolean = false
+```
+
+`UploadConfig` 默认构造为 `bid=Sns.bizType`、`scene=comment.scene`、`tokenCount=1`、`isDebug=false`。
+
+### Token/permit API
+
+`com.xingin.uploader.api.internal.TokenService`：
+
+| 操作 | 方法/路径 | query |
+| --- | --- | --- |
+| 分配文件名 | `GET /api/sns/v1/system_service/qcloud_filename` | `type`, `num` |
+| 分配文件名 v2/秒传校验 | `GET /api/sns/v2/system_service/qcloud_filename` | `md5s`, `type`, `num` |
+| 获取混合云 token | `GET /api/sns/v2/system_service/mix_cloud_upload_info` | `operator`, `type`, `business`, `env`, `cross_upload`, `dynamic`, `version` |
+| 获取上传 permit | `GET /api/media/v1/upload/permit` | `bid`, `biz_name`, `scene`, `file_count`, `version` |
+| Capa permit | `GET /api/media/v1/upload/capa/permit` | 同上 |
+| 免登录 permit | `GET /api/media/v1/upload/permit_no_login` | 同上 |
+| 秒传检查 | `GET /api/media/v1/upload/quick_upload_check` | `bid`, `bizName`, `scene`, `dedupIdentifier`, `dedupAlgorithm`, 可选 `dedupChecksum` |
+
+permit 响应字符串由 Gson 解析为：
+
+```json
+{
+  "data": {
+    "uploadLimitPolicy": {},
+    "uploadTempPermits": []
+  }
+}
+```
+
+`uploadTempPermits` 是 `RobusterTokenPermit[]`。实现按 QoS 选择 token，并按 `storageType` 区分腾讯云/阿里云路由。
 
 ### 上传 token
 
@@ -84,6 +120,22 @@ data: {path -> response}
 resultList[]
 ```
 
+### 秒传、去重与对象存在性
+
+`QuickUpload` 请求使用 `dedupIdentifier`, `dedupAlgorithm`, 可选 `dedupChecksum`。命中结果返回 `fileId/originFileId/originVideoId/previewUrl/staticUrl/videoId` 与 `{success,code,message}`。
+
+`POST /api/uploader/cloudobjectexist` 请求：
+
+```json
+{
+  "cloudObjects": [
+    {"bucket": "...", "region": "...", "fileId": "...", "type": 0}
+  ]
+}
+```
+
+响应只返回 `notExistFileIds[]`，用于跳过已存在对象。
+
 ## 2. 上传数据范围
 
 ### 联系人
@@ -124,7 +176,7 @@ source keyword latitude longitude page size type [search_context]
 
 - 上传对象为调用方选择的图片/视频文件或字节；可保留 EXIF。
 - `QuickUpload`/UploaderResult 只返回对象 ID、预览/静态 URL、视频 ID 和存储元信息。
-- 后续内容模型用 `fileIds`、`fileMediaIds`、topics、标题、正文等组合创建内容；具体 note publish gateway 未在 9.37 Java 明文中闭环。
+- 后续内容通过 `POST /api/sns/v2/note` 的 `common` + `image_info`/`video_info` 创建，详见 [network.md](network.md)。
 - `/api/media/v1/imageinfo` 和 `/api/media/v1/video/meta_info` 位于 debug service，查询 `fileKey/video_id + caller`，返回媒体元信息，不能视作所有内容流的通用上传接口。
 
 ## 3. 下载数据范围
@@ -139,13 +191,15 @@ source keyword latitude longitude page size type [search_context]
 | 插件/补丁 | Petal/plugin 配置 | AI、扫码、地图、文档预览、脚本引擎等插件包 |
 | 下载元数据 | `prdownloader.db` 等 | URL、路径、大小、进度、ETag、状态 |
 
-9.47 只读快照的 `prdownloader.db` 有 1145 条资源下载记录，主要为静态前端资源、广告图片和动态模板。它们不是 1145 条用户内容记录。
+文档下载完成后还会调用 `POST /api/sns/v1/note/file/download`，form 字段为 `document_id`, `note_id`；这是下载成功回执，不是文件字节接口。文档预览信息来自 `GET /api/sns/v1/search/doc/preview` 的 `doc_id`。
+
+9.47 历史只读快照的 `prdownloader.db` 有 1145 条资源下载记录，2026-09-30 的 9.48 当前同步副本为 1920 条，主要为静态前端资源、广告图片和动态模板。它们不是同等数量的用户内容记录。
 
 ## 4. 快照中未观察到的范围
 
 - 未发现笔记正文历史或完整发布草稿。
-- `msgDB` 的 message/chat 表为空，只有 4 条通知摘要。
-- 播放历史表为空。
+- 9.47 历史快照的 `msgDB` message/chat 表为空，只有 4 条通知摘要；当前同步副本已有 617 条 message，但本次不展开正文。
+- 播放历史在历史快照为 0 行，当前同步副本为 1077 行。
 - 搜索词历史没有有效业务行。
 - 位置缓存对象未包含实际坐标；Wi-Fi 扫描列表为空。
 

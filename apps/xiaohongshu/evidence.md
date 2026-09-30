@@ -17,12 +17,12 @@
 | 响应封装 | `EdithBaseResponse` | `{code, success, msg, data}` |
 | 登录 | `AccountApi`, `LoginLoginResponse` | 登录路径、form 字段和 token 状态 |
 | OAuth | `IOAuthService`, `AuthorizeData`, `AuthorizationData` | authorize/auth_info 字段 |
-| 风控 | `IRiskService`, `IVerifyCodeService` | 设备违规、账号异常、干预、解限和验证码路径 |
+| 风控 | `IRiskService`, `IVerifyCodeService` | 设备违规、账号异常、干预、captcha、解限和验证码路径 |
 | Tiny API | `com.xingin.xhs.antispam.entities.TinyTokenApi` | `POST /api/sc/tt`，请求五字段，响应 `ts` map |
 | Shield Java 边界 | `com.xingin.shield.http.Native` | OkHttp interceptor JNI 入口 |
 | 主域/旁路域 | Retrofit builders、ModelProfile、HeraAbility | edith、rec、modelportrait、CDN 等 |
 
-证据等级：**类与字段已确认**。登录 token 到每个请求 header 的完整映射未全部静态闭环。
+证据等级：**类与字段已确认**。`z2c.e.c(Request)` 进一步证明 `sid` 来自 `IUserService.getSessionId()`、`id_token` 来自 `IUserService.getIdToken()`；session 规范化为 `session.<sessionNum>`。
 
 ## Shield / Tiny native
 
@@ -98,8 +98,13 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 位置 | `LocationDevelopApi` | latitude/longitude form；开发/诊断组件 |
 | POI | `PoiSearchApi` | keyword、lat/lng、page/size/type/context |
 | 媒体元信息 | `ImageDetailInfoService`, `VideoDetailInfoService` | fileKey/video_id + caller |
+| token 参数 | `ITokenReqParam` | `bid`, `scene`, `tokenCount`, `isDebug` |
+| permit API | `TokenService` | filename/token/permit/no-login/quick-upload 七类 GET |
+| 对象存在性 | `CapaPostTagService`, `CloudObject*` | cloudObjects -> notExistFileIds |
+| 发布网关 | `NoteService` | `POST/PUT /api/sns/v2/note`，`ReportParamModel` |
+| 下载回执 | `DownloadService` | `POST /api/sns/v1/note/file/download`，document_id/note_id |
 
-证据等级：**请求/模型字段已确认**。`ITokenReqParam` 类定义和 note publish gateway 未被 JADX 输出，不补猜字段或路径。
+证据等级：**请求/模型字段已确认**。对象 token、秒传、去重、存在性检查和 note 创建/编辑网关均已静态闭环。
 
 ## 本地存储
 
@@ -138,6 +143,10 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 
 证据等级：**格式、参数和聚合计数已复核**；真实行、ID、token、key 和坐标不进入仓库。
 
+### 2026-09-30 当前只读复核
+
+对照主机当前安装版本为 `9.48.0`。root SSH 只读查询确认同一存储族仍存在：WCDB/SQLCipher 加密库、明文 SQLite、风险 SDK SQLite、MMKV/Java serialization/gzip 容器。当前同步副本相较 9.47 历史快照的业务行数已增长（例如 `local_relation_user` 1010、`msgDB.message` 617、`prdownloader` 1920、DSL 模板 681），因此公开报告把两个时点分开，避免把动态计数误写成固定数据范围。
+
 ## 风控
 
 | 面 | 证据 |
@@ -150,6 +159,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 验证码 | Walify、ValidateActivity |
 | 人脸核身 | turingcam、TuringV2、WBCF、活体、SM2 |
 | 推送策略 | `dim.db`, `gtc3*.db`, `pushg3.db`, `cg.db` |
+| 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同 |
 
 ## 未闭环
 
@@ -158,9 +168,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 定制摘要压缩轮 | 未完整复原 |
 | 会话 token 派生/type 6-7 | 未完整复原 |
 | Tiny 加密 blob | 未离线闭环 |
-| 所有 token header 映射 | 未全部确认 |
-| note publish gateway | 未确认 |
-| `ITokenReqParam` 字段名 | 类定义缺失 |
-| native 风控完整端点/payload | 未完整闭环 |
+| `user_token`/`device_password` 和 native 剩余 token header 映射 | 未全部确认 |
+| XHS native 风控完整 URL/payload | 部分闭环；URL 片段运行时拼接 |
 
 所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。
