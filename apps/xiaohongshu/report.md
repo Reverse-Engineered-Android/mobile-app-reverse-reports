@@ -9,18 +9,18 @@
 | minSdk / targetSdk | `21` / `35` |
 | XAPK SHA-256 | `42033a369835209738ee5b4b1ad6553e6289cac09fee8559fbf4286c9d490bbd` |
 | base APK SHA-256 | `0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c` |
-| 存储对照 | 另一设备的 `9.47.0` 只读私有数据快照 |
+| 存储对照 | `9.47.0` 历史只读快照 + 对照主机当前 `9.48.0` 同步副本 |
 
-9.37.0 的网络、代码格式和 native 签名结论来自 APK 静态逆向。9.47.0 快照只用于验证本地数据库格式、解密链路和数据类别，不能反推 9.37.0 当时实际保存了哪些业务内容。全程未登录真实账号、未发送业务请求、未修改对照设备数据。
+9.37.0 的网络、代码格式和 native 签名结论来自 APK 静态逆向。9.47.0 历史快照和 2026-09-30 只读复核的 9.48.0 同步副本只用于验证本地数据库格式、解密链路和数据类别，不能反推 9.37.0 当时实际保存了哪些业务内容。全程未登录真实账号、未发送业务请求、未修改对照设备数据。
 
 ## 总体结论
 
 1. 主业务走 HTTPS/JSON 或表单到 `edith.xiaohongshu.com`，推荐、搜索、设备画像、动态资源和对象存储使用独立域名或 CDN。接口响应通常封装为 `{code, success, msg, data}`。
 2. 每个请求叠加公共参数、登录态、请求摘要和设备标识。Shield 与 Tiny 是两套 native 请求保护；hera 路径可同时出现两套签名。
-3. 登录响应返回 `session`、`secure_session`、`user_token`、`userid`、`device_password` 等状态；普通请求至少在 `xy-common-params` 中携带 `id_token`。具体 token 到各请求头的完整映射部分位于混淆/native 路径，报告不作猜测。
-4. 图片/视频从对象存储凭证换取临时授权后上传，默认分片 1 MiB；下载包括业务图片视频、前端资源、广告素材、DSL 模板和插件。快照中未发现完整笔记正文或私信正文。
+3. 登录响应返回 `session`、`secure_session`、`user_token`、`userid`、`device_password` 等状态。普通 API 的 `xy-common-params.sid` 直接来自规范化 session（`session.<sessionNum>`），`id_token` 来自当前 `UserInfo`；Tiny 另写 `x-legacy-sid`。`user_token`/`device_password` 的其他使用点属于业务或设备绑定流程。
+4. 图片/视频从对象存储凭证换取临时授权后上传，默认分片 1 MiB；下载包括业务图片视频、前端资源、广告素材、DSL 模板和插件。9.47 历史快照中未发现完整笔记正文或私信正文；当前同步副本的行数会随使用继续增长。
 5. 联系人上传只筛选并归一化中国大陆 11 位手机号和显示名，按 300 条分页，并进行应用绑定的 AES-CBC/Base64 加密。位置上传接口仅传经纬度，但调用点属于开发/诊断组件，不能据此断言普通用户每次启动都上传位置。
-6. 本地存储混合使用明文 SQLite、WCDB/SQLCipher 加密 SQLite、MMKV/Preferences、Java serialization 和 gzip。9.47 快照可重建 9 个加密 DB 和读取 17 个明文 DB。
+6. 本地存储混合使用明文 SQLite、WCDB/SQLCipher 加密 SQLite、MMKV/Preferences、Java serialization 和 gzip。9.47 历史快照可重建 9 个加密 DB 和读取 17 个明文 DB；当前 9.48 同步副本复核了相同格式和 schema，但业务行数已增长。
 7. 风控是纵深体系：请求签名、设备/环境指纹、完整性检查、JS/native 风控上报、账号风险接口、验证码、人脸核身和第三方推送 SDK 策略共同工作。
 
 ## 主要交互流程
@@ -50,10 +50,10 @@
 
 发布媒体
   -> UploadConfig(filePaths, contentType, tokenConfig, multipart, retry, EXIF)
-  -> 获取对象存储 token/permit
+  -> filename/quick-upload-check -> upload permit -> 对象存储 token/permit
   -> Qiniu/Robuster 上传文件或字节，默认 1 MiB chunk
   -> 返回 fileId/videoId/staticUrl/previewUrl
-  -> 业务端使用 fileIds 创建后续内容
+  -> `POST /api/sns/v2/note` 以 `common` + `image_info`/`video_info` 创建；`PUT` 同路径编辑
 ```
 
 ### 风控响应
@@ -79,7 +79,7 @@
 | 对象上传 | 临时 secret/token + fileId；文件或 1 MiB 分片 |
 | 本地风险值 | AES-CBC/PKCS7 + 标记 + Base64，或 RSA 包装 AES key/IV |
 
-详细字段、端点、认证边界和未知项见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md)。
+详细字段、端点、认证边界和剩余密码学未知项见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md) 和 [algorithm.md](algorithm.md)。
 
 ## 风控机制概览
 

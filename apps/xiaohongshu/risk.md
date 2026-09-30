@@ -114,7 +114,7 @@ request metrics -> business interceptor -> xy-common-params
 | 干预配置 | `/api/sns/v1/account/intervention` |
 | 自助解限 | `/api/security/antispam/v1/restriction/self-resolve` |
 
-响应可包含风险标题、说明、deeplink、降级标记、异常账号摘要和干预 UI 配置。
+验证码入口为 `GET api/sns/v1/system_service/captcha_link`。自助解限响应包含 `antispamVerifyCtrlResp`, `complaintUrl`, `resolveResult`, `verifyUuid`。其余响应可包含风险标题、说明、deeplink、降级标记、异常账号摘要和干预 UI 配置。
 
 ## 8. 挑战与核身
 
@@ -122,6 +122,7 @@ request metrics -> business interceptor -> xy-common-params
 - `ValidateActivity` 加载 H5 验证码或风险说明。
 - 实名场景使用腾讯慧眼 WBCF、turingcam、TuringV2、优图活体。
 - native 工具包含 SM2 加密封装，用于核身数据保护。
+- `libturingmfa` 使用腾讯 WUP/Tars 二进制协议，Java 明文默认上报地址为 `https://tdid.m.qq.com/tmf`，服务返回/协同 DeviceToken。
 - 海外支付场景使用 Alipay/Antom 收银台安全组件，包含设备支付 token 与 securityCode。
 
 这些组件面向高风险或高敏场景，不代表所有普通浏览请求都会触发。
