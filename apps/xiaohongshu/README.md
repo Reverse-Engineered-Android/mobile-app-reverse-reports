@@ -19,5 +19,6 @@
 - [风控机制](risk.md)
 - [逆向证据](evidence.md)
 - [算法边界](algorithm.md)
+- [分析完成度矩阵](completeness.md)
 
 base APK SHA-256：`0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c`。

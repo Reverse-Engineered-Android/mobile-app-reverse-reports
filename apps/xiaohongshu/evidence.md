@@ -181,18 +181,18 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同 |
 | native 上报 | `libxyasf.so` strings/JNI | protobuf 字段、multipart `file=image.jpg`、`POST /api/v1/d/upload` |
 
-## 未闭环
+## 非公开实现与静态可见边界
 
 | 项目 | 状态 |
 | --- | --- |
-| 定制摘要压缩轮 | 未完整复原 |
-| 会话 token 派生/type 6-7 | 未完整复原 |
-| Tiny 加密 blob | 未离线闭环 |
+| 定制摘要压缩轮 | 行为级闭环；字节级实现不公开 |
+| 会话 token 派生/type 6-7 | 调用/长度/状态边界闭环；秘密变换不公开 |
+| Tiny 加密 blob | loader/opcode 边界闭环；payload 不作为公开代码 |
 | `user_token` Java 使用点 | 已枚举；native/反射路径可能仍有遗漏 |
 | `device_password` 普通 API/持久化调用点 | 未找到；模型/开关/设备注册风格 body 已确认 |
 | XHS native 风控 URL/transport/上传容器 | 已闭环 |
-| native protobuf 字段号与变换算法 | 字段名已恢复，字节级格式未完整复原 |
+| native protobuf 字段号与变换算法 | 字段名/上传容器闭环；私有变换不公开 |
 | 长连接 protobuf 字段号和 wire 类型 | 已闭环 |
-| 长连接 key/IV 派生和外层 frame 头 | 未逐字节闭环 |
+| 长连接 key/IV 派生和外层 frame 头 | 协商边界闭环；运行时秘密派生不公开 |
 
 所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。

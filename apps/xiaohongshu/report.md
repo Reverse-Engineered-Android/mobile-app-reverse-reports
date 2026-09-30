@@ -91,7 +91,7 @@ LongLinkProxy/AIDL -> libxhslonglink.so -> Tencent Mars STN persistent TCP
 | 对象上传 | 临时 secret/token + fileId；文件或 1 MiB 分片 |
 | 本地风险值 | AES-CBC/PKCS7 + 标记 + Base64，或 RSA 包装 AES key/IV |
 
-详细字段、端点、认证边界和剩余密码学未知项见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md) 和 [algorithm.md](algorithm.md)。
+详细字段、端点、认证边界和公开实现边界见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md)、[algorithm.md](algorithm.md) 和 [completeness.md](completeness.md)。
 
 ## 风控机制概览
 
@@ -102,4 +102,4 @@ LongLinkProxy/AIDL -> libxhslonglink.so -> Tencent Mars STN persistent TCP
 - 验证层：Walify、H5 验证码、人脸核身/活体、SM2 封装和支付安全组件。
 - 本地与第三方：Getui/GTC/GBD 设备维度缓存、推送状态和远程采集策略。
 
-详见 [risk.md](risk.md)。对外报告不包含真实设备 ID、账号 ID、token、密钥、坐标、联系方式或请求样本。
+详见 [risk.md](risk.md) 和 [completeness.md](completeness.md)。对外报告不包含真实设备 ID、账号 ID、token、密钥、坐标、联系方式或请求样本；公开工具不包含未解释的加密实现。
