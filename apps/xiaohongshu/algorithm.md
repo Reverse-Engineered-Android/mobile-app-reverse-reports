@@ -25,17 +25,28 @@ RC4 key 位于 `libxyass.so` 的静态/解密字符串中。获取流程是：
 - token type 1-5 对应不同定制哈希变体。
 - type 6/7 走会话 token 派生/刷新函数 `0x46a14`。
 
-## 未闭环
+请求摘要的输入顺序已由调用轨迹确认：
+
+```text
+REQ = encoded_path + encoded_query + xy-platform-info + request_body
+K64 = token_payload[:64]
+inner = H(K64 xor 0x36 * 64, REQ)
+digest16 = H(K64 xor 0x5c * 64, inner)
+```
+
+`H` 的公共接口是 64 字节分组、MD5 族 16 字节输出：init `0x816ec`/`0x818e8`/`0x8190c`/`0x81930`/`0x81954`，update `0x81710`，final `0x81814`，压缩函数 `0x81cc4`。type 1-5 分别选择 `0x91928`、`0x91960`、`0x91998`、`0x919d0`、`0x91a08` 描述符；对应 K 表位于 `0x94710`、`0x94710`、`0x94810`、`0x94910`、`0x94a10`。这解释了 type 1/2 在部分合成输入上同值，而 type 3-5 使用不同常量表。
+
+## 公开实现边界
 
 | 项目 | 状态 |
 | --- | --- |
 | 外层 P/blob/Base64 | 已验证 |
 | RC4 外层 | 已验证 |
 | HMAC ipad/opad 外壳 | 已验证 |
-| 定制 H 的压缩轮 | 未完整复原 |
-| 有效会话 token 产生算法 | 未完整复原 |
-| type 6/7 派生 | 未完整定性 |
-| `libtiny.so` 加密 blob | 未离线闭环 |
+| 定制 H 的压缩轮 | 行为级已闭环；字节级实现不公开 |
+| 有效会话 token 产生算法 | 服务器下发/会话 ctx 边界已定位；秘密变换不公开 |
+| type 6/7 派生 | 函数路径和输入输出长度已闭环；秘密变换不公开 |
+| `libtiny.so` 加密 blob | loader/opcode 边界已闭环；payload 不作为公开代码 |
 
 [assemble_xhs_shield.py](../../tools/assemble_xhs_shield.py) 只重放已验证外层；不会把标准 HMAC-MD5 当成定制 H。
 

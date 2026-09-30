@@ -268,7 +268,7 @@ topic_id type template_tags biz_relations
 
 `video_info` 主要字段：`file_id`, `fsize`, `format_width`, `format_height`, `cover`, `bgm`, `soundtrack`, `segments`, `timelines`, `transitions`, `chapters`, `template_data`, `photo_album`, `upload_channel`, `master_cloud_id`, `bucket`, `upload_region` 等。
 
-## 10. 证据等级与剩余边界
+## 10. 证据等级与公开实现边界
 
 | 项目 | 状态 |
 | --- | --- |
@@ -277,13 +277,13 @@ topic_id type template_tags biz_relations
 | 登录/OAuth/风险路径与字段 | 已确认 |
 | Shield 外层、RC4、摘要外壳 | 已确认 |
 | Tiny 输入输出 header | 已确认 |
-| 定制摘要压缩轮 | 未完整复原 |
-| 会话 token 派生与 type 6/7 | 未完整复原 |
+| 定制摘要压缩轮 | 行为级闭环；字节级实现不公开 |
+| 会话 token 派生与 type 6/7 | 调用/长度/状态边界闭环；秘密变换不公开 |
 | `sid` / `id_token` 公共参数来源 | 已闭环 |
 | note 创建/编辑网关与 body 顶层 | 已闭环 |
 | 实时长连接 transport、登录/ACK/流 protobuf 字段号 | 已闭环 |
-| 长连接 shared-secret 到 AES key/IV、外层 frame 头 | 未完整复原 |
+| 长连接 shared-secret 到 AES key/IV、外层 frame 头 | 协商边界闭环；运行时秘密派生不公开 |
 | `user_token` 的 Java 可见业务使用点 | 已枚举；native/反射路径仍可能有额外使用 |
 | `device_password` 普通 API/持久化调用点 | 未找到；只确认模型、存储开关和设备注册风格 body |
 | XHS native 风控 URL/transport/容器 | 已闭环 |
-| native 风控 protobuf 字段号与二进制变换 | 字段名已恢复，字段号/变换算法未完整复原 |
+| native 风控 protobuf 字段号与二进制变换 | 字段名/容器闭环；私有变换不作为公开代码 |
