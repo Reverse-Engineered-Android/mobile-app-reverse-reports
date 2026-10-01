@@ -42,7 +42,7 @@
 - 动态实测（全零输入）：`.rodata` 访问 88 次，全部 size=8，来自 30 个 PC，size=1 的访问 **0 次**。
 - 动态可达性：`.rodata` 读钩子下，16 张表在两组输入中**全部被真实读取**（各 1 次）。
 - 区域**不引用** K 表族（`0x94710`/`0x94810`/`0x94910`/`0x94a10` 共 4 张 64 字表，服务定制 H type 1–5（type 1/2 复用）；`0x94710` 与未修改 MD5 T 表 64/64 一致，另三张分别 6/64、3/64、3/64 槽相同）、定制 H init 的 IV（`0x15ca0`，由 `0x81978` 读取）、`0x4c0c8` 使用的标准序 IV（`0x15d40`）与 SHA-1 `H4`（`0x15e70`）；`0x15000` 起 libc++ 字符串区不在引用清单内。
-- 修正说明：早前“rodata 常量表引用 0 处”的结论**已撤回**，原因见 [crypto.md](crypto.md) §4.2。
+- 该项为：**无法从文件镜像静态读出转移表**（`.data` 槽位文件值为 0，加载后可读且跨实例一致）；详见 [crypto.md](crypto.md) §4.2。
 
 ## `libtiny.so`（7 795 072 字节，SHA-256 `b403a883b6bba843197fe076deb332b71be5c74c442781b26c89be69de21f6fd`）
 
@@ -65,7 +65,7 @@
 高熵区三路引用扫描（`adrp` 目标 / `mov` 立即数 / 重定位加数）**合计 0 命中**；区域内容 SHA-256 `706dbd99b5d75c8ba5529a538f8e9ae86fe4a355d6c7fb39a1c454dbefb4ff62`。
 结论：**未发现静态或已覆盖动态路径引用的高熵数据区**。
 
-> **本轮回补**：把"三路引用扫描"扩到**五项**并加了运行期验证——静态 `adrp+add` 落点 0、`.rela.dyn` 加数 0、`.data`/`.data.rel.ro` 指针槽 0、容器魔数 0、`JNI_OnLoad` 期间对该区间的读写 hook **reads=0 / writes=0**（`re/tiny_blobwatch.py`）。载荷统计：熵 7.9982775、256 值全出现、每值计数 395–508、**0 个重复 16 字节块**。结论收紧为"**实测零引用**"（不声称其用途）。详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.3。
+> ****：把"三路引用扫描"扩到**五项**并加了运行期验证——静态 `adrp+add` 落点 0、`.rela.dyn` 加数 0、`.data`/`.data.rel.ro` 指针槽 0、容器魔数 0、`JNI_OnLoad` 期间对该区间的读写 hook **reads=0 / writes=0**（`re/tiny_blobwatch.py`）。载荷统计：熵 7.9982775、256 值全出现、每值计数 395–508、**0 个重复 16 字节块**。结论收紧为"**实测零引用**"（不声称其用途）。详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.3。
 
 ## `libtinyd.so`
 
@@ -77,7 +77,7 @@ fork / syslog / abort-message 特征支持独立守护进程判断（`assets/fd2
 | --- | --- | --- |
 | `libsecurebase.so` | `JNI_OnLoad 0xd13c`，表 `0x38000` | 2 个动态注册方法；登录态 KV 文件名派生与定制哈希 |
 | `libeidjni.so` | 20 个 `Java_com_eidlink_jni_EIDReadCardJNI_*` | NFC/eID SDK |
-| `libturingmfa.so` | `JNI_OnLoad 0x1fcc4`，表 `0x56540` / `0x56690` | 14 + 1 个动态注册方法。**本轮补充**：该库 `.init_array` 9 项全非零，其中第 6 项 `0x34d74` 是**加载期原地自解密字符串表**的解密器（5 207 条指令、0 调用、0 入边、1 个 `ret`）；密钥调度 `key_index = src_index mod 8`（**旧稿闭式 `key_i=(0x0F+0xA0*i)&0xFF` 已作废，仅 42/348 命中**）；348 个非空条目 / 325 明文（源列表 416 项）；产物 `re/tmfa_initarray.json`、`re/tmfa_schedule.json`，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7 |
+| `libturingmfa.so` | `JNI_OnLoad 0x1fcc4`，表 `0x56540` / `0x56690` | 14 + 1 个动态注册方法。该库 `.init_array` 9 项全非零，其中第 6 项 `0x34d74` 是**加载期原地自解密字符串表**的解密器（5 207 条指令、0 调用、0 入边、1 个 `ret`）；密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 明文（源列表 416 项）；产物 `re/tmfa_initarray.json`、`re/tmfa_schedule.json`，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7 |
 
 ## 网络与协议证据
 

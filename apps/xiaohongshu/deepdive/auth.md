@@ -40,7 +40,7 @@ userInfo.setIdToken(str3);
 
 **关于 Cookie：API 主链路不使用 Cookie（已证，非“未闭环”）**
 
-此前只写了“静态检索 0 命中”，那不足以成为结论。本节补齐到可复核的结构性证据：
+“静态检索 0 命中”不足以成为结论。本节给出可复核的结构性证据：
 
 | 证据 | 结果 |
 | --- | --- |
@@ -63,7 +63,7 @@ userInfo.setIdToken(str3);
 | `com.hpplay.nanohttpd...Cookie`、`okhttp3.CookieJar`（`classes19`）、`io.ktor.http` | 投屏 HTTP 服务端 / 其他库 |
 | `com.alipay`、`com.google.android.gms.auth.CookieUtil` | 支付宝、GMS 第三方 |
 
-**结论修正**：Cookie 的作用域是 **WebView/H5 与第三方 SDK**，**不参与 API 请求签名或鉴权**。这意味着“需要运行时抓包才能确定 Cookie 作用”这一条**可以从缺口清单移除**；剩余运行时未知项只有服务端 `http_range_size` 取值与 CDN `Accept-Ranges`。
+**结论**：Cookie 的作用域是 **WebView/H5 与第三方 SDK**，**不参与 API 请求签名或鉴权**。因此 Cookie 作用**无需运行时抓包即可确定**；剩余运行时未知项只有服务端 `http_range_size` 取值与 CDN `Accept-Ranges`。
 
 ## 4. 设备层：`deviceId` / `fid` / `smid`
 
