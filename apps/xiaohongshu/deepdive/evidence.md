@@ -129,8 +129,13 @@ fork / syslog / abort-message 特征支持独立守护进程判断（`assets/fd2
 | `xyass_blkchain.py` | 间接分支目标普查 | 337 个目标、283–2861 次 `blr` |
 | `xyass_type6_character.py` | 确定性 / 路径 / 输出空间统计 | 全输入确定性成立 |
 | `xyass_avalanche.py` | 单比特扩散统计 | 见 [crypto.md](crypto.md) §4.7 |
-| `xyass_cfg_saturate.py` | CFF 转移关系饱和实测（逐 site 记录实际目标） | **404 site / 750 边 / 409 目标**；最后 500 组 +1 边、+0 site（饱和） |
-| `xyass_cfg_defuse.py` | 递归 def-use 解析每个 `br`/`blr` 目标来源（重写） | 504 分片中**可达 404 个全部**为 `add Xd,base,wOff`；**0 个静态常量目标** |
+| `xyass_cfg_saturate_full.py` | CFF 转移图饱和实测（3 000 组、10 个输入族） | **412 site / 767 边 / 417 目标**；末 1 000 组 +0 边、+0 site（饱和） |
+| `xyass_sel_lastwriter.py` | 执行序最后写者追踪，定每个 site 的生产者 | 每 site 生产者**唯一**（362 单 / 0 多） |
+| `xyass_sel_classify.py` | 选择层按操作数变化性分类 | **FIXED 262 / BASE 69 / DATA 18**（60 组输入） |
+| `xyass_sel_predicate.py` | 18 个 DATA site 的判定链提取 | 18/18 为二路分支，16 带显式 `tst`/`cmp`，目标均为立即数 |
+| `xyass_inertbits.py` | payload/key 位级影响穷举（×4 基准） | payload **16 个结构性惰性位**（偏移 3、7 的上位）；key 0 个 |
+| `xyass_avalanche_fast.py` | 无钩子 oracle 的扩散统计 | payload 穷举 512 位：均值 61.52/128、区间 **0–82** |
+| `xyass_cfg_defuse.py` | 递归 def-use 解析每个 `br`/`blr` 目标来源（重写） | 504 个 site 中可达者全为 `add Xd,base,wOff`；**0 个静态常量目标** |
 | `xyass_cfg_tables.py` | `.data` 槽位取值 + 跨实例确定性 | 16 槽位跨 3 次全新实例逐字节一致 |
 | `xyass_cfg_memstatic.py` | 区域内访存值与文件镜像比对 | 表数据**与文件不同**（`.data` 槽位文件值为 0），静态不可读 |
 | `xyass_cfg_siteindex.py` | 逐 site 目标集合与出度 | 110 个 site 出度 ≥ 2，最大 16 |
