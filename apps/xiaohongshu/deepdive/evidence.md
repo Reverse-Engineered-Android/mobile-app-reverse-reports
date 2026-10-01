@@ -50,7 +50,7 @@
 | ---: | --- | --- |
 | `0x18afd8` | `JNI_OnLoad` | 已验证 |
 | `0x15e9f4` | 模拟器捕获的 native handler | 已验证 |
-| `0x16b08c` / `0x17cdb0` | opcode 二叉比较点 | 已验证 |
+| `0x16b08c` / `0x17cdb0` | opcode `0x96f7fcac` 的**两个 CFF 重复比较块**（非二叉比较） | 已验证（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §4）|
 | `.data 0x754AC0`-`0x7701C0` | 112 384 字节高熵区，熵 7.9982945 | 已验证（见下） |
 | `0xf7b80` | 普通字符串常量拷贝（非解密） | 已验证 |
 | `0x4948A8` | `adrp/add/ldr` 序列 | 已验证 |

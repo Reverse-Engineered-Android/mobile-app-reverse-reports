@@ -23,6 +23,7 @@
 - [下载链路与 Range 范围](download.md)
 - [加密代码覆盖矩阵](crypto.md)
 - [风控组件清单](risk-controls.md)
+- [全应用加密普查与 libtiny.so 深挖](tiny-and-app-sweep.md)
 - [算法深挖](algorithm.md)
 - [深挖证据索引](evidence.md)
 - [需求对照审计](audit.md)
@@ -38,6 +39,7 @@
 | 算法边界 | [algorithm.md](../algorithm.md) | [algorithm.md](algorithm.md)、[crypto.md](crypto.md) |
 | 证据 | [evidence.md](../evidence.md) | [evidence.md](evidence.md) |
 | 完成度 | [completeness.md](../completeness.md) | [audit.md](audit.md) |
+| 全应用 native 加密普查 | —（上层未覆盖） | [tiny-and-app-sweep.md](tiny-and-app-sweep.md) |
 
 ## 口径差异（需注意）
 
@@ -47,5 +49,6 @@
 - **本地存储**以上层为准：本目录未做存储分析。
 - **Mars STN / protobuf**以上层为准：本目录未覆盖长连接 wire 格式。
 - 上层 `algorithm.md` 中“type 6/7 秘密变换不公开”是本目录 `crypto.md` 明确**不予采用**的表述——该变换已被定性并固化向量，只是覆盖全部 CFF 路径的统一闭式尚未产出（原因见 `crypto.md` §4.6）。
+- **全应用普查**以本目录为准：`tiny-and-app-sweep.md` 覆盖 164 个 arm64 `.so`（32 带加密 / 132 不带），上层未做此项。
 
 base APK SHA-256：`0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c`。

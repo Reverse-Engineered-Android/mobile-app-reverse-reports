@@ -101,6 +101,6 @@ vectors=3 mismatches=0
 | type 6/7 尺寸、常量集、rodata 表清单、块结构、状态机、跳转表、依赖矩阵 | **已定性** |
 | type 6/7 逻辑门级统一闭式 | 未完成（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift） |
 | `libtiny.so` 高熵区 | **已证伪为“被引用的加密 blob”**：三路引用扫描 0 命中 |
-| Tiny opcode → 算法语义 | 未完成（VM 级 lift；比较点 `0x16b08c` / `0x17cdb0` 已定位） |
+| Tiny opcode → 算法语义 | 未完成（需逐块 lift；**31 个操作码全集 + 61 个比较块已枚举**，与动态执行集合 100% 吻合，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5） |
 
 [assemble_xhs_shield.py](../../../tools/assemble_xhs_shield.py) 只重放已验证外层；不会把标准 HMAC-MD5 当成定制 H。
