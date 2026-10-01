@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | 请求签名 | `libxyass.so`（Shield） | 全 native OkHttp 拦截器，生成 `shield` / `xy-platform-info` | 算法已恢复（见 crypto.md） |
 | 请求签名 | `libtiny.so`（Tiny） | opcode 引擎生成 `x-n0/x-o9/x-p0/x-r4/x-r4o` | 结构已证实 |
-| 设备指纹 | `libxyasf.so`（xya FP SDK） | 70+ 采集点，自行 HTTP 上报 | 结构已证实 |
+| 设备指纹 | `libxyasf.so`（xya FP SDK） | 82 个 JNI 入口、51 个采集字段，自行 HTTP 上报 | **已恢复**（见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)） |
 | JS 指纹 | 隐藏 WebView + 服务端下发 JS | 独立进程跑风控 JS | 已验证（硬编码密钥已定位） |
 | 人机验证 | Walify（RN）+ ValidateActivity（H5） | 命中风控后的验证 | 已验证（触发链 + URL 来源边界） |
 | 人脸核身 | 腾讯慧眼 WBCF + turingcam + 优图 + SM2 | 实名场景 | 结构已证实 |
@@ -43,19 +43,38 @@
 
 ## 3. 设备指纹：`libxyasf.so` 与 Java 调度层
 
+本节为摘要。完整逐条清单见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)。
+
 - 调度中枢 `pt.a`（混淆名，classes5.dex）；辅助 `qt.a`（"virposd"，uid→`u0_a%d` 换算，解析 `/proc` 判断运行身份）。
-- 采集点 70+，root/模拟器/Xposed/VirtualApp/ptrace 检测均在 native 完成，结果自行 HTTP 上报。
+- 采集面**已逐条列出**：79 个静态 JNI 导出 + 3 个 `RegisterNatives` 动态方法，落到 8 个 protobuf 子消息、**51 个字段**（字段编号全部取得）。
+- root/模拟器/Xposed/VirtualApp/ptrace 检测均在 native 完成，结果经 `POST https://as.xiaohongshu.com/api/v1/d/upload` 上报。
+- 该库**未做字符串加密**（`.rodata` 可打印字符 60.9%、熵 5.29），因此清单来自 ELF 符号表 + `.rodata` + 反汇编的静态导出，不需要 VM 级 lift。
+
+native 侧检测实现与判定：
+
+| 方法 | 地址 | 判定 |
+| --- | --- | --- |
+| `isRoot` | `0x320b4` | 遍历 14 项 `char[14][100]` 表（`0x793cd`，步长 `0x64`），拼 `"su"` 后 `fopen`；成功即 root |
+| `isPtrace` | `0x32360` → `0x19498` | `getpid` → `sprintf("proc/%d/status")` → `fgets` 逐行 `strncmp("TracerPid",9)` 后 `%lld` 解析 |
+| `mapsInfo` | `0x32174` | 调 `0x19020` 取 3 字节结构，`sprintf("%d%d%d", b[2],b[1],b[0])` 逆序回传 |
+| `getProcessName` | `0x31f80` | 读取进程名，参与模拟器判定 |
+
+`isRoot` 的 14 条 su 路径：`/data/local/`、`/data/local/bin/`、`/data/local/xbin/`、`/sbin/`、`/su/bin/`、`/system/bin/`、`/system/bin/.ext/`、`/system/bin/failsafe/`、`/system/sd/xbin/`、`/system/usr/we-need-root/`、`/system/xbin/`、`/cache/`、`/data/`、`/dev/`。
+
+对抗面边界：全库 `prctl` 仅 1 处（`PR_SET_NAME`=`"fpthread"`），3 处 `syscall` 全为分配器内 `futex`；**无** Frida 字符串扫描、无 `PTRACE_TRACEME` 自陷、无 `dlopen`/`dlsym`。
 
 Java 层可见的检测点（硬检测主要在 native）：
 
 | 检测 | 实现 | 证据 |
 | --- | --- | --- |
-| Xposed | `o1b.c`（XposedChecker）用系统 ClassLoader 加载 `de.robv.android.xposed.XposedHelpers` / `XposedBridge`，类名以 byte 数组藏在 `a.a.a.a.a.c` | Java 源码无调用方 ⇒ native 反射调用 |
+| Xposed | `o1b.c`（XposedChecker）用系统 ClassLoader 加载 `de.robv.android.xposed.XposedHelpers` / `XposedBridge`，类名以 byte 数组藏在 `a.a.a.a.a.c` | 调用方**已定位**：native 导出 `existXposed` @ `0x318f8` 经 `FindClass`+`GetMethodID("existXposed","()Z")` 反射调用 `com.xingin.u.p.c` |
 | Root 路径 | `io.sentry.core.k0`（定制 Sentry）扫 11 个 su 路径写入崩溃事件 `isRooted`；`aqc.l` 另有 8 路径数组（含 Superuser.apk / daemonsu） | 源码 |
 | 多开/多用户 | `os.r0`（"MultiUserManager"）反射 `UserHandle.myUserId()`，塞入推送 extras `sysUserId` 上报 | 源码 |
 | Frida / SandHook / LSPosed / Zygisk | Java 层 **0 命中** | 全部在 native |
 
-**未闭环**：native 侧 70+ 采集点的逐条清单（需对 `libxyasf.so` 做与 xyass 同级别的 lift，本次未做）。
+**该项已闭环**：native 侧采集点的逐条清单见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)。此前记为"需与 xyass 同级别 lift"的预期不成立——该库未做字符串加密，静态即可读出全部符号与字段名。
+
+**仍余边界**：8 个子消息在**父消息**中的字段编号走运行时计算的 type-info 表（分发循环 @ `0x33990` 以 `ldr w10,[x25,x10]` 从类型描述符间接取号），编号不在静态数据里；子消息内部 51 个字段编号已全部取得。
 
 ## 4. JS 指纹子系统
 
@@ -68,7 +87,7 @@ Java 层可见的检测点（硬检测主要在 native）：
    - `writeData(str)` → 写 SP `jscomponents/jscomponentskey`。
 4. JobService 版置 `jsfscapability` 标记。
 
-硬编码密钥在 `p.a` / `pt.c` 重复出现，长为 16 字节（AES-128），IV 亦为 16 字节；两类敏感字符串（`AES/CBC/PKCS5Padding`、SP 键名）均以 byte 数组藏在 `a.a.a.a.a.c`。
+硬编码密钥在 `p.a` / `pt.c` 重复出现，长为 16 字节（AES-128），IV 亦为 16 字节；两类敏感字符串（`AES/CBC/PKCS5Padding`、SP 键名）均以 byte 数组藏在 `a.a.a.a.a.c`。**读写两侧与完整密钥/IV 定位过程见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md) §6.3**——解密侧即 native 导出 `getJsFingerPrint` @ `0x31d1c` 反射调用的 `com.xingin.u.p.c.getJsFingerprint()`。
 
 **边界**：这些是**样本内硬编码密钥**，属于混淆/本地存储保护，不是设备绑定密钥。本文不复现密钥取值。
 
@@ -132,7 +151,7 @@ fork / syslog / abort-message 特征支持“独立守护进程”判断：主�
 | 项 | 未闭环的具体环节 | 原因 |
 | --- | --- | --- |
 | Tiny opcode 语义 | int32 操作码 → 算法映射 | 引擎为独立 VM，需逐 opcode lift；操作码全集已枚举（31 个） |
-| `libxyasf.so` 采集点 | 70+ 采集点的逐条字段与判定 | 需与 xyass 同级别 lift |
+| `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | `libtinyd.so` IPC | 与主进程的通道协议 | 未做动态跟踪 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |

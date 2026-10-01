@@ -50,7 +50,7 @@
 
 **加密**：shield 外层 = RC4（13 字节静态 key）+ 16 字节头 + Base64（逐字节验证）；摘要 = 定制 MD5 族 HMAC（IV 逆序存储、K16/K19/K29 篡改、K39/40 与 K41/42 互换、第 63 轮累加器与 c63 特殊处理），3 组向量 0 mismatch；type 6/7 会话变换已固化接口、字节级依赖矩阵、504 处间接跳转与 8 项跳转表、16 张 rodata 常量向量表（含动态可达性）、8 组确定性向量与扩散统计。**覆盖全部 CFF 路径的统一逻辑门级闭式尚未产出**，单 trace lift 经实测不具泛化性（4/4 mismatch），故不作为参考实现。
 
-**风控**：Shield / Tiny / 设备指纹 / JS 指纹（AES-128 硬编码 key 已定位）/ 两套人机验证 / 人脸核身 / 支付风控 / 端智能 / 伴随守护，共 9 类组件，逐条给出证据等级与未闭环环节。
+**风控**：Shield / Tiny / 设备指纹（82 个 JNI 入口 + 51 个采集字段逐条恢复）/ JS 指纹（AES-128 硬编码 key 已定位）/ 两套人机验证 / 人脸核身 / 支付风控 / 端智能 / 伴随守护，共 9 类组件，逐条给出证据等级与未闭环环节。
 
 ## 关键纠正（相对早期结论）
 
@@ -72,6 +72,8 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出，主要四类：Tiny opcode→语义映射（操作码全集 31 个已枚举，仍需逐块 lift）、`libxyasf.so` 70+ 采集点逐条清单、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、以及运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+未闭环项已在各文档显式列出，主要四类：Tiny opcode→语义映射（操作码全集 31 个已枚举，仍需逐块 lift）、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+
+设备指纹一项本轮已由"结构已证实"升为**已恢复**，见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)：该库未做字符串加密，采集面可静态穷举，无需 VM 级 lift。
 
 另：全应用 164 个 arm64 `.so` 的 native 加密普查已完成（32 带加密 / 132 不带），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)。

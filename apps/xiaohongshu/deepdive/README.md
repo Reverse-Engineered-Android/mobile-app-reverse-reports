@@ -12,6 +12,7 @@
 - 下载数据范围：Range 构造点与复位、206/`Content-Range` 解析、服务端可控字段、其他 Range 使用点。
 - 加密算法恢复：RC4 外层（逐字节验证）、定制 HMAC-H（含 64 轮调度，3 向量 0 mismatch）、`0x50010` type 6/7 变换（常量池、CFF、依赖矩阵、确定性向量）。
 - 风控组件清单与证据等级。
+- `libxyasf.so` 设备指纹：82 个 JNI 入口、8 个 protobuf 子消息 51 字段（含编号）、4 个 native 检测方法判定、`as.xiaohongshu.com` 上报端点与载荷封装、标准 MD5 核对。
 - 需求对照审计。
 
 ## 入口
@@ -24,6 +25,7 @@
 - [加密代码覆盖矩阵](crypto.md)
 - [风控组件清单](risk-controls.md)
 - [全应用加密普查与 libtiny.so 深挖](tiny-and-app-sweep.md)
+- [libxyasf.so 设备指纹深挖](xyasf-device-fingerprint.md)
 - [算法深挖](algorithm.md)
 - [深挖证据索引](evidence.md)
 - [需求对照审计](audit.md)

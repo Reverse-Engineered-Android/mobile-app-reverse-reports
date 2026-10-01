@@ -9,7 +9,7 @@
 | 3 | 认证机制 | **完成** | [auth.md](auth.md) | `id_token` 来源与传播、`sid`、设备字段、签名字段、接入点、`Bearer` 0 命中结论 |
 | 4 | 上传的具体数据范围 | **完成** | [upload.md](upload.md) | 上传数据清单、令牌字段、去重算法与判定、分块公式、云厂商分支、断点记录、MIME 表 |
 | 5 | 下载的具体数据范围 | **完成** | [download.md](download.md) | Range 构造点、总长解析、缓冲复位、服务端字段、各资源类别走向 |
-| 6 | 完整逆向所有风控代码 | **完成（含显式边界）** | [risk-controls.md](risk-controls.md) | 9 类组件逐条给出角色/证据/等级；§11 汇总 8 项未闭环环节 |
+| 6 | 完整逆向所有风控代码 | **完成（含显式边界）** | [risk-controls.md](risk-controls.md)、[xyasf-device-fingerprint.md](xyasf-device-fingerprint.md) | 9 类组件逐条给出角色/证据/等级；设备指纹 82 个 JNI 入口 + 51 个采集字段逐条恢复；§11 余 8 项边界 |
 | 7 | 不允许保留未分析清楚的加密代码 | **完成（含两项已声明的未产出物）** | [crypto.md](crypto.md)、[tiny-and-app-sweep.md](tiny-and-app-sweep.md) | 覆盖矩阵 12 项 + 1 项 rodata 常量池，无“未知算法/未解密 blob”条目；**全应用 164 个 `.so` 普查 32 带/132 不带，无未识别加密库**；未展开项是 VM 语义（Tiny opcode 逐块 lift）与 `0x50010` 统一闭式，均已定位到具体地址/原因 |
 
 ## 逐项说明
@@ -49,6 +49,11 @@
 已覆盖 9 类：Shield、Tiny、设备指纹、JS 指纹、Walify、ValidateActivity、人脸核身、支付风控、端智能、伴随守护（10 项，含两套验证）。
 
 逐条给出证据等级。§11 列出 8 项未闭环环节，均为需要 VM 级 lift、动态跟踪、闭源第三方或运行时抓包才能推进的部分，不是“没看”。
+
+**本轮闭环项的更新**：
+
+- `libxyasf.so`（设备指纹）由"结构已证实"升为**已恢复**。该库**未做字符串加密**（`.rodata` 可打印字符 60.9%、熵 5.29，79 个静态 JNI 导出名全部明文），因此原判"需与 xyass 同级别 lift"不成立。现给出：82 个 JNI 入口（79 静态 + 3 动态注册）、8 个 protobuf 子消息的 **51 个字段及编号**、4 个 native 检测方法（`isRoot`/`isPtrace`/`mapsInfo`/`getProcessName`）的完整判定逻辑、上报端点 `POST https://as.xiaohongshu.com/api/v1/d/upload` 与载荷封装（16 字节前缀 + 全量 XOR 0x70）、以及**标准 MD5** 的逐常量核对结论。
+- 残留边界收窄为一项：8 个子消息在**父消息**中的字段编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据。
 
 ### 7. 加密代码无“未分析清楚”
 
