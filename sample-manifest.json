@@ -76,6 +76,19 @@
           "sha256": "41f7dc1f720767fa78fa20dd13ea034b817bbf6ebd23dfd1324c647499c9c1ba"
         }
       ]
+    },
+    {
+      "app": "Pinduoduo",
+      "package": "com.xunmeng.pinduoduo",
+      "version_name": "8.26.0",
+      "version_code": 82600,
+      "files": [
+        {
+          "name": "base.apk",
+          "size": 26325735,
+          "sha256": "d57b1ebcd757207ad569233ec8d7cf663dd1acb69a2fde8915b58af0aa0d7c1c"
+        }
+      ]
     }
   ]
 }

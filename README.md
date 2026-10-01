@@ -1,6 +1,6 @@
 # Android App Reverse Reports
 
-本仓库公开四类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
+本仓库公开五类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
 
 ## 样本清单
 
@@ -10,6 +10,7 @@
 | 小红书 | `com.xingin.xhs` | `9.37.0` | `9370802` | shield 签名、CFF/WASM、设备风险组件 |
 | 支付宝 | `com.eg.android.AlipayGphone` | `12.12.30.8000` | `212310` | SQLCrypto/UnQLite、登录授权、在线/离线支付、设备风险 |
 | 微信 | `com.tencent.mm` | `8.0.68/8.0.78` | `3003/3180` | 数据库解密、登录/消息/支付协议、朋友圈/小程序缓存、设备风控 |
+| 拼多多 | `com.xunmeng.pinduoduo` | `8.26.0` | `82600` | anti-token/v1+v2 签名、登录 token 链、动态库分发、混淆闭包、22 个本地库 |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 
@@ -17,6 +18,7 @@
 - 小红书：[概览](apps/xiaohongshu/README.md)、[报告](apps/xiaohongshu/report.md)、[证据](apps/xiaohongshu/evidence.md)、[算法边界](apps/xiaohongshu/algorithm.md)
 - 支付宝：[概览](apps/alipay/README.md)、[报告](apps/alipay/report.md)、[逐库清单](apps/alipay/database-inventory.md)、[证据](apps/alipay/evidence.md)、[设备风险](apps/alipay/device-risk.md)
 - 微信：[概览](apps/wechat/README.md)、[主报告](apps/wechat/report.md)、[数据库清单](apps/wechat/database-inventory.md)、[协议](apps/wechat/protocol.md)、[风控](apps/wechat/risk-control.md)、[证据索引](apps/wechat/evidence.md)
+- 拼多多：[概览](apps/pinduoduo/README.md)、[报告](apps/pinduoduo/report.md)、[网络与协议](apps/pinduoduo/network.md)、[认证](apps/pinduoduo/auth.md)、[上传下载](apps/pinduoduo/transfer.md)、[风控](apps/pinduoduo/risk.md)、[混淆闭包](apps/pinduoduo/obfuscation.md)、[算法与 native](apps/pinduoduo/algorithm.md)、[本地存储](apps/pinduoduo/storage.md)、[证据](apps/pinduoduo/evidence.md)、[完成度](apps/pinduoduo/completeness.md)
 - 通用：[逆向方法](docs/methodology.md)、[证据标准](docs/evidence-standard.md)、[脱敏规则](SECURITY.md)
 
 ## 公开范围

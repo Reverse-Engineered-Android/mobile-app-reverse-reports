@@ -1,0 +1,214 @@
+# 逆向证据
+
+本文件给出可复核的标识、地址与命令。证据等级沿用 `docs/evidence-standard.md`：
+**已验证**（字节/哈希级）、**结构已证实**（调用链与字段）、**假说**（调用点归纳）。
+
+## 1. 样本标识
+
+| 项 | 值 | 等级 |
+| --- | --- | --- |
+| 包名 | `com.xunmeng.pinduoduo` | 已验证 |
+| versionName / versionCode | `8.26.0` / `82600` | 已验证 |
+| minSdk / targetSdk / compileSdk | `21` / `34` / `36` | 已验证 |
+| base.apk 大小 | 26,325,735 | 已验证 |
+| base.apk SHA-256 | `d57b1ebcd757207ad569233ec8d7cf663dd1acb69a2fde8915b58af0aa0d7c1c` | 已验证 |
+| ABI | `arm64-v8a`（单一 split） | 已验证 |
+| DEX | `classes.dex` … `classes6.dex` | 已验证 |
+| 可打印字符串总数 | 291,149 | 已验证 |
+| Application | `com.xunmeng.pinduoduo.app.PDDApplicationLike` | 已验证 |
+| 权限数 | 59（含 33 个第三方 launcher/推送自定义权限） | 已验证 |
+
+## 2. APK 自带 native 库
+
+| 库 | 大小 | SHA-256 前缀 |
+| --- | ---: | --- |
+| `libpdd_secure.so` | 1,912,832 | `9969a7dba6f8369c…` |
+| `libtronav.so` | 2,165,376 | `bc90148204f8eabd…` |
+| `libc++_shared.so` | 1,058,904 | `218ecc677aa79e19…` |
+| `liblegonative.so` | 505,752 | `aee516a1950f2155…` |
+| `libaudio_engine.so` | 350,128 | `a8c81d4750387203…` |
+| `libmarsxlog.so` | 128,832 | `8d58e7e7692064ea…` |
+| `libmmkv.so` | 128,784 | `cf9be69299923200…` |
+| `libgoldarch.so` | 120,488 | `f2b4bd77c20ea178…` |
+| `libpcrash_dumper.so` | 105,472 | `8b3f03979868222d…` |
+| `libbytehook.so` | 98,888 | `879dd6cad97bc19a…` |
+| `libyuv.so` | 96,160 | `e57c90b961a270df…` |
+| `libyoga.so` | 93,480 | `6b3b6afcb4e66c11…` |
+| `libpcrash.so` | 76,168 | `3318a4767eb0371e…` |
+| `libcmtreport.so` | 73,112 | `4e28193ed210e7db…` |
+| `libcrashAvoid.so` | 39,464 | `61a5c13d26359743…` |
+| `libtronkit.so` | 39,992 | `1ee2cfa57ee5350b…` |
+| `libpcrash_anr.so` | 30,624 | `069ea182484d3ec2…` |
+| `libxdl.so` | 13,776 | `ff0c3760cf9f2ddc…` |
+| `libCSoLoader.so` | 12,480 | `43f71edf07456d86…` |
+| `libdokodoor.so` | 9,992 | `aff449ea7574e6ef…` |
+| `libpdd_sa_hook.so` | 7,504 | `959740434edf6fda…` |
+| `libxlog_api.so` | 5,824 | `67df7492b2ff843a…` |
+
+## 3. assets 内嵌与运行时下载库
+
+三个 `.7z`（LZMA FORMAT_ALONE 压缩的 tar）解出的 ELF：
+
+| 库 | 大小 | SHA-256 前缀 |
+| --- | ---: | --- |
+| `libstatic-webp_1770901356715_fce07ac1….so` | 106,040 | `63c3043dad468777…` |
+| `libtitan_1789549221223_a7390f36….so` | 2,079,080 | `02228b027e994db8…` |
+| `libtronplayer_1789704199351_8bcad214….so` | 1,116,056 | `0bcab79a13ef2c35…` |
+
+运行时目录 `files/dynamic_so`：26 个库、77,203,139 字节（含标记文件 74 MB 计），
+每个目录含 `lib<name>.so`、`extra_info.json`（117 字节）、
+`modified_<epoch>`、`uuid_<hex>`、`version_<x.y.z>`。完整清单见
+[storage.md](storage.md) §7。
+
+## 4. `libpdd_secure.so` 关键地址
+
+| 项 | 地址 / 值 | 等级 |
+| --- | --- | --- |
+| AES S-box | `.rodata 0x19c9dc` | 已验证 |
+| AES 逆 S-box | `.rodata 0x19cadc` | 已验证 |
+| SHA-256 H0 (LE) | `.rodata 0x19bfb0` | 已验证 |
+| MD5 / SHA-1 IV (LE) | `.rodata 0x19db00` | 已验证 |
+| Base64 字母表 | `.rodata 0x19cbdc` | 已验证 |
+| zlib deflate magic | `0x44760` | 已验证 |
+| AEW/ADW 型 AES 轮函数 | `0x16b0e4`（S-box 引用 0x16b134、0x16b150） | 已验证 |
+| AES 第二实现 | `0x16b64c`（S-box 引用 0x16b658） | 已验证 |
+| AES 解密 | `0x16b924`（逆 S-box 引用 0x16bb18） | 已验证 |
+| Base64 实现 | `0x16dc6c`（字母表引用 0x16dd88，10 个调用者） | 已验证 |
+| `SecureNative.s` | `0x36278`，派发头 `0x36310`，状态槽 `[sp,#0x14]` | 已验证 |
+| `SecureNative.b` | `0x37294`，描述符表 `0x192b71`，条目 32 字节 | 已验证 |
+| JNI 导出数 | 34（`.dynsym` 中 `Java_com_xunmeng_pinduoduo_secure_SecureNative_*`） | 已验证 |
+| 34 个导出合计指令数 | 21,613（`.text` 共 404,537） | 已验证 |
+| `atn` / `csd` / `dsi` | 声明为 native 但**不在** 34 个导出中：`.dynsym` 无对应符号，`JNI_OnLoad` 内只 2 次 `__android_log_print` + 1 次初始化调用，未见 `RegisterNatives` 路径 | 已验证（未绑定） |
+
+## 5. Java 侧关键入口
+
+| 主题 | 类 / 方法 |
+| --- | --- |
+| OkHttp 链 | `com.aimi.android.common.http.f` 静态块 |
+| 公共头 | `sv1.d.e(boolean)`、`sv1.d.d()`、`sv1.d.f()`、`sv1.d.g()`、`sv1.d.a()`、`sv1.d.b()` |
+| anti-token | `com.aimi.android.common.http.i.a/b/c/e/f` |
+| 签名 v1 | `com.aimi.android.common.http.a.e(...)`、`a.c(path)` |
+| 签名 v2 | `com.aimi.android.common.http.a.f(...)`、`a.d(path)`、`a.a(path)` |
+| 头部落盘 | `com.aimi.android.common.http.h.g(builder, request, flag)` |
+| 路径归一化 | `rv1.h.b(url)` |
+| GoldenArch | `com/aimi/android/common/http/unity/internal/interceptor/j.java` |
+| 上传表单 | `z51.b.r(w51.d)` |
+| 上传掩码 | `y51.a` 的 `galerie_upload.anti_token_path` |
+| 54001 | `net_adapter/hera/specialcode/riskcontrol/VerifyAuthTokenProcessor`、`iv1.d.a(url)` |
+| sdr | `lb2.o0.d(...)`、`lb2.j`、`nb2.a.a()` |
+| scres | `lb2.h.y()`、`lb2.o0.e()` |
+| Root | `com.xunmeng.pinduoduo.pmm.DefaultRootServiceImpl`、`u43.l`、`v12.a`、`d60.c`、`g2.b.g()` |
+| 模拟器 | `gn0.d.c(Context)` |
+| 设备画像 | `mi0.a.a(Map)` |
+| Efix 跳板 | `h4.g`、`h4.h`、`com.android.efix.load.a.f(...)` |
+| 内置配置 | `com/xunmeng/pinduoduo/arch/config/newstartup/ConfigInitializerV2`、`ij0.b` |
+
+## 6. `assets` 关键文件
+
+| 文件 | 大小 | 内容 |
+| --- | ---: | --- |
+| `assets/A94/CDA` | 129 | 明文 JSON 元数据 |
+| `assets/A94/A25` | 150,688 | AES 密文，MD5 `be6fb23b2cb573032c6b2703c8017f37`，熵 7.9988 bit/byte |
+| `assets/so_arm64-v8a/*.7z` | — | LZMA tar，内嵌 ELF + 内嵌 MD5 校验 |
+
+## 7. 本地数据快照
+
+| 项 | 值 |
+| --- | --- |
+| 数据库数 | 22（全部 `SQLite format 3`） |
+| MMKV 文件数 | 397（约 19 MB） |
+| SharedPreferences | 12 个 xml |
+| 应用数据目录合计 | 约 157 MB |
+| `files/dynamic_so` | 26 个目录，77,203,139 字节 |
+
+代表性行数（只读重放 WAL 之后）：
+
+| 库 | 表 | 行数 |
+| --- | --- | ---: |
+| `MsgDB_<UIDMD5>` × 8 | 全部表 | 0 |
+| `MsgboxDB_V2_<UID>` | `conversation` | 0 |
+| `pdd.db` | `t_notification` | 0 |
+| `<UID>.db` | `t_mall*` | 0 |
+| `vita-database` | `VitaAccessInfo` / `VitaVersionInfo` | 39 / 42 |
+| `iris_downloader_main_v12.db` | `irisCallerInfo` / `irisStartInfo` | 2 / 111 |
+| `okdownload-breakpoint.db` | `breakpoint` / `block` / `taskFileDirty` | 2 / 2 / 3 |
+| `event_data.db` | `event_data` | 2 |
+
+`MsgboxDB_V2_<UID>` 的 WAL 头：`magic=0x377f0682`、`page_size=4096`、
+`seq=151100134`、10 帧、覆盖页 `1,2,3,3,1,2,4,5,6,7`。
+
+## 8. 复现方式
+
+分析全部在离线状态完成：
+
+```text
+unpack base.apk                   -> classes*.dex, lib/arm64-v8a/*.so, assets/
+jadx -d jadx-out apk/base.apk     -> 25,156 个 Java 文件
+readelf --dyn-syms -W <lib>       -> JNI 导出与符号表
+aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
+7z x assets/so_arm64-v8a/*.7z     -> 内嵌 ELF
+```
+
+本地数据部分只使用**只读**操作：列出目录、读取文件、复制库与 WAL 到临时目录后以
+`mode=ro` 打开并 checkpoint。全程未注入目标进程、未附加调试器、未读取目标内存、
+未重启应用、未修改任何设备文件，因此不产生可被检测的行为。
+
+各工具的判据与输出：
+
+| 工具 | 作用 | 产出 |
+| --- | --- | --- |
+| `obfscan.py` | ELF 形态 + 常量表 + 字符串 + JNI 导出 | 逐库密码学命中表 |
+| `obfclass.py` | `indbr`/`adrret`/`cffstate`/`.inst%` 指纹 | 逐库混淆分类 |
+| `unflatten.py` | FLA 状态机 → 基本块图 | `SecureNative.s` 的 67 状态还原 |
+| `cff4.py` | 按真实函数收尾定界的逐导出规模 | 34 个导出共 21,613 条指令 |
+| `native_closure2.py` | DEX 声明 native ↔ 各库导出符号 | 646 已解析 / 966 未解析 |
+| `jnibind.py` | 绑定方式三分（导出 / `RegisterNatives` / 未判定） | 646 / 87 / 879 |
+| `so_manifest2.py` | `SoBuildInfo` 清单 ↔ 设备落盘 ↔ 加载点 | 199 条：22 APK / 26 落盘 / 54 未落盘 |
+| `db_snapshot.py` | 只读 SQLite 快照（含 WAL 重放） | 22 个库的 DDL、行数、列形状 |
+
+## 9. native 声明与库的归属
+
+`tools/native_closure2.py` 在 187 个类中发现 **1,612** 个原生方法声明，按提供方分类：
+
+| 提供方 | 解析数 | 主要库 |
+| --- | ---: | --- |
+| APK 自带 | 203 | `libmmkv.so` 59、`libaudio_engine.so` 49、`libpdd_secure.so` 31、`libmarsxlog.so` 20、`libcmtreport.so` 11、`libcrashAvoid.so` 8、`libgoldarch.so` 7、`libbytehook.so` 5、`libdokodoor.so` 1 |
+| assets 内嵌 | 86 | `libtitan.so` 86 |
+| 运行时下载 | 357 | `libmedia_engine.so` 109、`libpnn.so` 30、`libpnet.so` 26、`libaudio_engine_ext.so` 18、`libavif_android.so` 14、`libprobe.so` 13、`libpdd_pnn_plugins.so` 12、`libaegis.so` 6、`libfdk_aac.so` 2、`libmedia_engine_ext.so` 2 |
+| 未解析 | 966 | 见下 |
+
+未解析的顶部类及其归属（库不在本机快照中，或使用 `RegisterNatives`）：
+
+| 类 | 声明数 | 归属 |
+| --- | ---: | --- |
+| `com.eclipsesource.v8.V8` | 97 | `libpdd_j2v8.so`（112 个 `Java_com_eclipsesource_v8_V8__*` 导出；因方法名以数字开头，JNI 名带 `_1` 转义，需按 `_1`→`1` 归一化才能匹配） |
+| `com.tencent.mmkv.MMKVV2` | 81 | `libmmkv_v2.so`（0 个 `Java_` 导出，走 `JNI_OnLoad` 注册） |
+| `com.xunmeng.effect.render_engine_sdk.EffectJniBase` | 60 | `libmedia_engine.so` 家族 |
+| `com.facebook.yoga.YogaNative` | 58 | `libyoga`（随 `libmedia_engine` 分发） |
+| `com.media.tronplayer.TronMediaPlayer` | 38 | `libtronplayer.so`（唯一含 `RegisterNatives` 的诊断串） |
+| `com.xunmeng.pinduoduo.shook.ShadowHook` | 14 | `libpdd_sa_hook.so` / `libbytehook.so` 之外的独立静态库 |
+| `org.aomedia.avif.android.AvifDecoder` | 14 | `libavif_android.so` |
+| `com.xunmeng.sargeras.*` | 200+ | `libmedia_engine.so` 子模块 |
+| `xmg.mobilebase.lego.c_m2.VM*` | 60+ | `libScriptBind.so` |
+
+未解析的根因共四类，全部可解释，**不含"符号被故意抹除"的情况**：
+
+- **（a）JNI 名转义**：方法名以数字/下划线开头时符号里被改写为 `_1`/`_2`/`_3`。
+  例如 `com.eclipsesource.v8.V8` 的 88 个方法以 `_1` 开头（`V8__1_1release` 等），
+  按转义归一化后可与 `libpdd_j2v8.so` 的 111 个 `Java_*` 导出对上。
+- **（b）`RegisterNatives` 动态注册**：库不导出 `Java_*`，在 `JNI_OnLoad` 里用
+  `JNIEnv` 函数表注册。已用"方法名串 + JNI 签名串 + 库导出 `JNI_OnLoad`"三重条件
+  判定了 87 个方法，涉及 `libmmkv_v2.so`（20）、`libtronplayer.so`（19）、
+  `libstatic-webp.so`（17）、`libbytehook.so`（9）、`libcrashAvoid.so`（6）、
+  `libyoga.so`（3）等 14 个库，见 [obfuscation.md](obfuscation.md) §9.1。
+- **（c）库不在快照中**：`SoBuildInfo` 清单列出的 199 个动态库中，本设备只落盘了
+  22（APK）+ 26（`files/dynamic_so`）+ 3（assets 内嵌）个，其余 54 个从未下载
+  （`libsargeras`、`libchat_msg`、`libgiflib`、`libmeco_cookie`、`libxunwind` 等）。
+  这类方法占未解析的绝大多数。
+- **（d）包名与库名不一致**：已落盘的 `libpdd_sa_hook.so` 明确只提供
+  `sensitive_api_hook.SensitiveApiHook` 的 3 个方法（`init`/`isDebugNative`/
+  `setEnableNative`，`.rodata` 中同时含 `libbytehook.so` 与 `libpdd_sa_hook.so`
+  两个自身名，并调用 `bytehook_hook_partial`）。`shook.ShadowHook` 的 14 个方法
+  在调用点 `shook/ShadowHook.java:149` 处 `loadLibrary("shadowhook")`，因而应归属
+  清单中的 `libshadowhook.so`（**假说**：该库未落盘，无法用符号直接确认）。归属
+  需按组件 ID 而非类名前缀判断。
