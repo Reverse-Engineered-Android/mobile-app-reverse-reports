@@ -94,7 +94,7 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出，主要五类：Tiny 操作码**内部逐块算术步骤** lift（**调用语义已全部定名 31/31**；专属指令已证明是 CFF 胶水而非算法）、`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、~~`0x50010` 各 site 的转移选择谓词~~ 本轮已闭环（412 site / 767 边 / 417 目标；262 FIXED / 69 BASE / 18 DATA）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+未闭环项已在各文档显式列出。**最新一轮把 Tiny 分发层结构升为完全闭环**（61 分派块 ↔ 61 谓词槽 ↔ 31 操作码三向双射、零冲突；61 个编译期跳转位移全复现，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.6–§5.6.7），并**显式声明该项为纯静态闭环、证据等级低于 `0x50010`**（Tiny 模拟器覆盖过浅，无法做动态饱和）。主要五类：Tiny 操作码**内部逐块算术步骤** lift（**调用语义已全部定名 31/31**；专属指令已证明是 CFF 胶水而非算法）、`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、~~`0x50010` 各 site 的转移选择谓词~~ 本轮已闭环（412 site / 767 边 / 417 目标；262 FIXED / 69 BASE / 18 DATA）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
 
 设备指纹一项本轮已由"结构已证实"升为**已恢复**，见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)：该库未做字符串加密，采集面可静态穷举，无需 VM 级 lift。
 
