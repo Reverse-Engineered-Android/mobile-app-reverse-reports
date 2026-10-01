@@ -3,13 +3,18 @@
 数据库文件名中的账号派生部分已替换为占位符：`<UIDMD5>` 表示账号 ID 的 MD5，
 `<UID>` 表示账号 ID 的十进制形式。所有行值、设备标识与凭据均不公开。
 
+**取证强度**：本文件的全部结论来自**两次独立的只读取证**（同一台设备，两次采样）。
+两次取证的 APK 为同一份（`sha256 d57b1ebc…`，见 [evidence.md](evidence.md) §1），
+22 个库的 **DDL 逐字节相同**，唯一差异是 6 处随使用增长的行数。
+交叉比对详见 [evidence.md](evidence.md) §8.1。
+
 ## 1. 总体形态
 
 | 类别 | 数量 | 加密 | 说明 |
 | --- | ---: | --- | --- |
 | SQLite 数据库 | 22 | **明文**（`SQLite format 3`） | 无 SQLCipher/WCDB |
 | SQLite 伴随文件 | 22 journal/shm/wal | — | 存在未 checkpoint 的 WAL |
-| MMKV 存储 | 397 个文件（约 19 MB） | 多数**未加密** | 少数模块显式传入 crypt key |
+| MMKV 存储 | 396–397 个文件（约 19 MB） | 多数**未加密** | 少数模块显式传入 crypt key |
 | SharedPreferences | 12 个 xml | 明文 | — |
 | `files/dynamic_so` | 26 个目录，74 MB | **明文 ELF**，未加壳 | 名称含 `_epoch毫秒_MD5` |
 
@@ -198,7 +203,8 @@ checkpoint，再读 schema 与行数。结果：schema 完整（见 §2.2），`
 
 ## 4. MMKV 存储
 
-`files/mmkv/` 共 397 个文件、约 19 MB。MMKV 头部为 4 字节 `actualSize`，随后是
+`files/mmkv/` 共 396–397 个文件、约 19 MB（两次取证相差 1 个，属运行时增删）。
+MMKV 头部为 4 字节 `actualSize`，随后是
 protobuf 风格的键值对。**未加密**：读取 `MMKVCompat.a.b(String)` 的调用点可见少数
 模块显式传入 crypt key（`app_login_enc`、`pdd_config_common_enc`、
 `module_sensitive_api_disk_cache_encrypt…`、`app_chat_crypto_mmkv`），其余模块不传，
