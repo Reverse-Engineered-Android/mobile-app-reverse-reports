@@ -9,7 +9,8 @@
 | --- | --- |
 | DEX 字符串 | **无字符串加密**。291,149 条可打印字符串直接以明文存在于 6 个 dex。 |
 | DEX 加壳 | **无加壳、无 DEX 加密**。`classes*.dex` 均为标准 `dex\n035` 头，可直接解析 25,156 个 Java 文件。 |
-| DEX 动态注册 | APK 内 native 库中 `RegisterNatives` 出现 **0** 次（仅运行时下载的 `libtronplayer.so` 有 1 处、`libmedia_engine.so` 有 3 处）。 |
+| DEX 动态注册 | APK 内 native 库中 `RegisterNatives` **有**真实调用点：25 处（18 次注册 + 7 次注销）分布 12 个库，含 `libpdd_secure`、`libpdd_rubik`、`libCSoLoader`、`libbytehook`、`libcrashAvoid`、`libpcrash`、`libpcrash_anr`、`liblegonative`、`libmarsxlog`、`libtronkit`、`libdyncommon`、`libyoga`。详见 §9.1。 |
+| native 字符串 | **有局部字符串加密**：`libpdd_secure.so` 的 `.rodata` 代码段内嵌一个异或保护的字符串池（基址 `0x1928c0`，8 字节循环密钥 `f09745e4835fd19f`），内含 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、RSA 公钥等。详见 §9.4。 |
 | DEX 控制流 | 6,648 处 Efix 跳板（见 §2），**未安装热补丁时全部短路到默认实现**，属可解释结构而非混淆。 |
 | native 控制流 | 分三类：OLLVM 控制流平坦化（FLA）、间接分支派发（IND-BR）、ADR+RET 返回地址间接化 + .text 内嵌数据。逐库清点在 §4–§6。 |
 | native 数据 | 无加密常量表隐藏。所有标准密码学常量表都以明文出现在 `.rodata`（见 [algorithm.md](algorithm.md)）。 |
@@ -314,9 +315,16 @@ libstagefright.so / _ZN7android15ANetworkSession10threadLoopEv
 3. **ADR+RET（返回地址间接化）**：仅出现在运行时下载的 `libdyncommon.so`，
    `adr x30` + `add x30,x30,xN` + `ret`，偏移来自运行时表（见 §6.1）。
 
-没有出现以下任何一种：自解密代码段、字节码虚拟机、字符串解密循环、控制流伪造
-（不透明谓词之外的虚假分支）、常量表异或/分片隐藏、`RegisterNatives` 隐藏绑定、
+没有出现：自解密代码段、字节码虚拟机、控制流伪造（不透明谓词之外的虚假分支）、
 DEX 加壳。
+
+**但出现了两种此前漏判的手法**，两者都可静态完整还原：
+
+- **异或字符串池**：`libpdd_secure.so` 的 `.rodata` 内嵌 8 字节循环异或保护的
+  字符串池（基址 `0x1928c0`），保护了 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、
+  RSA 公钥等。旧版"无字符串解密循环 / 无常量表隐藏"的结论在此库上不成立，见 §9.4。
+- **`RegisterNatives` 隐藏绑定**：真实存在 25 处（12 个库），旧版"0 次"是判据
+  缺陷导致的假阴性，见 §9.1.1。
 
 ## 9. native 绑定方式与混淆闭包的边界
 
@@ -324,7 +332,7 @@ DEX 加壳。
 JNI 方法、以及哪些库尚未取得。这两点决定了"没有未分析的混淆代码"这句话的确切
 范围。
 
-### 9.1 绑定方式（`tools/jnibind.py`）
+### 9.1 绑定方式（`tools/jnibind.py` + `tools/rnbind.py`）
 
 对全部 1,612 个 DEX 声明的 native 方法逐一判定绑定方式：
 
@@ -334,16 +342,126 @@ JNI 方法、以及哪些库尚未取得。这两点决定了"没有未分析的
 | `RegisterNatives` | 87 | 库的 `.rodata` 同时含方法名串与 JNI 签名串，且库导出 `JNI_OnLoad` |
 | 未判定 | 879 | 约束到 104 个类，其提供库不在任何快照中 |
 
-需要强调：**没有任何一个库从 `_JNIEnv::RegisterNatives` 导入符号**（对全部 87 个
-库检查 `_ZN7_JNIEnv15RegisterNativesEP7jclassPK15JNINativeMethodi` 均为 0）。所有
-动态注册都走 `JNIEnv` 函数表指针（`(*env)->RegisterNatives(...)`），这在 ARM64
-上表现为经 `x0`（env）取表偏移后 `blr`，不产生导入符号。因此"查
-`RegisterNatives` 导入"会得到假阴性；§9.1 的判定改用"方法名串 + 签名串 + 库自身
-导出 `JNI_OnLoad`"三重条件。
+#### 9.1.1 调用点的真实计数（对旧结论的更正）
 
-`RegisterNatives` 注册的典型例子是 `libyoga.so`：该库没有 `YogaNative` 的
-`Java_*` 导出，但 `.rodata` 中同时存在 `com/facebook/yoga/YogaNative` 与 58 个
-方法签名串，且导出 `JNI_OnLoad`——与 Yoga 上游实现一致。
+早期版本的本文件断言"APK 内 native 库中 `RegisterNatives` 出现 **0** 次"。
+**该结论是错的，已在本版更正。** 它源自两个方法学缺陷：
+
+1. `strings` 默认 `-n 4`，所以 3 字符的方法名（`atn`、`csd`、`dsi`）不可见；
+2. 用"导入符号 `_ZN7_JNIEnv15RegisterNativesE…`"或"`.rodata` 里有
+   `RegisterNatives` 字符串"作为判据。而 ARM64 上动态注册走的是
+   `env->RegisterNatives(...)`，即**经函数表指针**：`ldr x8,[x0]` →
+   `ldr x8,[x8,#1720]` → `blr x8`（`0x6b8 = 215×8` = `_JNIEnv` 虚表下标 215）。
+   不产生任何导入符号，也没有字面字符串。
+
+改用**函数表下标判据**后逐库清点：`#1720` = `RegisterNatives`，
+`#1728` = `UnregisterNatives`，并要求基址寄存器确实是一个被解引用的指针
+（排除 `adrp` 到 `.bss` 的假阳性，例如 `libaudio_engine.so` 的 PLT 桩）。
+结果：
+
+| 库 | `RegisterNatives` | `UnregisterNatives` | 所在函数 |
+| --- | ---: | ---: | --- |
+| `libpdd_secure.so` | 1 | 0 | `Java_…_SecureNative_dec` 内部 |
+| `libpdd_rubik.so` | 2 | 4 | `JNI_OnLoad` + 内部函数 |
+| `libdyncommon.so` | 2 | 3 | `exec` |
+| `libtronkit.so` | 3 | 0 | `JNI_OnLoad` / `JNI_OnUnload` |
+| `liblegonative.so` | 3 | 0 | `VMState_getOpCostGroup` / `JSFunction_releaseNative` |
+| `libCSoLoader.so` | 1 | 0 | `JNI_OnLoad` |
+| `libbytehook.so` | 1 | 0 | `JNI_OnLoad` |
+| `libcrashAvoid.so` | 1 | 0 | `JNI_OnLoad` |
+| `libpcrash.so` | 1 | 0 | `JNI_OnLoad` |
+| `libpcrash_anr.so` | 1 | 0 | `TraceDumper_jniInit` |
+| `libmarsxlog.so` | 1 | 0 | `JNI_OnLoad` |
+| `libyoga.so` | 1 | 0 | `JNI_OnLoad-0x249c` |
+| **合计** | **18** | **7** | 12 个库 |
+
+注册项数由 `w3` 直接给出，可逐一读出，例如 `libtronkit.so` 的
+`JNI_OnLoad` 注册 9 项、`libCSoLoader.so` 注册 2 项、`libmarsxlog.so` 注册 1 项。
+因此 §9.1 上表"87 个方法"的判定口径（方法名串 + 签名串 + `JNI_OnLoad`）
+只是**必要条件**，不是调用点证据；本小节的函数表下标统计才是直接证据。
+
+#### 9.1.2 `libpdd_secure.so` 的动态注册（逐字节还原）
+
+这是本报告要求 6（"不允许任何未分析的混淆代码"）最关键的一处，现将整条
+链路逐字节给出。
+
+**注册调用点 `0x27e7c`**（`sp+0x4b0` 栈帧内，函数入口 `0x26678`，**只被
+`JNI_OnLoad` 的 `bl 26678`（位于 `0xb1b8`）进入**）。`libpdd_secure.so` 的
+导出与声明并非一一对应：导出 34 个、`SecureNative.java` 声明 35 个，
+差集为导出的 `dcc`/`hf`（DEX 中无同名声明）与未导出的 `atn`/`csd`/`dsi`
+（DEX 中有声明，见 §9.6.2）：
+
+```asm
+27e6c:  ldp  x2, x0, [sp, #136]      ; x2 = 方法表, x0 = jclass
+27e70:  ldr  x1, [sp, #72]           ; x1 = cls->name（经加密串解出）
+27e74:  orr  w3, wzr, #0x3           ; nMethods = 3
+27e78:  ldr  x8, [x0]                ; x8 = *env
+27e7c:  ldr  x8, [x8, #1720]         ; 1720 = 215*8 → RegisterNatives
+27e80:  blr  x8
+27e84:  ldr  x0, [sp, #168]
+27e88:  ldr  x1, [sp, #72]
+27e8c:  ldr  x8, [x0]                ; 第二次查表
+27e90:  ldr  x8, [x8, #1856]         ; 1856 = 232*8 → ExceptionOccurred
+27e94:  blr  x8
+```
+
+`w3 = 3` 与 `DeviceNative` 恰好 3 个方法吻合。`#1856` 即
+`_JNIEnv::ExceptionOccurred`（下标 232），用于注册后清理。
+
+**类名的取得（`FindClass`）**：`0x27a6c` 处 `ldr x8,[x8,#48]`（`48 = 6×8`）
+= `_JNIEnv::FindClass`（下标 6），参数 `x1` 由 `0x27ae0` 的
+`add x1, x1, #0xe1c` 指向 `0x192c1c`。**该处内存是异或保护的**，不是明文。
+
+**字符串池与解保护**。`libpdd_secure.so` 在 `.rodata` 内嵌入一个异或字符串池，
+基址 `0x1928c0`（与解码例程 `0x34880` 的 `add x8, x8, #0x8c0` 精确对应），
+密钥为 **8 字节循环**常量 `f0 97 45 e4 83 5f d1 9f`。加密例程分两个变体：
+
+* `0x34880`（`add x8,x8,#0x8c0`）用 `eon w13, w13, w14, lsr #24`，
+  即 `plain = enc XOR NOT(keystream)` —— 等价于按上表的补码异或；
+* `0xbba00` / `0xbbe94` / `0xbc378` / `0xbc4e0` / `0xbc648`
+  （均 `add x10,x10,#0x768` → 密钥表 `0x198768`）用 `eor w13,w13,w14,lsr #24`。
+
+密钥表 `0x198768` 是 8 个小端 `u64`，其**高字节**依次为
+`0f 68 ba 1b 7c a0 2e 60`（即 `plain` 视角下每个 `qword >> 24`）。
+字符串记录为 `[8 字节 XOR 掩码][NUL 结尾正文]`，正文按**绝对文件偏移 mod 8**
+取相位——这解释了为什么同一段密钥在不同记录上呈现不同相位。
+
+按该模型解出的明文（节选，均为**已验证**）：
+
+| 偏移 | 明文 | 用途 |
+| --- | --- | --- |
+| `0x1928c0` | `com/xunmeng/pinduoduo/secure/DeviceNative` | `FindClass` 的类名 |
+| `0x1929d0` | `miui.intent.TAKE_SCREENSHOT` | 截屏检测（MIUI 广播） |
+| `0x192b40` | `com/xunmeng/pinduoduo/secure/DecResult` | JNI 返回类型 |
+| `0x192b68` | `decBytes` | 方法名 |
+| `0x192c60` | `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCmW0Kh…IDAQAB` | RSA 公钥（X.509 SPKI） |
+| `0x192de0` | `691d011f-a6ef-40…` | UUID 片段 |
+| `0x192ea0` | `sN4S72X1br+Ybnq1` | 密钥/盐材料 |
+| `0x192ee0` | `bANoelxRIifGL8dUr5zc2ncyYkebkUkd` | 密钥/盐材料 |
+| `0x1930a0` | `(Ljava/lang/CharSequence;Ljava/lang/CharSequence;)Ljava/lang/String;` | 反射签名 |
+| `0x1930f0` | `java/net/URLEncoder` | 类名 |
+| `0x193180` | `TRANSACTION_isFirstBoot` | Binder 事务名 |
+| `0x1931a0` | `android/os/ServiceManager` | 类名 |
+| `0x193360` | `(Ljava/lang/String;)Ljava/security/KeyStore;` | 反射签名 |
+| `0x1933f0` | `java/security/KeyPairGenerator` | 类名 |
+| `0x193740` | `getExtensionValue` | 方法名 |
+| `0x194d30` | `com/xunmeng/pinduoduo/secure/EU` | 类名 |
+| `0x195124` | `serialNumber` | 字段名 |
+| `0x195214` | `fiddler` | **抓包工具检测** |
+| `0x195590` | `packageName` | 字段名 |
+| `0x1955b0` | `pm list packages -u` | **已安装应用枚举** |
+| `0x195630` | `[Landroid/content/pm/Signature;` | 反射签名 |
+| `0x195860` | `ab_extra_sourcedir_7080` | AB 开关 |
+| `0x1958a0` | `a7OpixY4xQc1eT2v` | 密钥材料 |
+| `0x195a30` | `isSystemUser` | 方法名 |
+| `0x198180` | `ro.product.brand` | 设备属性读取 |
+| `0x198240` | `android/security/keystore/SoterKeyStoreProvider` | 厂商密钥库 |
+| `0x198540` | `android/view/inputmethod/InputMethodManager` | 类名 |
+
+**结论**：`DeviceNative.info2/info3/info4` 的类名与 `SecureNative` 的字符串
+都用上述异或池保护，属于**混淆**而非密码学。该池 100% 可静态还原（
+`tools/pddstr.py` 已实现），因此不构成"未分析的混淆代码"，但旧版报告
+"`DeviceNative` 类名在库中缺失"的说法应更正为"**存在但异或保护**"。
 
 ### 9.2 动态库清单与在机情况
 
@@ -384,18 +502,143 @@ assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另�
 | IND-BR 间接分支 | `libpdd_secure`（2,013）、`libpdd_rubik`（390）、`libdyncommon`（19,801） | `csel`→`ldr`→位运算→`br`，目标表由 `INIT_ARRAY` 填充 |
 | ADR+RET 返回地址间接化 | 仅 `libdyncommon`（330 处） | `adr x30` + `add x30,x30,xN` + `ret`，偏移来自运行时表 |
 
-在已取得的 51 个库中，**没有**出现：自解密代码段、字节码虚拟机、字符串解密循环、
+在已取得的 51 个库中，**没有**出现：自解密代码段、字节码虚拟机、
 不透明谓词之外的虚假分支、常量表异或/分片隐藏、DEX 加壳、`Java_*` 符号抹除。
+
+出现且在 §9.4 完整还原的手法有两类，**均属标准变换、均可静态还原**：
+
+- **异或字符串池**：仅 `libpdd_secure.so`，113 条，已全部解出（§9.4）。
+- **`RegisterNatives` 动态注册**：12 个库 25 处，注册项数与类名均已读出（§9.1）。
 
 `libdyncommon.so` 一例可以说明这类判定的可解释性：它混淆最重（19,801 个间接派发
 块、330 处 ADR+RET），但 `.rodata` 中的字符串把它完整定性为反注入/反 hook 环境
 探测（见 §6.1），不含自解密或虚拟机——重混淆并不等于不可解释。
 
-### 9.4 未覆盖项汇总
+### 9.4 native 字符串加密（异或池）
+
+§1 表中"native 字符串"一行展开如下。这是本版新增的第 4 类混淆手法。
+
+#### 9.4.1 结构
+
+`libpdd_secure.so` 在 `.rodata` 的 `0x1928c0`–`0x199000` 区间放了一个字符串池。
+记录格式：
+
+```
+[8 字节 XOR 掩码][正文…][0x00]
+```
+
+其中正文按**绝对文件偏移 `mod 8`** 与循环密钥对齐——同一段密钥在不同起始
+偏移的记录上呈现不同相位，这是静态识别该池的主要障碍。
+
+解保护的唯一计算式（8 个解密例程变体都归约到它）：
+
+```python
+KEY = bytes([0xf0,0x97,0x45,0xe4,0x83,0x5f,0xd1,0x9f])
+plain[i] = cipher[i] ^ KEY[(abs_off + i) % 8]
+```
+
+`KEY` 本身不是明文常量，而是密钥表 `0x198768` 中 8 个小端 `u64` 的**高字节
+取反**：`0f 68 ba 1b 7c a0 2e 60` 取反即得 `f0 97 45 e4 83 5f d1 9f`。
+编码端与解码端在 `0x193068` 记录了自身 `.symtab` 名，说明该池由构建期工具
+（而非手写）生成。
+
+#### 9.4.2 解出的内容与风控含义
+
+共 **113 条**有意义的标识符 / 路径 / 密钥材料（`tools/pddstr.py` 共输出 268 条候选，差额为被记录边界切断的片段），**已验证**。按用途归组：
+
+| 组 | 典型串 | 风控含义 |
+| --- | --- | --- |
+| JNI 绑定 | `com/xunmeng/pinduoduo/secure/DeviceNative`、`DecResult`、`decBytes` | 见 §9.1.2 |
+| 截屏检测 | `miui.intent.TAKE_SCREENSHOT` | MIUI 截屏广播监听 |
+| 抓包检测 | `fiddler` | 抓包工具痕迹排查 |
+| 应用枚举 | `pm list packages -u`、`packageName`、`android/content/pm/PackageManager`、`getChangedPackages`、`[Landroid/content/pm/Signature;`、`versionName`、`sourceDir`、`getInstallerPackageName`、`getUserId`、`getUserProfiles`、`myUserHandle`、`isSystemUser` | 已安装/新装应用枚举、签名与安装来源采集、多用户/分身判定 |
+| 模拟器/Binder | `TRANSACTION_isFirstBoot`、`TRANSACTION_isKeyguardSecure`、`android/os/ServiceManager`、`android/os/IBinder`、`android/os/Parcel`、`android/content/pm/ActivityInfo` | Binder 直连 `system_server` 取首启状态、锁屏是否加密 |
+| SIM/运营商 | `getSlotIndex`、`getSimState`、`serialNumber` | SIM 卡槽状态与序列号 |
+| 密钥库 | `java/security/KeyStore`、`KeyPairGenerator`、`KeyPair`、`getExtensionValue`、`android/security/keystore/SoterKeyStoreProvider`、`java/security/Provider` | 厂商密钥库（Soter）与证书扩展读取 |
+| 网络编码 | `java/net/URLEncoder` | 指纹串 URL 编码 |
+| 反分析 | `/proc/self/cgroup`、`vivo_screen_record_switch_setting`、`uw)K`、`bANoelxRIifGL8dUr5zc2ncyYkebkUkd`、`sN4S72X1br+Ybnq1`、`a7OpixY4xQc1eT2v` | 容器/多开判定、录屏开关、会话密钥材料 |
+
+其中 `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCmW0KhXZ2dBgLqEnttvkg28G8s5oXBSzyuhmm+FJegTBa5+CsKxo5+tirAgk2EiGqPwxHIQu1XP5v1z4EfNzgfrYQ+EYJsJ/MC9CyFe8qY5dFa89A70n6U+XGd8VtmcVw1jfrT+YHHyInY5cpbC9BbnsUqX7EolUmoqrF4voFVLwIDAQAB`
+是一条完整的 1024 位 RSA 公钥（X.509 `SubjectPublicKeyInfo`，ASN.1 头
+`300d06092a864886f70d0101010500` + `30 81 89 02 81 81`），模数 128 字节。
+**用途判为假说**：它只出现在字符串池中，未在本次静态分析中定位到解密/验签
+调用点；按上下文（与 `DecResult`/`decBytes` 同池）推测用于**上报内容的非对称
+加密或签名校验**，而非传输层握手（传输均为标准 HTTPS，见
+[network.md](network.md)）。这一点记入 §9.5 未覆盖项。
+
+#### 9.4.3 覆盖边界
+
+| 库 | 字符串加密 | 判据 |
+| --- | --- | --- |
+| `libpdd_secure.so` | **有**（异或池，113 条有效串，已还原） | 已完整解出明文 |
+| 其余 50 个已取得 ELF | 无 | `.rodata` 字符串全部明文可读 |
+| 54 个未落盘库 | 未取值 | 未纳入 |
+
+### 9.5 未覆盖项汇总
 
 | 项 | 状态 | 影响 |
 | --- | --- | --- |
 | 清单内 54 个未落盘库 | 未取得 | 其内部混淆手法未逐库清点；加载点与用途已在 DEX 侧确认 |
+| `libpdd_secure` 字符串池 RSA 公钥 | 明文已还原，调用点未定位 | 用途判为假说（上报加密/验签），见 §9.4.2 |
+| `SE`（11 个）/ `meco.cookie.N`（12 个）/ `shook.ShadowHook`（14 个） | 未判定 | 类声明与调用点已确认，提供库不在任何快照中，见 §9.6 |
 | `libpdd_secure` 选择子语义 | 结构已证实，取值集合未逐一断言 | 见 [algorithm.md](algorithm.md) §5.2 |
 | `assets/A94/CDA.cdnMd5` | 假说 | 判为服务端增量基线，见 [algorithm.md](algorithm.md) §6.3 |
 | 收包侧 Xlog | 仅确认加密容器 | 见 [storage.md](storage.md) |
+
+### 9.6 未绑定的 native 方法：逐类定位结果
+
+要求 6 的"不允许未分析清楚"在这里落到"每个 native 方法都能指认提供库，或明确
+记为未落盘库"。已完成逐类定位的结论如下。
+
+| 类 | 方法数 | 绑定方式 | 依据 |
+| --- | ---: | --- | --- |
+| `com.xunmeng.pinduoduo.secure.SecureNative` | 34 导出 + 3 注册 | 符号导出 + `RegisterNatives` | 34 个 `Java_…_SecureNative_*` 导出；3 个走 §9.1.2 的注册 |
+| `com.xunmeng.pinduoduo.secure.DeviceNative` | 3 | `RegisterNatives` | 类名从异或池解出，见 §9.1.2 |
+| `com.xunmeng.pinduoduo.secure.SE` | 11 | **未判定** | 见下 |
+| `com.xunmeng.pinduoduo.secure.SecureNative` 的 `atn`/`csd`/`dsi` | 3 | **未绑定** | 见下 |
+| `com.xunmeng.pinduoduo.shook.ShadowHook` | 14 | 未落盘库 | 调用点 `shook/ShadowHook.java:149` 处 `loadLibrary("shadowhook")` → 清单内 `libshadowhook.so`（假说） |
+| `meco.cookie.N` | 12 | 未落盘库 | 清单内 `libmeco_cookie.so`；DEX 加载点 `w33.a` |
+| `com.media.tronplayer.TronMediaPlayer` | 38 | 未落盘库（assets 内嵌） | `assets/so_arm64-v8a/libtronplayer.7z` |
+
+#### 9.6.1 `SE` 的 11 个方法
+
+`SE.java` 声明 11 个 `public static native` 方法：
+`as, ed, gem, ir, it, sv, ts, ue, ues, us, wtp`。**11 个全部**在 APK 内 51 个
+ELF 中找不到提供者（既无 `Java_…_SE_*` 导出，也无 `#1720` 注册）。**调用链是活的**，
+不是死代码：
+
+| 调用点 | 插入的键 | 上游 `data_type` |
+| --- | --- | --- |
+| `lb2/p.java:19` | `"wtp"` | `"17"` |
+| `lb2/r.java:20` | `"s_f_d"` | `"20"` |
+| `lb2/u.java:27` | `"info"`（`atn`） | — |
+| `lb2/w.java:27` | `"info"`（`csd`） | — |
+| `lb2/s0.java:128` | `dsi` 的返回值 | — |
+| `SecureNative.java:300/313/342/347/361` | `it`/`ue`/`as`/`ts`/`ues` | — |
+
+两点直接证据表明提供库**不在本机快照中**：
+
+1. 按 `JNIEnv` 函数表下标 `#1720` 逐库扫描，51 个 ELF 中没有任何一处注册
+   `SE` 的方法名；
+2. 在 51 个 ELF 中做原始字节搜索，`SE` 独有的超长签名
+   `(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B[BZLjava/util/Map;)V`
+   与 `(Ljava/lang/String;Ljava/lang/String;Ljava/lang/String;[B[BZ)Ljava/util/Map;`
+   命中数为 **0**；3 字符名 `atn`/`csd`/`dsi` 同样为 **0**。
+
+清单内 54 个未落盘库中，`libriskplugin.so` 与 `libshook`/`libsargeras` 是
+`SE` 的**候选**提供者（`libriskplugin` 的 DEX 加载点在 `apm/risk/lock/c`，
+与 `SE` 同属安全域），但本设备从未下载该库，**无法用符号确认**，故记为
+未判定而非断言。
+
+#### 9.6.2 `atn` / `csd` / `dsi`
+
+这 3 个方法（`SecureNative` 的 35 个声明中未被 34 个导出覆盖的 3 个）同样是
+活路径：`lb2/u.java`、`lb2/w.java`、`lb2/s0.java` 分别调用它们并把结果放进
+上报 JSON 的 `"info"` 字段。它们既不在 `libpdd_secure.so` 的 34 个导出中，
+也不在该库的异或字符串池中，51 个 ELF 的原始字节搜索同样为 0。
+
+**注意**：旧版 [evidence.md](evidence.md) §8 称这 3 个方法"`JNI_OnLoad` 内只见
+2 次 `__android_log_print` + 1 次初始化调用，未见 `RegisterNatives` 路径"。
+`libpdd_secure.so` 确实只有 1 处注册点（`0x27e7c`，注册 3 项 = `DeviceNative`），
+但该结论的**推理方式**（据"未导入 `RegisterNatives` 符号"下判断）是错的——见
+§9.1.1。3 个方法未绑定的结论本身仍然成立，只是判据应改为本节的两项直接证据。

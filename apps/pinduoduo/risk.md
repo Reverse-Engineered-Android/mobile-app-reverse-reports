@@ -189,3 +189,146 @@ map.put("double_instance_v2", String.valueOf(
 `net_adapter/hera/netcapture`（见 [network.md](network.md) §8）在客户端内保留请求/
 响应的完整字段，是风控与 APM 共用的数据源。按 `SECURITY.md`，本报告只列出字段名，
 不公开任何真实请求/响应值。
+
+## 13. 第三方风控 SDK：支付宝设备指纹（`apmobilesecuritysdk`）
+
+本项在早期版本中**被整体遗漏**。它不属于拼多多自研风控，而是一条**完整且活着**的
+第三方指纹采集链路，采集范围与自研部分不重叠，因此单列。
+
+注意与仓库中[支付宝应用本身的报告](../alipay/device-risk.md)区分：那份报告分析的
+是支付宝 APP 自己的 `mtopsdk`/UTDID 采集面，本节分析的是**被嵌入拼多多 APK 的**
+支付宝 SDK（`com.alipay.apmobilesecuritysdk`），两者代码与端点均不同。
+
+### 13.1 可达性与触发链
+
+从拼多多的支付桥接进入，**全部为已验证**：
+
+| 步 | 位置 | 动作 |
+| --- | --- | --- |
+| 1 | `tl0/c.java:53` | `PayTask.pay(...)`（拼多多收银台的支付宝路径） |
+| 2 | `com.alipay.sdk.app.PayTask` | 准备支付上下文 |
+| 3 | `com.alipay.sdk.data.c.a(context, map)` | 请求设备指纹 |
+| 4 | `SecurityClientMobile.GetApdid` | `com.alipay.mobilesecuritysdk.face` 门面 |
+| 5 | `APSecuritySdk.initToken(0, {utdid, tid, userId})` | 初始化并带三个上游标识 |
+| 6 | `apmobilesecuritysdk.a.a` → `b()` | 组包并上报 |
+
+注意 `initToken` 的入参来自**拼多多侧**（`utdid`/`tid`/`userId`），即拼多多的用户
+标识会被送进支付宝 SDK 的指纹上下文。
+
+### 13.2 采集字段（41 个 `AD`/`AL` 编码）
+
+`apmobilesecuritysdk/d/c.java` 用 `map.put` 逐项登记，共 **41** 个编码
+（`AD1`–`AD42` 缺 `AD4`/`AD25`，另有 `AL3`），编号到采集函数的映射在
+`com.alipay.b.a.a.b.b`（1,184 行、40 个方法）中实现。**41 个编码全部已定位**：
+
+下表是 `d/c.java` 中 `map.put` 到 `com.alipay.b.a.a.b.b` 的**逐条精确映射**
+（`tools/alipay_map.py` 可复现），语义按被调方法体判定：
+
+| 编码 | 采集函数 | 采集内容 | 权限门槛 |
+| --- | --- | --- | --- |
+| `AD1` | 局部变量 | SDK 内部派生串 | — |
+| `AD2` | 局部变量 | SDK 内部派生串 | — |
+| `AD3` | `b.g(ctx)` | **传感器列表**（`SensorManager`） | — |
+| `AD5` | `b.i(ctx)` | 屏幕宽×高（`DisplayMetrics`） | — |
+| `AD6` | `b.j(ctx)` | 屏幕宽度 | — |
+| `AD7` | `b.k(ctx)` | 屏幕高度 | — |
+| `AD8` | 局部变量 | SDK 内部派生串 | — |
+| `AD9` | `b.m(ctx)` | 电话信息派生（`TelephonyManager`） | `READ_PHONE_STATE` |
+| `AD10` | 局部变量 | SDK 内部派生串 | — |
+| `AD11` | `b.d()` | **`/proc/cpuinfo`** | — |
+| `AD12` | 上游配置对象 | 配置派生（非本机采集） | — |
+| `AD13` | `b.f()` | 网络接口信息（`NetworkInterface`，含 `wlan0` 分支）的 fallback 串 | — |
+| `AD14` | `b.h()` | **`/proc/meminfo`** | — |
+| `AD15` | `b.i()` | data 分区**总容量**（`StatFs`） | — |
+| `AD16` | `b.j()` | 外置分区**总容量**（`StatFs`） | — |
+| `AD17` | — | 常量占位 `com.pushsdk.a.f13389d`（不采集） | — |
+| `AD18` | 局部变量 | SDK 内部派生串 | — |
+| `AD19` | `b.p(ctx)` | 电话信息派生 | — |
+| `AD20` | `b.k()` | `SystemProperties.get("gsm.version.baseband")` **基带版本** | — |
+| `AD21` | `b.f(ctx)` | 电话信息（门控） | `READ_PHONE_STATE` |
+| `AD22` | — | 常量占位（同 `AD17`） | — |
+| `AD23` | `b.l()` | **`Build.SERIAL`** | — |
+| `AD24` | `摘要(b.h(ctx))` | 传感器列表的**哈希**（`com.alipay.b.a.a.a.a.f`） | — |
+| `AD26` | `b.e(ctx)` | 运营商名称（`NetworkOperatorName`） | `READ_PHONE_STATE` |
+| `AD27` | `b.q()` | **模拟器判定**：`/dev/qemu_pipe`、`/dev/socket/qemud`、`/dev/socket/genyd`、`/dev/socket/baseband_genyd`、`/sys/qemu_trace`、`/system/bin/qemu-props` | — |
+| `AD28` | `b.s()` | **build.prop 仿冒判定**：`/system/build.prop`、`/proc/tty/drivers`、`ro.product.name=sdk` | — |
+| `AD29` | `b.u()` | **模拟器属性判定**：`/sys/devices/system/cpu/`、`cpuinfo_max_freq`、`ro.build.fingerprint`、`goldfish`/`generic` | — |
+| `AD30` | `b.r()` | hook 框架判定：`Class.forName("dalvik.system.Taint")`（Xposed 类） | — |
+| `AD31` | `b.t()` | **build 特征判定**：`BRAND=generic`、`goldfish` 等键值比对 | — |
+| `AD32` | `b.o()` | **开机时刻** = `currentTimeMillis − elapsedRealtime` | — |
+| `AD33` | `b.p()` | `SystemClock.elapsedRealtime()` | — |
+| `AD34` | `b.s(ctx)` | **按键锁 / 解锁凭据文件**：`isKeyguardSecure()`、`/data/system/password.key`、`gesture.key`、`gatekeeper.password.key`、`gatekeeper.gesture.key`、`gatekeeper.pattern.key` | — |
+| `AD35` | `b.t(ctx)` | **电池**（`ACTION_BATTERY_CHANGED`） | — |
+| `AD36` | `b.r(ctx)` | **连接类型**（`ConnectivityManager`） | `ACCESS_NETWORK_STATE` |
+| `AD37` | `b.n()` | **时区** `TimeZone.getDefault().getDisplayName` | — |
+| `AD38` | `b.m()` | **Locale** `Locale.getDefault()` | — |
+| `AD39` | `b.c(ctx)` | **飞行模式** `Settings.System.airplane_mode_on` | — |
+| `AD40` | `b.d(ctx)` | **音频**：铃声模式 + 各音量通道（JSON） | — |
+| `AD41` | `b.b()` | data 分区**可用容量**（`StatFs`） | — |
+| `AD42` | `b.c()` | 外置分区**可用容量**（`StatFs`） | — |
+| `AL3` | `b.q(ctx)` | **BSSID**（`WifiManager.getConnectionInfo().getBSSID()`，Wi-Fi 关闭时返回占位值） | `ACCESS_WIFI_STATE` |
+
+未被上述 41 个编码直接引用的采集函数另有三个，属 SDK 其他入口使用：
+
+| 函数 | 采集内容 | 说明 |
+| --- | --- | --- |
+| `b.l(ctx)` | **Wi-Fi MAC** | `getMacAddress()`；为空或全零时回退到私有助手 `b.v()`——遍历 `NetworkInterface` 取 `wlan0` 硬件地址，失败返回 `02:00:00:00:00:00` |
+| `b.o(ctx)` | **蓝牙 MAC** | `BLUETOOTH` 门控，回退读安全设置 `bluetooth_address` |
+| `b.n(ctx)` | **`android_id`** | 经 `y82.d` 包装层读取 |
+
+**SSID 不由本 SDK 采集**：`getSSID()` 只出现在
+`com.alipay.sdk.data.c.java:123/174` 与 `com.alipay.sdk.packet.d.java:313`
+（即 `PayTask` 支付链路自己的采集器），与 `apmobilesecuritysdk` 是两个独立层。
+本报告不对该层展开。
+
+**权限门控的实现细节（已验证）**：`b.a(ctx, perm)` 在**权限未授予时返回真**，
+各采集函数写作 `if (a(ctx, "android.permission.X")) return 占位常量;`，
+即"无权限 → 上报空值"，而非抛异常或省略字段。`b.n(ctx)` 通过
+`y82.d.a(ctx, "com.alipay.b.a.a.b.b")` 读取 `android_id`，`b.s(ctx)` 用同一
+包装层访问 `/data/system/*.key`，说明该 SDK 对**多用户与应用分身**有专门处理。
+`AD34` 在取不到 `KeyguardManager` 时返回 `"0:0"`。**权限门控的实现细节（已验证）**：`b.a(ctx, perm)` 在**权限未授予时返回真**，
+各采集函数的写法是 `if (a(ctx, "android.permission.X")) return 占位常量;`，
+即"没有权限 → 上报空值"，而不是抛异常或跳过字段。`b.n(ctx)` 通过
+`y82.d.a(ctx, "com.alipay.b.a.a.b.b")` 读取 `android_id`（跨用户/分身场景下的
+包装层），`b.s(ctx)` 用同一包装层访问 `password.key`，说明该 SDK 对多用户与
+应用分身有专门处理。`AD34`（按键锁）在取不到 `KeyguardManager` 时返回 `"0:0"`。
+
+### 13.3 上报协议
+
+| 项 | 值 |
+| --- | --- |
+| 端点 | `mobilegw.alipay.com/mgw.htm` |
+| 方法 | `POST`，`Content-Type: application/x-www-form-urlencoded` |
+| 头 | `uuid: <随机 UUID>`，另有 `id`、`operationType`、`gzip` 标志 |
+| 请求体字段 | `extParam`、`operationType`、`id`、`requestData` |
+| `requestData` 结构 | `DeviceDataReportRequest{os, apdid, pubApdid, priApdid, token, umidToken, version, lastTime, dataMap}` |
+| 响应结构 | `DeviceDataReportResult{success, resultCode, apdid, token, currentTime, version, vkeySwitch, bugTrackSwitch, appListVer}` |
+| 成功判定 | `resultStatus == 1000`（外层 `{resultStatus, result, tips}`） |
+| 操作名 | `alipay.security.vkeyDFP.staticData.report`（活路径）；另定义 `…appList.get`、`…appListCmd.get` / `.reGet` |
+
+**关键结论（已验证）：传输层没有任何签名或加密**，全程标准 HTTPS 明文表单；
+`dataMap` 内的 41 项也是明文键值对，未在客户端做二次加密。这与拼多多自研的
+`anti-token` + `enCryptInfoV3`（见 §1、§2）形成对照。
+
+另有一个**休眠能力**：`getAppList` / `AppListCmdService` 在整包中**零调用点**，
+`AppListResult{appListData, appListVer}` 只作为类型存在。即"上传已安装应用列表"
+的能力已被编译进 SDK 但当前未启用（`DeviceDataReportResult.appListVer` 会回传
+版本号，说明服务端可远程开启）。
+
+SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
+`mobilegw-1-64.test.alipay.net`、`mobilegw.aaa.alipay.net`），由
+`apmobilesecuritysdk.b.a.a(int)` 按环境选择。`apmobilesecuritysdk.a.a.a()`
+里存在硬编码 **2016-11-10/11 与 2016-12-11/12** 时间窗 + `Math.random()` 的分支，
+为历史遗留死代码，实际不生效。
+
+### 13.4 与自研风控的关系
+
+| 维度 | 拼多多自研（§1–§12） | 支付宝 SDK（本节） |
+| --- | --- | --- |
+| 触发 | 每请求 | 支付/收银台路径 |
+| 标识 | 自研设备指纹 | 支付宝 `apdid`/`token` |
+| 传输保护 | `anti-token` + 字段级密文 | 无 |
+| 应用枚举 | `mi0/a.java` 设备画像（§8） | `appList` 能力已编译但休眠 |
+| 模拟器判定 | §7 加权打分 | 独立实现（`AD27`/`AD28`/`AD42`） |
+
+两套指纹体系相互独立，采集内容互补，均在单机内完成采集后各报各的服务端。

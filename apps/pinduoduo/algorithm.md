@@ -224,5 +224,8 @@ qb2.d.b().L(url, bodyBytes, headerMap);
 - 本报告不给出 AES 密钥/IV 的实际值。选择子表给出的是**取值位置**，不是取值内容。
 - `SecureNative.s/b` 的选择子→用途对照来自调用点归纳（结构已证实）；未在调用点
   出现的取值仍属未决，见 [report.md](report.md) "未决事项"。
-- `libpdd_secure.so` 内未发现虚拟机、自解密或字符串解密循环，全部函数可静态解释，
-  方法见 [obfuscation.md](obfuscation.md)。
+- `libpdd_secure.so` 内未发现虚拟机或自解密代码段，全部函数可静态解释。但该库
+  `.rodata` 中存在一个**异或字符串池**（基址 `0x1928c0`，8 字节循环密钥），
+  已完整还原 113 条有效串，方法与明文清单见
+  [obfuscation.md](obfuscation.md) §9.4。本文件给出的常量表地址均为解保护后的
+  明文位置。
