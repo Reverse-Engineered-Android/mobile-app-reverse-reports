@@ -21,4 +21,13 @@
 - [算法边界](algorithm.md)
 - [分析完成度矩阵](completeness.md)
 
+## 原生加密与传输深挖（独立补充）
+
+另有独立的深挖批次，覆盖原生加密算法的逐字节恢复与传输链路逐点定位，入口为 [deepdive/](deepdive/README.md)：
+
+- `libxyass.so` RC4 外层、定制 HMAC-H（含 64 轮调度）、`0x50010` type 6/7 会话变换的常量池/CFF/依赖矩阵与确定性向量。
+- 上传 permit/去重/分块/云厂商分支与令牌全字段；下载 Range 构造点与总长解析。
+- 原生请求的拦截器链、协议映射与认证字段来源。
+- 该批次与上述文件集**互补而非替代**，口径差异见 [deepdive/README.md](deepdive/README.md)。
+
 base APK SHA-256：`0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c`。
