@@ -295,6 +295,67 @@ u2.b(opcode, method, host, path, query, body)        // Java 侧
 
 ---
 
+## 5.4 逐操作码语义指纹（JNI 调用面）
+
+操作码全集解决了"有哪些"，JNI 指纹解决"各自做什么"。做法是在模拟器里对每个操作码记录它实际调用的 **JNIEnv 槽位**（每个槽位对应 `jni.h` 里一个固定函数），再按槽位集合把 31 个操作码聚类。
+
+工具 `re/tiny_fingerprint.py` → `re/tiny_fingerprint.txt`；映射 `re/tiny_semantic_map.py` → `re/tiny_semantic_map.txt`。
+
+### 结果：31 个操作码分成 **11 个调用面分组**
+
+| # | 调用面 | 操作码数 | 代表 |
+| ---: | --- | ---: | --- |
+| 1 | 仅 `GetArrayLength` | **17** | `0x11296316`、`0x17c04796`、`0x42a21aaf`… |
+| 2 | 无任何 JNI 调用 | **4** | `0x28ac92d7`、`0x96d0a479`、`0xcf7db9ff`、`0xf3f89a2a` |
+| 3 | 仅 `CallStaticObjectMethodV` | **2** | `0x4e418ac4`、`0xf961fe3b` |
+| 4 | `CallIntMethodV` + `GetStringUTFChars`/`Release` + `GetObjectArrayElement` + `ExceptionCheck` | 1 | `0x2ad1c199` |
+| 5 | `CallBoolean/Double/Float/IntMethodV` 混用 | 1 | `0x2f036831` |
+| 6 | `CallBooleanMethodV` + `GetStringUTFChars` | 1 | `0x3c6d0ac1` |
+| 7 | **`CallObjectMethodV`×1278 + `CallStaticObjectMethodV`×1278 + `NewStringUTF`×1278** | 1 | `0x4af613b8` |
+| 8 | `CallLongMethodV` + `ExceptionCheck` | 1 | `0x704bfeeb` |
+| 9 | `GetByteArrayRegion`（读 body 字节）+ `GetStringUTFChars` | 1 | `0x96f7fcac` |
+| 10 | `CallBooleanMethodV`×3 + `GetStringUTFChars` | 1 | `0xae821439` |
+| 11 | **`FindClass`×8 + `GetMethodID`×19 + `GetStaticMethodID`×6 + `NewGlobalRef`×8** | 1 | `0xc9d57702` |
+
+**可直接读出的语义**（这些是调用面直接给出的结论，不是猜测）：
+
+- **`0x4af613b8` 是字符串批处理型**：1278 次 `NewStringUTF` + 1278 次 `CallObjectMethodV` + 1278 次 `CallStaticObjectMethodV`，即"逐元素建 Java 字符串 → 调实例方法 → 调静态方法"的循环。它是全表里唯一的高迭代量操作码，`0x4af613b8` 在 §6.2 的新增覆盖为 1247、耗时 8.3 s 也与之一致。
+- **`0xc9d57702` 是反射装配型**：8 次 `FindClass` + 25 次 `Get*MethodID` + 8 次 `NewGlobalRef`，典型的"查找类 → 取方法 id → 建全局引用"初始化流程（全局引用说明结果被缓存，不是一次性调用）。
+- **`0x96f7fcac` 是字节输入型**：唯一调用 `GetByteArrayRegion`（读取字节数组 body）的操作码，同时读 4 个字符串参数。它正是 §4 里那两个重复比较块对应的操作码——即它处理**带 body 的请求**，位置在 CFF 里被复制了两次。
+- **`0x3c6d0ac1` / `0xae821439` 返回非零句柄**（`0x50078f08` / `0x50079bf8`），调用面都是"布尔判定 + 字符串参数"，属于**返回布尔/对象结果**的判定型操作码。
+- **`0xf961fe3b` 返回 `0x71013fe0`**，只有 `CallStaticObjectMethodV`，属静态工厂返回型。
+
+### 5.4.1 对照实验：参数个数**不是**提前退出的原因（假设已被证伪）
+
+分组 1/2 的 21 个操作码在合成参数下只调一次 `GetArrayLength` 就返回 0。最自然的假设是"它们校验数组长度、不匹配就退出"。为此做了对照实验（`re/tiny_arity_sweep.py` → `re/tiny_arity_sweep.txt`）：
+
+- 对同样的 31 个操作码，把参数数组长度在 **2 / 3 / 4 / 5 / 6 / 8 / 10** 之间扫描（不足时截断，超出时补 `extra<N>` 字符串），每次记录 JNI 槽位集合；
+- 以长度 4 为基线，判定"解锁" = 调用的槽位集合变大。
+
+**结果：假设被证伪。**
+
+| 观测 | 数量 |
+| --- | ---: |
+| 操作码在长度 2–10 全区间**调用面完全不变** | **19 / 21** |
+| 出现变化的操作码 | 2（`0x42a21aaf`、`0xffd8e9f6`） |
+
+两个出现变化的操作码均只在 **len=2** 时多出调用（`0xffd8e9f6`：`GetArrayLength` + `GetObjectArrayElement` + `CallLongMethodV`；`0x42a21aaf`：`GetArrayLength` + `GetObjectArrayElement`×3 + `CallLongMethodV` + `CallIntMethodV`），与"长度足够才继续"的方向**相反**，更像是短数组触发了另一条分支。
+
+**结论**：**参数个数不是这些操作码的判别条件**。真正决定走哪条路径的更可能是**参数内容**（§4 已证明全部 31 个操作码都读取同一个 20 字节 key），而合成参数只提供了固定的 `"keyword=hello"` 这一种内容形态。因此：
+
+- **分组 1/2 的正确读法是"在当前合成参数内容下不产生 Java 侧调用"**，而不是"参数长度不对"；
+- 下一步要展开它们，应该扫描**参数内容/key 内容**，而不是继续调整参数个数——这是本对照实验给出的明确方向修正。
+
+### 5.4.2 口径限制（保留）
+
+- **分组 1（17 个，仅 `GetArrayLength`）不代表"这 17 个做同一件事"**：它们读长度后返回 0，是合成参数内容下的退出路径，属于**载体限制**，不是算法结论。
+- 分组 2 的 4 个操作码（无任何 JNI 调用）在合成参数下是纯计算后返回，真实输入来源未确定。
+- **分组 3–11 这 10 个操作码的调用面是真实且互不相同的**，且 11 个分组本身即证明**31 个操作码不是同质分发**，而存在明确的类型分工（字符串批处理 / 反射装配 / 字节输入 / 布尔判定 / 静态工厂 …）。
+
+**对"逐操作码语义未展开"的推进**：从"31 个数字，语义未知"推进到"11 个 JNI 调用面分组，其中 10 组行为已由槽位直接确定；17 个定位为内容相关的退出路径，且已用对照实验排除'参数个数'这一候选原因"。仍未做的是完整的逐块 lift，入口已明确为**参数/key 内容扫描**。
+
+---
+
 ## 6. 模拟器执行结果
 
 `re/tiny_emu4.py` 在 unicorn 中对 `a()`（入口 `0x15e9f4`）逐操作码执行、统计新增覆盖（`re/tiny_emu4_results.txt`）。
@@ -361,13 +422,14 @@ br   x8                        ; 计算跳转到下一块
 | 操作码全集 | 未枚举 | **31 个已全部枚举**（§5.2），且与动态执行集合 100% 吻合 |
 | 比较点表述 | "二叉比较点 `0x16b08c`/`0x17cdb0`" | **已纠正**为"同一操作码 `0x96f7fcac` 的两个 CFF 重复块"（§4） |
 | 13 字节签名头字段 | 结构已知 | 结构已知；`x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o` 取值来自本引擎返回的 Map |
-| 每操作码的算法语义 | 未展开 | **仍未展开**——见下 |
+| 每操作码的算法语义 | 未展开 | **已分入 11 个 JNI 调用面分组**（§5.4）：10 组行为已由 JNI 槽位直接确定，17 个操作码定位为参数形状受限的提前退出；完整的逐块 lift 未做 |
 
 **关于"每操作码算法语义"的定性**：
 
 - 这**不是**"未分析清楚的加密代码"。§2 已用指令级扫描证明该库里**不存在** AES/SHA/SM/GHASH 实现，也不存在完整 MD5 轮常量；其标准密码学成分只有 MD5 初值、Base64、CRC32 三项，且**位置精确到字节**。
-- 剩下的是**VM 语义 lift**：31 个操作码各自对应的计算步骤需按块逐条 lift（与 `libxyass.so` `0x50010` 的 CFF 同一性质问题——控制流随输入变化，单 trace lift 不足以覆盖全路径）。
-- 现有可用于 lift 的基础已固化：31 个操作码全表 + 61 个比较块地址 + 谓词数组布局 + 45 次执行的覆盖率/返回值/耗时。
+- 剩下的是**VM 语义 lift**：31 个操作码各自的完整计算步骤需按块逐条 lift（与 `libxyass.so` `0x50010` 的 CFF 同一性质问题——控制流随输入变化，单 trace lift 不足以覆盖全路径）。
+- 现有可用于 lift 的基础已固化：31 个操作码全表 + 61 个比较块地址 + 谓词数组布局 + 45 次执行的覆盖率/返回值/耗时 + **11 个 JNI 调用面分组**（§5.4）。
+- 下一轮的明确入口：对分组 1（17 个）与分组 2（4 个）按操作码分别构造匹配的参数形状重跑，以消除"合成参数形状受限导致的提前退出"。
 
 ---
 
@@ -394,6 +456,16 @@ PYTHONPATH=re python3 re/tiny_dispatch_struct.py
 
 # 操作码 -> 覆盖率对照
 PYTHONPATH=re python3 re/tiny_opcode_map.py
+
+# 逐操作码 JNI 调用面指纹
+PYTHONPATH=re python3 re/tiny_fingerprint.py
+python3 re/tiny_semantic_map.py
+
+# 对照实验：参数个数是否会"解锁"提前退出的操作码（结论：不会）
+PYTHONPATH=re python3 re/tiny_arity_sweep.py
+
+# dex 层全量引用校验（上传埋点调用方）
+python3 re/dex_ref4.py
 ```
 
 样本哈希（同 [README.md](README.md) 与 [evidence.md](evidence.md)）：
