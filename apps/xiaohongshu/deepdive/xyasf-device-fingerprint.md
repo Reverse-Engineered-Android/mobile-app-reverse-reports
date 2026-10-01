@@ -370,11 +370,11 @@ native 的 41 个 `CallJavaJniTest` 方法名与 Java 类 **`com.xingin.u.p.c`**
 | `getImei1/2`、`getMei1/2` | `userGranted()` + `SDK_INT <= 28` + `READ_PHONE_STATE` | Android 10+ 恒为 `null` |
 | `getImsi` | `userGranted()` + `READ_PHONE_STATE` | 受限 |
 | `getInstallApps` | `userGranted()` | 已装应用列表 |
-| `getWifiIp` / `getWifiSSid` / `getWAPMacAddress` | 无 | **恒返回 `"<absent>"`** |
+| `getWifiIp` / `getWifiSSid` / `getWAPMacAddress` | 无 | **本库调用路径恒返回 `"<absent>"`**（WLAN MAC 另有 `com.xingin.utils.core.q.i()` 真实读取路径，见 [privacy-and-permissions.md](../privacy-and-permissions.md) §6.1） |
 | `getTotalExternalStorageSize` | `SDK_INT < 30` + `READ_EXTERNAL_STORAGE` | Android 11+ 返回 0 |
 | `getWifi()` | — | **空方法体** |
 
-`getWifiIp`/`getWifiSSid`/`getWAPMacAddress` 直接 `return a.a.b.a.a.a;`，该常量初值为字面量 `"<absent>"`——即历史字段仍在 protobuf schema 与采集清单里，但实现已废弃（早期版本受 `WifiManager.getConnectionInfo()` 限制），现在恒上报字面量 `"<absent>"`。
+`getWifiIp`/`getWifiSSid`/`getWAPMacAddress` 直接 `return a.a.b.a.a.a;`，该常量初值为字面量 `"<absent>"`，即这三个访问器在本库调用路径上恒返回占位串，字段仍留在 protobuf schema 与采集清单内。**WLAN MAC 的真实读取由另一条独立路径承担**：`com.xingin.utils.core.q.i()`（注册 `80600`/`80601`）按 `WifiInfo → wlan0 NetworkInterface → getByInetAddress → /sys/class/net/<if>/address` 回退，并以 `mac` 键写入账号公共参数，见 [privacy-and-permissions.md](../privacy-and-permissions.md) §6.1。
 
 ### 6.2 检测项映射
 

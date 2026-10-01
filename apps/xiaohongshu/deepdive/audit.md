@@ -9,7 +9,7 @@
 | 3 | 认证机制 | **完成** | [auth.md](auth.md) | `id_token` 来源与传播、`sid`、设备字段、签名字段、接入点、`Bearer` 0 命中结论 |
 | 4 | 上传的具体数据范围 | **完成** | [upload.md](upload.md) | 上传数据清单、令牌字段、去重算法与判定、分块公式、云厂商分支、断点记录、MIME 表 |
 | 5 | 下载的具体数据范围 | **完成** | [download.md](download.md) | Range 构造点、总长解析、缓冲复位、服务端字段、各资源类别走向 |
-| 6 | 完整逆向所有风控代码 | **完成（含显式边界）** | [risk-controls.md](risk-controls.md)、[xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)、[tinyd-companion-daemon.md](tinyd-companion-daemon.md)、[tiny-and-app-sweep.md](tiny-and-app-sweep.md) | 10 类组件逐条给出角色/证据/等级；设备指纹 82 个 JNI 入口 + 51 个采集字段逐条恢复；伴随守护 IPC 协议与字符串加密已闭式还原；**Tiny 风控引擎 31/31 操作码调用语义已定名**（native/Java 双操作码空间，签名头生成链路闭式，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）；**分发层结构完全闭环**（61 分派块 ↔ 61 个互不相同的谓词槽 ↔ 31 个操作码常量三向双射、零冲突；61 个编译期跳转位移全部复现，见同文 §5.6.6–§5.6.7）；**域区逐块算术 lift 亦已完成**（154 域原语 + 九项指纹守恒 EXACT，§5.6.9）；**Java 侧混淆面已闭环**（`@u5/@v5` 519/519、字符串解密 811/811 调用点全映射（0 未映射），§9.2b/§9.7）；§11 余 8 项边界 |
+| 6 | 完整逆向所有风控代码 | **完成（含显式边界）** | [risk-controls.md](risk-controls.md)、[xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)、[tinyd-companion-daemon.md](tinyd-companion-daemon.md)、[tiny-and-app-sweep.md](tiny-and-app-sweep.md) | 10 类组件逐条给出角色/证据/等级；设备指纹 82 个 JNI 入口 + 51 个采集字段逐条恢复；伴随守护 IPC 协议与字符串加密已闭式还原；**Tiny 风控引擎 31/31 操作码调用语义已定名**（native/Java 双操作码空间，签名头生成链路闭式，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）；**分发层结构完全闭环**（61 分派块 ↔ 61 个互不相同的谓词槽 ↔ 31 个操作码常量三向双射、零冲突；61 个编译期跳转位移全部复现，见同文 §5.6.6–§5.6.7）；**域区逐块算术 lift 亦已完成**（154 域原语 + 九项指纹守恒 EXACT，§5.6.9）；**Java 侧混淆面已闭环**（`@u5/@v5` 519/519、字符串解密 811/811 调用点全映射（0 未映射），§9.2b/§9.7）；§11 余 9 行边界 |
 | 7 | 不允许保留未分析清楚的加密代码 | **完成** | [crypto.md](crypto.md)、[tiny-and-app-sweep.md](tiny-and-app-sweep.md)、[tinyd-companion-daemon.md](tinyd-companion-daemon.md) | 覆盖矩阵 **13 项** + 1 项 rodata 常量池，无“未知算法/未解密 blob”条目；**全应用 164 个 `.so` 普查 33 带 / 131 不带，无未识别加密库**（判据四条：加密指令族、已知算法常量、大整数域特征、加载期自解密数据表；`libturingmfa.so` 只被第 4 条命中，见 §1.6、§1.7）；`libtinyd.so` 字符串加密已闭式（4 解码器 × `i%20` 调度表，7/7 明文）；**Tiny opcode 条目“已恢复”**（31/31 定名 + 签名链路闭式，§5.6）；**条目 13 = `libtiny.so` 内联 X25519 域运算**（既无加密指令也无已知常量，见 §2.2.1）；Tiny 域区逐块算术 lift **已完成**——435 个 distinct run 全判读、154 个域原语定名并给出伪代码、九项密码学指纹（`adds`/`adcs` 各 364、`mul` 514、`umulh` 390、`madd` 252、掩码 178、`extr #51` 130、`lsr #51` 63、×19 58）守恒**逐项 EXACT**，188 个未执行槽位逐段定性且 **0 个**含密码学指纹，见 §5.6.9 |
 | 7b | 不允许留下任何**未分析的被混淆代码**（**不只密码学相关**） | **完成（native + Java 双面均已闭环）** | [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.5–§1.7、§2.4、§5.6.9、§9、§9.7；[crypto.md](crypto.md) §4.6、§5b | **native 面**：**164 库混淆普查**（`re/obf_census.py`，164/164 成功）——重度 CFF 仅 `libtiny.so`(br 4.124%)、`libtinyd.so`(4.098%)、`libxyass.so`(3.400%)，第 4 名起全部 < 0.9%，`movz/movk` 密度与 `tblsig` 两条独立佐证；该 8 指标对"无 CFF 的原地自解密表"全盲，故另用**第 4 条判据 + 3 台独立仪器对全 164 库各跑一遍**（`re/inplace_strdec_scan.py` 静态位点、`re/initarray_run.py` Unicorn 跑构造子比对前后字节、`re/xor_table_test.py` 单字节 XOR 全扫、`re/initarray_census.py` 构造子清点）——**只有 `libturingmfa.so` 命中**（`.init_array[6]` → `0x34d74`，5 207 条指令、0 调用、0 入边、1 个 `ret`、**完全展开**；密钥调度 `key_index = src_index mod 8`，348/348 条目验证；348 非空条目 + 68 空串 = 源列表 416 项；另在 `.bss` 建出 348 槽指针数组）；`libxyass.so`/`libtinyd.so` CFF 已闭环，`libtiny.so` CFF 结构已完全枚举（61 块 ↔ 61 槽 ↔ 31 常量三向双射、61 位移全复现）且逐块算术 lift 已完成（§5.6.9）；字符串混淆：`libtinyd.so` 7/7 明文、`libtiny.so` 320 调用点解出 312 条明文（§2.4）。**Java/dex 面**：`@u5`/`@v5` 加密字段名 **519/519 闭式还原**（100% 合法 Java 标识符，§9.2）；Java 侧字符串解密器 **822 调用点按字节码精确计数、811 个内联 (cipher,key) 对全部映射到明文（0 未映射、0 矛盾）**（§9.2b）；**daemon dex 三层混淆完整审计**——字符串 141 个解密器调用点（`c1.a` 136 + `d1.a` 2 + `r0$a.a` 3）、`@x0` 116/116、`@w0` 77、`v.<clinit>` 74 条明文、IPC 12 个命令（§9.7）；11 个反射包装器已枚举；类/包名短名属 R8 字典压缩而非名字加密；`PetalConfig` 是插件化框架配置（`PETAL_MODE = false`），非混淆器（§9.1、§9.5）。**扫描口径**：位点扫描用**有效地址区间相交 + 寄存器偏移/宽存储/post-index 全覆盖**（`re/inplace_xref_scan.py`、`re/inplace_xref_content.py`，164/164），`libturingmfa.so` 位点 348 个（348 个条目里 306 个用 `str q2,[x10,x9]` 这类「位移槽里是寄存器」的形态）；密钥规则为 `key_index = src_index mod 8`（`src_index` 计及空串，故源列表 416 项）；`.bss` 另有 348 槽指针数组（`re/tmfa_pointer_arrays.py`）——它才是代码索引表所用对象，其前 9 槽即 9 个前导常量单元；全应用收紧口径下：113 库有位点、非 `.bss` 目标 595 个，逐个定性后**仅 `libturingmfa.so` 为真表**，余 11 项高熵目标熵上界仅 4.11（真表文件原像整体熵 7.074）且所在库构造子**未**改写 `.data`，一律按 `unproven` 记载 |
 | 8 | 追踪权限弹框 | **完成** | [privacy-and-permissions.md](../privacy-and-permissions.md) §1–§2 | 三 APK 权限并集 80 项；三层弹框（`PrivacyPolicyDialog` → `f72.c` 聚合说明 → `m82.m` 实际申请）；`setCancelable(false)`/`setCanceledOnTouchOutside(false)` 不可取消；`PhonePermissionHelperExtension` 为唯一真实申请者与节流点 |
@@ -53,21 +53,21 @@
 
 已覆盖 9 类：Shield、Tiny、设备指纹、JS 指纹、Walify、ValidateActivity、人脸核身、支付风控、端智能、伴随守护（10 项，含两套验证）。
 
-逐条给出证据等级。§11 现列 **8 行边界**，其中 **2 行已闭环**（Tiny opcode 内部算术、Java/dex 侧混淆），余 6 项均为需要 VM 级 lift、动态跟踪、闭源第三方或运行时抓包才能推进的部分，不是“没看”。
+逐条给出证据等级。§11 共列 **16 行**：**7 行已闭环**（Tiny opcode 内部算术、Java/dex 侧混淆、内嵌 dex 归属、Java 侧字符串计量口径、`libturingmfa.so` 加密面、`libtinyd.so` 的 `JNINativeMethod` 表、Cookie/session 作用），**9 行属显式边界**——每一行都写明具体环节与推进条件（真实 Android 运行时、运行期观测、闭源第三方、服务端逻辑或运行时抓包），不存在"只标未闭环却不写环节"的条目。
 
-**已闭环项的更新**：
+**已闭环项**：
 
-- `libxyasf.so`（设备指纹）由"结构已证实"升为**已恢复**。该库**未做字符串加密**（`.rodata` 可打印字符 60.9%、熵 5.29，79 个静态 JNI 导出名全部明文），因此原判"需与 xyass 同级别 lift"不成立。现给出：82 个 JNI 入口（79 静态 + 3 动态注册）、8 个 protobuf 子消息的 **51 个字段及编号**、4 个 native 检测方法（`isRoot`/`isPtrace`/`mapsInfo`/`getProcessName`）的完整判定逻辑、上报端点 `POST https://as.xiaohongshu.com/api/v1/d/upload` 与载荷封装（16 字节前缀 + 全量 XOR 0x70）、以及**标准 MD5** 的逐常量核对结论。
-- 残留边界收窄为一项：8 个子消息在**父消息**中的字段编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据。
-- `libtinyd.so`（伴随守护）由"结构已证实"升为**已恢复**（见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md)）。给出：4 个字符串解码器的**闭式调度表**（逐位置 256 值穷举全等）与 **7/7 明文**；管道 IPC 的**定长 4 字节协议**（`pipe2` + `write`/`__read_chk`，写后即 `close`）；`setArgV0("zygote")` 进程伪装链；CFF 分发池 381 槽与 14/14 动态跳转验证；并确证该库**无网络导入**（38 项扫描命中 0）、**不在加载时自启**（`.init_array` 全 0）。
-- 残留边界收窄为两项：`JNI_OnLoad` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）、4 字节载荷的取值语义（协议形状已定）。
+- `libxyasf.so`（设备指纹）**已恢复**。该库**未做字符串加密**（`.rodata` 可打印字符 60.9%、熵 5.29，79 个静态 JNI 导出名全部明文），静态导出即可读出全部采集面，无需 VM 级 lift。已给出：82 个 JNI 入口（79 静态 + 3 动态注册）、8 个 protobuf 子消息的 **51 个字段及编号**、4 个 native 检测方法（`isRoot`/`isPtrace`/`mapsInfo`/`getProcessName`）的完整判定逻辑、上报端点 `POST https://as.xiaohongshu.com/api/v1/d/upload` 与载荷封装（16 字节前缀 + 全量 XOR 0x70）、以及**标准 MD5** 的逐常量核对结论。
+- `libxyasf.so` 的残留边界一项：8 个子消息在**父消息**中的字段编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据。
+- `libtinyd.so`（伴随守护）**已恢复**（见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md)）。已给出：4 个字符串解码器的**闭式调度表**（逐位置 256 值穷举全等）与 **7/7 明文**；管道 IPC 的**定长 4 字节协议**（`pipe2` + `write`/`__read_chk`，写后即 `close`）；`setArgV0("zygote")` 进程伪装链；CFF 分发池 381 槽与 14/14 动态跳转验证；并确证该库**无网络导入**（38 项扫描命中 0）、**不在加载时自启**（`.init_array` 全 0）。
+- `libtinyd.so` 的残留边界两项：`JNI_OnLoad` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）、4 字节载荷的取值语义（协议形状已定）。
 
 ### 7. 加密代码无“未分析清楚”
 
-[crypto.md](crypto.md) §1 的矩阵为 12 条编号条目 + 1 条 `8b`（rodata 常量向量池），共 13 行：
+[crypto.md](crypto.md) §1 的矩阵为 13 条编号条目 + 1 条 `8b`（rodata 常量向量池），共 14 行：
 
-- 11 项标注“已恢复/已定性/已固化”（含 rodata 常量向量池与块分派两项）；
-- 2 项标注“第三方组件”（SM2 在腾讯/优图 SDK 内）；
+- 13 项标注“已恢复/已定性/已固化”（含 rodata 常量向量池与块分派两项）；
+- 1 项标注“第三方组件”（SM2 在腾讯/优图 SDK 内）；
 - **0 项**标注“逐操作码语义未展开”。
 
 `libtiny.so`（矩阵条目 12）的状态为**“已恢复”**：**31/31 操作码全部定名**——引擎是 `com.xingin.tiny.internal.t` 的 **native(31) + Java switch(71) 双操作码空间**，两空间**交集为 0**；29 个 native 操作码在 dex 里定位到**确切的调用表达式**（含参数类型与个数），其中 `0x96f7fcac` = **OkHttp 请求签名头生成**（`nlb.p` → `yya.f.e`），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6。
