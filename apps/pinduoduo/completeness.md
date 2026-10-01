@@ -89,7 +89,15 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | 本地存储 | [storage.md](storage.md) | 22 个库 DDL/行数/列形状、WAL 重放、MMKV 边界 |
 | 函数地址与 JNI | [evidence.md](evidence.md) | 地址、哈希、符号、绑定方式与证据等级可复查 |
 
-## 5. 研究边界
+## 5. 可复现工具
+
+上述每一项结论都随报告附带了工具，位于 [tools/](tools/)：8 个只读脚本，只用 Python
+标准库，不含样本或秘密。最常用的两个是
+[db_snapshot.py](tools/db_snapshot.py)（对目录做只读 SQLite 快照，含 WAL 重放，
+只输出列形状聚合而不输出行值）与 [obfclass.py](tools/obfclass.py)（逐库混淆指纹）。
+输入约定见 [evidence.md](evidence.md) §8。
+
+## 6. 研究边界
 
 本报告只适用于自有或获授权样本。它不提供真实账号操作、登录绕过、签名伪造、token
 生成、批量抓取或规避服务端风控的方法。服务端评分、阈值、留存、灰度和最终处置规则
