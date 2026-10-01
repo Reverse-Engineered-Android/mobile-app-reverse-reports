@@ -68,7 +68,8 @@
 | 上传下载数据范围 | 逐接口字段清单与上传表单全字段 | [transfer.md](transfer.md) |
 | 全部风控代码 | anti-token / enCryptInfoV3 / scres / sdr / 54001 / root / 模拟器 / 多开 / 画像 / 降级 / Hook / 支付宝设备指纹 | [risk.md](risk.md) |
 | 无未分析混淆代码 | DEX 层、Efix 层、逐库 native 层结论、字符串池、动态注册 | [obfuscation.md](obfuscation.md) |
-| 本地数据库格式与信息范围 | 22 个库 DDL、行数、列形状；WAL 重放；MMKV 键名 | [storage.md](storage.md) |
+| 本地数据库格式与信息范围 | 22 个库 DDL、行数、列形状；WAL 重放；MMKV 键名；组件框架登记表 | [storage.md](storage.md) |
+| 动态组件框架（Vita） | 两套落盘目录、组件清单三文件、`.vlock` 注册表 126 个、MMKV 登记表 46 条、7 个端点、MD5+RSA+AES 完整性链 | [vita.md](vita.md) |
 
 ## 证据等级
 
@@ -98,3 +99,10 @@
    语义（结构已证实）与 `rsaEncrypt*` 名字的绑定路径。
 5. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
    方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。
+   **原因已定**：其候选提供库（`libriskplugin`/`libmeco_cookie`/`libshadowhook`）
+   在 Vita 组件注册表中处于"**已注册但未下发**"状态，见
+   [vita.md](vita.md) §5.2 与 [risk.md](risk.md) §15.1。
+6. 组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest` 判为
+   RSA-1024 签名（长度与公钥位宽一致），填充方案与签名范围未逐字节断言；
+   `qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失。见
+   [vita.md](vita.md) §12。

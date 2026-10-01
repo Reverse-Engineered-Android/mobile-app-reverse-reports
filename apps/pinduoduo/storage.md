@@ -17,6 +17,8 @@
 | MMKV 存储 | 396–397 个文件（约 19 MB） | 多数**未加密** | 少数模块显式传入 crypt key |
 | SharedPreferences | 12 个 xml | 明文 | — |
 | `files/dynamic_so` | 26 个目录，74 MB | **明文 ELF**，未加壳 | 名称含 `_epoch毫秒_MD5` |
+| `files/.vita` | 46 个组件目录，约 34.6 MB | 明文 | 组件视图，含 `manifest`/`md5checker` |
+| `files/.newLocker` | 183 个零字节 `.vlock` | — | 文件名 = `MD5(组件ID)`，即组件注册表 |
 
 同一设备的应用数据目录合计约 157 MB，其中 `files/dynamic_so` 占 74 MB。
 
@@ -105,18 +107,24 @@ CREATE TABLE t_notification (
 
 ### 2.5 组件存储（vita）
 
-`vita-database`，49,152 字节 + WAL 416,152 字节：
+`vita-database`，49,152 字节 + WAL 416,152 字节。行数**必须连同 WAL 读取**，
+否则偏低（主库单独读为 `UriInfo` 0 / `VitaAccessInfo` 39 / `VitaVersionInfo` 42）：
 
-| 表 | 列 |
-| --- | --- |
-| `UriInfo` | `uri, comp_id, version, relative_path, absolute_path, length, md5`（主键 `uri+comp_id+version`） |
-| `VitaAccessInfo` | `comp_id, version, access_count, access_history`（主键 `comp_id+version`），39 行 |
-| `VitaCleanInfo` | `comp_id, clean_time, recover_time, is_auto`（主键 `comp_id`） |
-| `VitaVersionInfo` | `id, comp_id, version, time, operator`，42 行 |
+| 表 | 列 | 含 WAL 行数 |
+| --- | --- | ---: |
+| `UriInfo` | `uri, comp_id, version, relative_path, absolute_path, length, md5`（主键 `uri+comp_id+version`） | 3 |
+| `VitaAccessInfo` | `comp_id, version, access_count, access_history`（主键 `comp_id+version`） | 43 |
+| `VitaCleanInfo` | `comp_id, clean_time, recover_time, is_auto`（主键 `comp_id`） | 0 |
+| `VitaVersionInfo` | `id, comp_id, version, time, operator` | 46 |
 
 **信息范围**：动态组件（Lego/JS 组件）的落盘路径与摘要、访问次数与访问时间序列、
 清理/恢复时间、版本变更记录与操作者。`absolute_path` 是设备上的绝对路径，
-按 `SECURITY.md` 不公开。
+按 `SECURITY.md` 不公开。`access_history` 为最多 20 个毫秒时间戳的 JSON 数组
+（`VitaAccessInfo.HISTORY_SIZE = 20`）。
+
+注意：**"装了哪些组件"不在这个库里**，而在 MMKV 的 `vita_local_comp_v2`（§7.2）。
+`vita-database` 只存 Uri 映射、访问统计与版本流水。组件框架的完整格式、清单文件、
+注册表与网络协议见 [vita.md](vita.md)。
 
 ### 2.6 下载器（iris）
 
@@ -264,6 +272,24 @@ enCryptInfoV3 = "5ec1"
 `apm`、`app_*` 等 100 余个，对应的具体文件名见 §4.1 与
 `evidence/mmkv/` 列表。
 
+### 4.3 组件框架（Vita）的 MMKV 存储
+
+`files/mmkv/` 下有 15 个以上 `vita*`/`comp_*` 存储，构成组件框架的登记与画像层：
+
+| 存储 | 大小 | 内容 |
+| --- | ---: | --- |
+| `vita_local_comp_v2` | 64 KB | **已安装组件登记表**，46 条 `LocalComponentInfo` JSON |
+| `Vita` | 64 KB | 189 个 `vita-comp-<组件ID>` 文件锁令牌 + 118 个 `vita_downloading_components_*` |
+| `comp_index` | 8 KB | 每组件的文件清单 |
+| `comp_index_common` | 8 KB | `update_<组件ID>/<版本>` 公共索引 |
+| `comp_resource_used` / `_visit` / `_visit_ratio` | 4–16 KB | 组件资源使用与访问画像 |
+| `vita_last_update_comp_time_v2` | 4 KB | 组件最近更新时间 |
+| `push_pull_comp_meta_mmkv` | 512 KB | push-pull 元信息 |
+| `vita-upgrading-comp-pool`、`vita_version_block_info`、`vita_version_block_fake_info`、`vita_comp_offline_*`、`vita-debugger`、`scan-status-vita-debugger` | 4 KB | 升级池、版本封禁、离线索引、调试器开关（样本多为空） |
+
+**信息范围**：组件级访问频次与时间、资源使用画像、升级/封禁状态、锁持有者。
+解码方式与逐字段说明见 [vita.md](vita.md) §4。
+
 ## 5. `files/secure`
 
 `files/secure/p29_info.cache` 是明文 JSON：`{"p29":"","p30":"<长 base64 串>"}`。
@@ -326,6 +352,33 @@ enCryptInfoV3 = "5ec1"
 458 条，与 `libpdd_secure.so` 同工具、同密钥表的四个字节行），内容是该库的反 root/反 hook/
 反模拟器探测面与 `ab_secure_*` 开关。还原方法与完整清单见
 [obfuscation.md](obfuscation.md) §9.4 与 [risk.md](risk.md) §14。
+
+### 7.1 `files/.vita`：同一批产物的组件视图
+
+`files/dynamic_so` 之外还有 **`files/.vita/<组件ID>/<版本>/`**（46 个组件目录、
+约 34.6 MB）。二者是同一批产物的两种视图：
+
+| 关系 | 数量 |
+| --- | ---: |
+| 两处均有同一 So，MD5 相同（不同 inode，非硬链接） | 10 |
+| 仅 `dynamic_so` 有 So 载荷，`.vita` 只有 `manifest` + `md5checker` | 13 |
+
+`.vita` 侧的文件类型：
+
+| 文件 | 说明 |
+| --- | --- |
+| `<组件ID>.manifest` | `PDD_MANIFEST` 保留白名单 |
+| `<组件ID>.md5checker` | 全文件 `{length, md5}` JSON 表 |
+| `extra_info.json` | `{uuid, md5, virtualVersion}`（仅 So 类） |
+| `config.json` + `*.pkg` | almighty/ti 类组件的文件 ID→签名索引 |
+| `.volantis/component.yaml` | 构建期配置（随组件下发） |
+| `resources/oat/arm64/` | ART 编译产物目录 |
+
+另有一个 **`files/.newLocker/`**，183 个零字节 `.vlock` 文件，文件名是
+`MD5(组件ID)`（可带 `-patch` 与版本后缀），构成**完整组件注册表**：
+126 个组件已注册，其中只有 46 个已安装，**80 个已注册但从未下载**。
+此前列为"从未下载"的 54 个 `SoBuildInfo` 库即出自此集合。
+格式与清单见 [vita.md](vita.md) §3、§5。
 
 ## 8. SharedPreferences
 

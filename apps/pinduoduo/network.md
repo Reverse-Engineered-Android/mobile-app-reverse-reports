@@ -216,6 +216,40 @@ offset=<n>
   (`shardInfo(bizUnit, key, value, preLoadBizList)`)、`multiset`、`waitLongLink`
   与 `sourceProcess`。
 
+## 7.1 组件下发（Vita）协议
+
+组件框架（Vita / Volantis）是独立的一条分发链路，协议格式完整逆向见
+[vita.md](vita.md) §7。要点：
+
+| 端点 | 用途 |
+| --- | --- |
+| `/api/app/v1/component/query` | 查询组件更新（主接口） |
+| `/api/app/v1/component/manual/query`、`…/query/titan` | 手动触发检查 |
+| `/api/app/v1/component/report` | 下载/补丁/解密结果上报 |
+| `/api/one-gateway-client/zone/v1/component/{fetch,pull,cdn/check,upload}` | V3 拉取 / push-pull / CDN 检查 / 上传 |
+
+载荷 CDN 路径：
+
+```
+/volantis3-open[/aes]/component[/flat]/<build_no>/<组件ID>.{zip,7z,br}
+/volantis3-open/component/diff/<本地build_no>/<远端build_no>/<组件ID>.br
+```
+
+`/aes` 仅在 `security_level == 1` 时插入；`/flat` 仅在组件允许扁平化 So 时插入。
+
+请求侧（`UpdateComp`）上报已装组件的 `cpnt_id` / `version` / `build_no` /
+`private_properties` / `bizTypes` / `flat_so_diff`；响应侧（`RemoteComponentInfo`）
+按压缩与差分格式分别给出 `url`/`url_brotli`/`url_sevenz`、对应的 `*_diff_url`，
+以及每种格式独立的 `signkey`/`*_diff_signkey`。共 6 种包型
+（`ZIP/Z7/BR` × `FULL/DIFF`）。
+
+**证书固定只覆盖这条链路**：`Network.certificate_pinning_enable_uris_77700`
+中 `forceEnalbePinner: true` 的路径仅 `/api/app/v1/component/query` 与
+`…/manual/query[/titan]` 三个，是全 App 唯一被强制固定的接口族。
+
+完整性/加密链为 MD5（文件级）+ SHA256WithRSA（组件级）+ 可选 AES-128-CBC
+（`security_level ∈ {1,2}`，全零 IV），详见 [vita.md](vita.md) §8。
+
 ## 8. 客户端内建的网络可观测性
 
 `net_adapter/hera/netcapture` 会在客户端内记录每个请求：
