@@ -182,7 +182,7 @@ void decode(uint8_t *buf, size_t len) {
 
 按 §2.3 的正确调度表复跑，同样不能从非调用点起点产生有意义的明文。
 
-→ **`libtinyd.so` 不存在未还原的字符串加密。**（`libtiny.so` 侧同款结论见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)。）
+→ **`libtinyd.so` 不存在未还原的字符串加密。**（`libtiny.so` 侧同款结论见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.4——**该小节此前缺失，本轮回补**：`libtiny.so` 的两个解码器（`0x18c940`、`0x18d5e4`）同样是 20 项调度表的逐字节双射，320 个调用点解出 312 条明文，闭环率 100%。）
 
 ## 3. IPC 协议：管道 + 4 字节定长信令
 

@@ -14,12 +14,14 @@
 | 风控代码 | Shield/Tiny、设备指纹、环境完整性、JS 指纹、验证码/核身、账号处置、推送/策略 SDK | [risk.md](risk.md) | 组件、JNI/Java 入口、采集类别、上报边界和处置链已覆盖 |
 | 加密/签名 | Shield 外层、HMAC 外壳、Tiny 边界、长连接 ECDH/AES/gzip、WCDB/Keystore、联系人 AES | [algorithm.md](algorithm.md)、[storage.md](storage.md) | 只发布已验证的结构和依赖；秘密、白盒表、私钥和可重放实现不进入仓库 |
 
+> **深挖批次补充（[deepdive/](deepdive/README.md)）**：上表是上层批次的边界。深挖批次另做了三件本表未覆盖的事——**全应用 164 个 arm64 `.so` 的加密普查**（32 带 / 132 不带）与**混淆形态普查**（重度 CFF 仅 3 个库）、**`libtiny.so` 内联 X25519 域运算**的定名（`0x525000`–`0x531bc4`）、以及 **`libtiny.so` 字符串加密的闭式还原**（320 调用点解出 312 条明文，闭环率 100%）。口径与证据见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.5、§2.2.1、§2.4。
+
 ## 2. 风控组件清单
 
 | 层 | 组件 | 已分析的代码边界 | 证据状态 |
 | --- | --- | --- | --- |
 | 请求完整性 | `libxyass.so` | JNI 注册、OkHttp interceptor、`shield`/`xy-platform-info`、P/blob/RC4/Base64、摘要容器 | 外层已验证；摘要行为级闭环 |
-| 请求完整性 | `libtiny.so` / `libtinyd.so` | JNI/opcode 入口、method/URL/body 输入、mini-sign headers、token refresh、守护特征 | 调用与数据边界已验证 |
+| 请求完整性 | `libtiny.so` / `libtinyd.so` | JNI/opcode 入口、method/URL/body 输入、mini-sign headers、token refresh、守护特征；深挖批次另给出 **31/31 操作码定名 + 61 分派块三向双射**、**内联 X25519**、**字符串加密闭式（320 调用点 / 312 明文）**、**内嵌 Lua 解释器标识符** | 调用与数据边界已验证；深挖批次见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) |
 | 设备指纹 | `libxyasf.so` | native collectors、root/hook/ptrace/maps/VirtualApp、APK 完整性、multipart 风控上传 | 采集面与上报容器已验证 |
 | Java 采集 | `pt`/`qt`/`fp`/monitor collectors | 传感器、进程、无障碍、电池、网络、屏幕、Build/ROM、JS fingerprint | 类/字段/调度已验证 |
 | 人机验证 | Walify、`ValidateActivity`、captcha/self-resolve | H5/RN 验证入口、风险说明、干预/解限响应 | 业务链与响应字段已验证 |
