@@ -158,7 +158,7 @@ native 方法在 51 个 ELF 中零命中：其提供库
 | 两视图关系（同 MD5、不同 inode） | **已验证** | 10 份双副本 + 13 份仅库视图 |
 | `PDD_MANIFEST` 格式 | **已验证** | 46 个文件逐字节读取 |
 | `<组件>.md5checker` 格式与逐条核验 | **已验证** | 146 条中 134 条通过，12 条不匹配全为可变 `extra_info.json` |
-| `extra_info.json` / `config.json` / `.pkg` 格式 | **已验证**（`digest` 语义为假说） | 字段与长度实测 |
+| `extra_info.json` / `config.json` / `.pkg` 格式 | **已验证**（`digest` 语义已闭合） | 字段、签名公钥、PKCS#1 v1.5 与完整文件范围实测 |
 | `.volantis/component.yaml`（构建脚本泄漏） | **已验证** | 1 个组件带该文件 |
 | `.newLocker` 命名规则与注册表 126 个 | **已验证** | 183 个 vlock 反解，4 个版本锁 |
 | 已注册未下载 80 个 | **已验证** | 注册表 126 − 已安装 46 |
@@ -167,7 +167,7 @@ native 方法在 51 个 ELF 中零命中：其提供库
 | 网络协议 8 个端点 + CDN 路径模板 | **已验证** | 常量与调用点 |
 | 拉取响应 / 查询请求字段 | **已验证** | `RemoteComponentInfo` / `UpdateComp` 的 `@SerializedName` |
 | 证书固定仅覆盖 3 个 Vita 接口 | **已验证** | `certificate_pinning_enable_uris_77700` 配置串 |
-| MD5 + SHA256WithRSA + AES 完整性链 | **已验证**（算法与参数）；填充方案为假说 | `ol0/a0.k()`、`vita/patch/inner/a.b()` |
+| MD5 + SHA256WithRSA + AES 完整性链 | **已验证**（算法、参数与 `digest` 范围） | `ol0/a0.k()`、`vita/patch/inner/a.b()`、断点库保留的 `x-pos-meta-digest` |
 | DEX 侧 6 把 RSA 公钥 | **已验证** | 位宽、DER 长度、SHA-256 |
 | `security_key` 解密实现 | **已验证**（原「未取得」撤销） | 纯 native 链路 `uv2/a`→…→`SecureNative.dv`；AES-128 密钥扩展与 FIPS-197 逐字节一致，见 [vita.md](vita.md) §8.4 |
 | 2 个未解析 vlock 的组件 ID | **未判定** | 反查 44.5 万候选串无命中 |
