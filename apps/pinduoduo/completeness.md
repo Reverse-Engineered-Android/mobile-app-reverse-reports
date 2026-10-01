@@ -85,6 +85,32 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 本报告不在这些库上做任何"已闭环"的断言。这也是为什么 §3.1 的范围被限定为
 "已取得的 51 个 ELF"。
 
+#### 3.2.1 这 54 个库的状态已定：Vita 已注册、按需下发、本机未触发
+
+"未落盘"不等于"缺失"。组件框架的注册表给出了权威状态：
+
+`files/.newLocker/` 下 183 个零字节 `.vlock`，文件名是 **`MD5(组件ID)`**
+（可带 `-patch` 与版本后缀）。反解后得**注册表 126 个组件**；
+`files/mmkv/vita_local_comp_v2` 的**已安装表 46 条**。两者做差得
+**80 个已注册但从未下载**：
+
+| 集合 | 数量 |
+| --- | ---: |
+| 已注册（`.newLocker` 反解） | 126 |
+| 已安装（`vita_local_comp_v2` / `files/.vita`） | 46 |
+| **已注册但未下载** | **80** |
+
+`SoBuildInfo` 的 105 个 `absent` 条目中 **54 个**落在这 80 项内；其余 51 个用
+`v7alib*` 命名（Vita 用 `v64lib*`），属另一套命名空间，样本设备为 arm64 故不适用。
+
+因此这 54 个库的准确表述是：**已注册、等待按需下发、本机未触发**——
+触发需"网络 + 版本策略同时命中"。这**不是分析遗漏**，而是分发策略的正常状态，
+也直接解释了 §3.1 之外为什么 `SE`/`meco.cookie.N`/`shook.ShadowHook` 三族
+native 方法在 51 个 ELF 中零命中：其提供库
+（`libriskplugin` / `libmeco_cookie` / `libshadowhook`）就在这 80 项里。
+
+格式与清单见 [vita.md](vita.md) §3、§5；风控含义见 [risk.md](risk.md) §15.1。
+
 ## 4. 可复核证据
 
 | 主题 | 复核位置 | 结果 |
@@ -100,12 +126,14 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 
 ## 5. 可复现工具
 
-上述每一项结论都随报告附带了工具，位于 [tools/](tools/)：11 个只读脚本，只用 Python
+上述每一项结论都随报告附带了工具，位于 [tools/](tools/)：12 个只读脚本，只用 Python
 标准库，不含样本或秘密。最常用的两个是
 [db_snapshot.py](tools/db_snapshot.py)（对目录做只读 SQLite 快照，含 WAL 重放，
 只输出列形状聚合而不输出行值）与 [obfclass.py](tools/obfclass.py)（逐库混淆指纹）。
 字符串池用 [xorstr.py](tools/xorstr.py) 还原（默认取四个已还原掩码的并集，
 自校验会从文件自身的密钥表推导掩码 A），注册点计数用 [rnbind.py](tools/rnbind.py)。
+组件框架用 [vita_registry.py](tools/vita_registry.py)（`locks` 反解 `.vlock` 名、
+`mmkv` 解码 MMKV 登记表、`verify` 核验 `md5checker`）。
 输入约定见 [evidence.md](evidence.md) §8。
 
 ## 6. 研究边界
