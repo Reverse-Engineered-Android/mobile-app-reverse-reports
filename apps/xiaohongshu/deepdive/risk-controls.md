@@ -182,10 +182,12 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 | --- | --- | --- |
 | ~~Tiny opcode 内部算术~~ | — | **已闭环（本轮）**：调用语义 31/31 定名（§5.6）；分发层结构闭环（31 操作码 / 61 分派块 / 61 谓词槽 / 61 跳转位移，§5.6.6–§5.6.7）；**域区逐块算术 lift 已完成**——435 distinct run 全判读、154 域原语 + 伪代码、九项指纹守恒逐项 EXACT、188 未执行槽位逐段定性且 0 个含密码学指纹（§5.6.9）。仍**未做**逐输入饱和实测，引用时须声明证据等级（§5.6.8） |
 | ~~Java/dex 侧混淆~~ | — | **已闭环（本轮）**：`@u5/@v5` 加密字段名 519/519 闭式还原（100% 合法 Java 标识符）、Java 侧字符串解密器 811/811 调用点全映射（0 未映射）、daemon dex 三层混淆完整审计（§9.7）、11 个反射包装器枚举、类/包名短名经证实为 R8 字典压缩；并纠正旧稿 `Petal` 归因错误（§9） |
+| ~~「内嵌 dex 无引用、不构成隐藏代码面」~~ | — | **已作废并重审（本轮）**：`assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B）是 `libtinyd.so` 的 **Java 侧守护进程**（63 类、12 个 IPC case、`@x0` 116/116、`v.<clinit>` 74 条明文）；`c4d121c215evx1s51d.dex`（940 B）与 588 B 内嵌 dex 均为**单类 `La;` 的 R8 反射蹦床**（4 个方法逐字相同），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §9.7 |
+| ~~「Java 侧字符串加密 212/212」~~ | — | **已作废并重建口径（本轮）**：212 来自匹配 jadx 重命名后的标识符，随树变化（同 dex 三棵树 = 441/674/57）。新口径为**字节码精确**：822 调用点 → 811 内联对 → **811 全映射、0 未映射**，见 §9.2b.1 |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
-| `libtinyd.so` 的 `JNINativeMethod` 表 | 类名/方法名/签名三元组 | 表在 `JNI_OnLoad`（CFF，`0xa630`）内运行时构造，静态数据中不存在；需带真实 `JNIEnv` 的进程内插桩 |
-| `libtinyd.so` 4 字节载荷语义 | `+0x494` 各取值含义 | 协议形状已确定（定长 4 字节、写后关）；"哪个值代表哪种状态"需 Java 侧调用方或运行时观测 |
+| ~~`libtinyd.so` 的 `JNINativeMethod` 表~~ | — | **已闭环（本轮）**：不必读 CFF 建表过程，读**被注册者**即可——daemon dex 全库只声明**一个** `native` 方法 `Lcom/xingin/tiny/daemon/d;.a(I[Ljava/lang/Object;)Ljava/lang/Object;`，故该表只能绑定它（类名/方法名/签名三项确定，见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.3.1） |
+| `libtinyd.so` 4 字节载荷语义 | `+0x494` 各取值含义 | 协议形状已确定（定长 4 字节、写后关）；**对端已找到**（daemon dex 的 `e.main` → `l.a()`，12 个 IPC case，见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.3），但"哪个值代表哪种状态"仍需运行时观测——这属**运行期取值**，非代码未分析 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
 | `x-n0`…`x-r4o` 语义 | 头部名已知；**生成机制已定名**（`0x96f7fcac` 返回 `Map<String,String>`，由 `nlb.p` 逐条写成 header） | 头名出现在 `classes2/15/16/17/20.dex`；取值本身属运行期产物，需真实请求观测 |
 | Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 无需运行时验证 |
