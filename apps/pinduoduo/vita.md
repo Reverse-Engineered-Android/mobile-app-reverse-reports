@@ -278,8 +278,12 @@ MD5(组件ID) <版本>       .vlock          # 版本锁
 
 反解覆盖范围：APK 的 6 个 DEX 全部可打印串、`assets-so` 内嵌库、`lib/arm64-v8a`
 随包库、`SoBuildInfo` 清单、设备端 `vita-database` 的 `VitaAccessInfo` /
-`VitaVersionInfo` 两表全部文本列，以及 `vita_local_comp_v2` 登记表——合计约
-**122.5 万条候选串**。在此范围内 183 个文件名**全部命中**，无剩余未解析项。
+`VitaVersionInfo` 两表全部文本列，以及 `vita_local_comp_v2` 登记表——合计
+**1,224,722 条候选串**（约 122.5 万）。在此范围内 183 个文件名**全部命中**，
+无剩余未解析项。其中 7 个组件 ID 只出现在设备侧两表与登记表中
+（`almighty.touchRecognize` / `almighty.commonBiz` / `almighty.three` /
+`almighty.two` / `almighty.goods_detail_notify_chat_plugin` /
+`remote.weather` / `lego.template.scene`），单独取 APK 字符串会漏掉它们。
 
 补丁锁只有 46 个，恰好等于**已安装组件数**——补丁锁只在组件真正落盘后才创建，
 因此补丁锁集合可以作为"哪些组件到过本设备"的第二重独立佐证（与
@@ -734,8 +738,10 @@ SHA-256 `71d88a54ca242206c039e5f8e9b60903b9f3004b35b5067f0fb0c271715f7592`，
 ## 13. 复现方式
 
 ```bash
-# 组件注册表（.vlock 名 -> 组件 ID）
-python3 tools/vita_registry.py locks <newLocker目录> <dex或清单文件...>
+# 组件注册表（.vlock 名 -> 组件 ID）。候选串文件需同时覆盖 APK 侧与设备侧，
+# 否则只解出 121 个 ID / 14 个未命中名（缺的 7 个组件 ID 在设备侧两表里）。
+python3 tools/vita_registry.py locks <newLocker目录> \
+    <候选串.txt> <vita-database> <vita_local_comp_v2>
 
 # 已安装组件登记表（MMKV）
 python3 tools/vita_registry.py mmkv <vita_local_comp_v2>
@@ -743,6 +749,11 @@ python3 tools/vita_registry.py mmkv <vita_local_comp_v2>
 # md5checker 逐条核验（在设备上先跑 md5sum 取回哈希清单）
 python3 tools/vita_registry.py verify <md5checker目录> <md5sum输出...>
 ```
+
+三者取齐时的实测输出为 `vlock files: 183` / `special locks: 5` /
+`version-suffixed: 4` / `resolved ids: 128` / `unresolved names: 0`；只给
+APK 侧候选串时为 `resolved ids: 121` / `unresolved names: 14`（14 = 7 个
+组件 ID × 主锁与补丁锁两份）。
 
 工具不读取任何凭据，不写入被分析设备；哈希清单一律由设备上的 `md5sum`
 产出后带回。
