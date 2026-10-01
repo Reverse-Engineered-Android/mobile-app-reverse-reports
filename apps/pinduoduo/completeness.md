@@ -1,6 +1,6 @@
 # 拼多多 8.26.0 分析完成度矩阵
 
-本文件把用户提出的七项要求拆成可核验的代码边界，并明确哪些结论是**已验证**、
+本文件把用户提出的要求拆成可核验的代码边界，并明确哪些结论是**已验证**、
 哪些是**结构已证实**、哪些仍是**假说**或**未覆盖**。它不是登录绕过、签名伪造、
 token 生成或风控规避指南；仓库只发布脱敏结构、证据地址和不含秘密的工具。
 
@@ -16,6 +16,9 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | 全部风控代码 | anti-token、`enCryptInfoV3`、`scres`、`sdr`、54001、root/模拟器/多开、设备画像、网络降级、Hook 对抗、网络留痕、**第三方支付宝设备指纹 SDK** | [risk.md](risk.md) | 组件、Java/native 入口、采集类别、上报边界与处置链已覆盖；含 41 个 `AD`/`AL` 编码的逐条定位 |
 | 本地数据库格式与信息范围 | 22 个 SQLite 库（89 张表）的 DDL/行数/列形状、未 checkpoint 的 WAL 重放、396 个 MMKV 文件、`files/secure`、`files/network`、`files/dynamic_so`、SharedPreferences | [storage.md](storage.md) | 逐库列出表名、列名、行数与值域形状；不公开任何行值。**经两次独立只读取证交叉确认**（[evidence.md](evidence.md) §8.1） |
 | 无未分析混淆代码 | DEX 层、Efix 跳板层、51 个已取得 ELF 的逐库混淆清点、`RegisterNatives` 调用点、异或字符串池、动态库清单与在机情况 | [obfuscation.md](obfuscation.md) | 见 §3 与 §4：已取得库上闭环，54 个未落盘库与 3 类未绑定 native 方法明确列为未覆盖 |
+| 权限弹框追踪 | 59 项 `uses-permission` 分层、设备实测授权态与 appops、三级弹框代码路径与资源文案、MMKV 弹框状态实测、同意闸门链 | [permissions.md](permissions.md) | 声明面、运行时面、弹框文案与状态机均已闭环；`READ_PHONE_STATE` 未声明但保留 15 处代码引用 |
+| 未告知/超范围收集 | 两条采集面（`ob2/b.e()` 49 键、`ob2/f.e()` 37 键）字段表、服务端字段黑名单、11 个采集剥离开关、零危险权限采集面 | [privacy.md](privacy.md) | 四项未在政策列举的采集已定位；`privacy_passed_5200` 闸门 6 入口闭环 |
+| 隐私协议 vs 实际采集 | 政策 V4.1.1 与协议 V4.2 原文引用及 SHA-256、逐项覆盖判定、剪贴板承诺的可证边界 | [privacy.md](privacy.md) | 三份引用清单不可达（302），对照以正文为基准；剪贴板上传限缩明确标注未证实 |
 
 ## 2. 风控组件清单
 
@@ -122,6 +125,8 @@ native 方法在 51 个 ELF 中零命中：其提供库
 | 混淆 | [obfuscation.md](obfuscation.md) | 逐库指纹表 + 反扁平化结果 + 绑定三分 + 动态库清单 |
 | 算法/常量 | [algorithm.md](algorithm.md) | 字节级常量表地址、导出→密码学映射、选择子体系 |
 | 本地存储 | [storage.md](storage.md) | 22 个库 DDL/行数/列形状、WAL 重放、MMKV 边界 |
+| 权限/弹框 | [permissions.md](permissions.md) | 声明面 59 项、运行时 22/13/12/1、三级弹框、同意闸门链闭环 |
+| 隐私对照 | [privacy.md](privacy.md) | 政策原文、两条采集面字段表、未列举项、零权限采集面闭环 |
 | 函数地址与 JNI | [evidence.md](evidence.md) | 地址、哈希、符号、绑定方式与证据等级可复查 |
 
 ## 5. 可复现工具
@@ -147,8 +152,8 @@ native 方法在 51 个 ELF 中零命中：其提供库
 
 ## 7. 动态组件框架（Vita）覆盖
 
-用户要求"分析本地数据库格式和存储的信息范围"。组件框架此前只覆盖到
-`vita-database` 的 4 张表；本轮补齐其全部落盘面，见 [vita.md](vita.md)。
+用户要求"分析本地数据库格式和存储的信息范围"。组件框架除 `vita-database`
+的 4 张表外，其全部落盘面一并给出，见 [vita.md](vita.md)。
 
 | 面 | 状态 | 证据 |
 | --- | --- | --- |
@@ -169,10 +174,8 @@ native 方法在 51 个 ELF 中零命中：其提供库
 | 证书固定仅覆盖 3 个 Vita 接口 | **已验证** | `certificate_pinning_enable_uris_77700` 配置串 |
 | MD5 + SHA256WithRSA + AES 完整性链 | **已验证**（算法、参数与 `digest` 范围） | `ol0/a0.k()`、`vita/patch/inner/a.b()`、断点库保留的 `x-pos-meta-digest` |
 | DEX 侧 6 把 RSA 公钥 | **已验证** | 位宽、DER 长度、SHA-256 |
-| `security_key` 解密实现 | **已验证**（原「未取得」撤销） | 纯 native 链路 `uv2/a`→…→`SecureNative.dv`；AES-128 密钥扩展与 FIPS-197 逐字节一致，见 [vita.md](vita.md) §8.4 |
+| `security_key` 解密实现 | **已验证** | 纯 native 链路 `uv2/a`→…→`SecureNative.dv`；AES-128 密钥扩展与 FIPS-197 逐字节一致，见 [vita.md](vita.md) §8.4 |
 | 2 个未解析 vlock 的组件 ID | **未判定** | 反查 44.5 万候选串无命中 |
 
 **结论**：组件框架的落盘格式、清单格式、登记表、注册表、网络协议与完整性链
-已全部给出，可逐条复现；剩余未决已在 [vita.md](vita.md) §12 列明，其中
-`security_key` 解密实现一项**已闭合**。
-
+已全部给出，可逐条复现；剩余未决已在 [vita.md](vita.md) §12 列明。

@@ -189,7 +189,7 @@ return ij0.b.s(bArr, new SecretKeySpec(key.getBytes(), "AES"));
 | `libtitan.so` | MD5/SHA-1 IV、SHA-256 H0、P-256 p | Titan 长连接握手与消息摘要 |
 | `libpnet.so` | AES 逆 S-box、Base64、MD5/SHA-1 IV | PNet QUIC/TLS 会话与传输 |
 | `libmmkv_v2.so` | AES 逆 S-box、MD5/SHA-1 IV | MMKV crypt key 派生与加密存储 |
-| `libmmkv.so` | MD5/SHA-1 IV | 同上（APK 内置旧版） |
+| `libmmkv.so` | MD5/SHA-1 IV | 同上（APK 随包分发的版本） |
 | `libmedia_engine.so` | AES S-box、AES 逆 S-box、Base64 | 媒体引擎内 DRM/签名 |
 | `libpdd_j2v8.so` | AES S-box、AES 逆 S-box、zlib | JS 引擎桥接 |
 | `libtronavx.so` | AES 逆 S-box、Base64、ChaCha20 sigma | 播放器；含 ChaCha20 sigma 常量 |

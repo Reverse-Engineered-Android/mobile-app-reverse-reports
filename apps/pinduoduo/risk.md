@@ -192,8 +192,8 @@ map.put("double_instance_v2", String.valueOf(
 
 ## 13. 第三方风控 SDK：支付宝设备指纹（`apmobilesecuritysdk`）
 
-本项在早期版本中**被整体遗漏**。它不属于拼多多自研风控，而是一条**完整且活着**的
-第三方指纹采集链路，采集范围与自研部分不重叠，因此单列。
+本项不属于拼多多自研风控，而是一条**完整且活着**的第三方指纹采集链路，
+采集范围与自研部分不重叠，因此单列。
 
 注意与仓库中[支付宝应用本身的报告](../alipay/device-risk.md)区分：那份报告分析的
 是支付宝 APP 自己的 `mtopsdk`/UTDID 采集面，本节分析的是**被嵌入拼多多 APK 的**
@@ -335,7 +335,7 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 
 ## 14. `libdyncommon.so`：native 侧环境探测与 AB 开关
 
-§6–§11 列的是 DEX 侧的风控判定。本版新增的 §9.4 解出了
+§6–§11 列的是 DEX 侧的风控判定。§9.4 解出了
 `libdyncommon.so` 的异或字符串池（四掩码并集 **458** 条，**已验证**），
 池中内容是一条完整的
 **native 侧反 root / 反 hook / 反模拟器环境探测链**，其判定结果供 DEX 侧
@@ -383,7 +383,7 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 | `ab_secure_fdc_7430` | D | 文件/目录采集子模块 |
 | `ab_secure_emcd_7430` | A | EMC 采集 |
 | `ab_secure_emcd_8170` | B | EMC 采集 8170 版 |
-| `ab_secure_rep_767` | C | 旧版上报开关 |
+| `ab_secure_rep_767` | C | `767` 版上报开关 |
 | `ab_secure_repu_7700` | B | 上报分组 |
 | `ab_secure_repu_7760` | A | 上报分组 7760 版 |
 | `ab_secure_repu_8180` | C | 上报分组 8180 版 |
@@ -401,12 +401,12 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 合计 **68 个** `ab_secure_*` 键（native **29** + DEX 39，两集合**无交集**——
 逐键比对 `comm` 结果为 0 条共同项），构成一套完整的风控能力开关面。
 
-**本版更正**：上一版 native 侧记为 11 个。11 只是掩码 A 一个循环能解出的数量；
-四掩码并集后为 29 个。其中 `ab_secure_xposed_detect`、`ab_secure_emulator_detect_7030`、
+**计数口径**：native 侧共 **29** 个。若只用一个解码循环（掩码 A）普查，
+只能得到 11 个；其中 `ab_secure_xposed_detect`、`ab_secure_emulator_detect_7030`、
 `ab_secure_debug_detect`、`ab_secure_dump_7650`、`ab_secure_new_sig`、
 `ab_secure_uad_7430`、`ab_secure_fdc_7430`、`ab_secure_xpmountd_7230`、
-`ab_secure_xp_8170_001` 这 9 个键此前完全不可见（分属 B/C/D 掩码），
-而它们恰好是**最直接的反分析开关**——漏掉它们会让本节的风控开关面明显低估。
+`ab_secure_xp_8170_001` 这 9 个键分属掩码 B/C/D，单掩码普查不可见，
+而它们恰好是**最直接的反分析开关**，因此必须按四掩码并集统计。
 
 要点：**这套开关让 PDD 可以在服务端逐项关闭采集而不换包**——
 `ab_secure_skip_*_7630` 一族尤其说明 `7630` 版之后对"位置、基站、WiFi、
@@ -459,13 +459,61 @@ libpapmLeak        libBigAllocMonitor  libwallet_crypto_box  libfastdump
 libmdumper         libxdl            libchat_msg        libgoldarch
 ```
 
-**这一条直接解释了一个此前的未决项**：`SE`（11 个方法）、`meco.cookie.N`
+**这直接解释了 `SE`/`meco`/`ShadowHook` 三族的零命中**：`SE`（11 个方法）、`meco.cookie.N`
 （12 个）、`shook.ShadowHook`（14 个）三族 native 方法在 APK 内 51 个 ELF 中
-（含四掩码字符串池并集、JNI 注册表扫描、原始字节搜索）**零命中**。原因不是
-分析遗漏或单掩码假阴性，而是其提供库
+（含四掩码字符串池并集、`#1720` 注册表扫描、原始字节搜索）**零命中**。其提供库
 （`libriskplugin` / `libmeco_cookie` / `libshadowhook`）**在 Vita 注册表中处于
 "已注册未下发"状态**——服务端在本设备上从未触发下载。
 
 因此"全部风控代码"的覆盖边界应表述为：**已下发到设备的部分已穷尽**；
 未下发部分（80 个组件）的**存在性、ID 与用途已确认**，但其内部实现不在本设备上，
 无法从本机快照静态还原。
+
+## 16. 采集闸门与告知面（与权限/隐私报告交叉引用）
+
+风控采集不是无条件执行的，它同时受**同意闸门**、**权限闸门**与**服务端字段
+裁剪**三层约束。这三层的完整证据见 [privacy.md](privacy.md) 与
+[permissions.md](permissions.md)，本节给出与风控直接相关的落点。
+
+### 16.1 同意闸门 `ac2.b.n()`
+
+判定链为 `ac2.b.n()` → `sc2.b.a()` → `b92.a.b()` → `ne1.s.b()` →
+MMKV `force_permission.privacy_passed_5200 == 1`（由 `ne1/c.l()` 在同意时写入）。
+风控相关的强制入口：
+
+| 入口 | 未同意时的行为 |
+| --- | --- |
+| `lb2/f0.o(int, Map)` | 直接 `return`，设备信息不组装、不上报 |
+| `com.aimi.android.common.http.i.b(...)` | 返回 `null`，不下发 `anti-token` 头 |
+| `OaidInitTask.run` | 不初始化 OAID，注册 `privacy_dialog_finish` 等待 |
+| `TitanInitTask.run` | 不启动长连接，等待 `privacy_dialog_finish` |
+| `PreLogicCallbackImp.isPreEnable()` | 前置拦截请求，收到 `privacy_dialog_finish` 后放行 |
+| `rb2/j` 敏感 getter 族（6 处） | WiFi/小区/位置/`getExtraInfo` 返回空或 `null` |
+
+`ac2.b.n()` 全 APK 共 52 处调用点、34 个文件，是全局"隐私已通过"标志。
+即**同意前不存在第一方风控数据外发**，也没有长连接建立。
+
+### 16.2 服务端字段裁剪
+
+`ob2/b.h(String, JSONObject)` 对每个可选字段先查
+`ob2/f.i(str)` → `f82237a.contains(str)`；命中则写入空串并跳过采集。
+`f82237a` 的唯一来源是服务端配置项 `RiskControl.info_collect_blacklist`
+（`secure/c.a()` → `secure/b.a(List)` → `lb2/h0.b(List)` → `ob2/f.A(List)`）。
+
+因此**风控采集面本身可由服务端逐字段收缩**，且收缩后的字段仍以空串出现在
+上报体中——字段存在不等于字段有值。
+
+### 16.3 采集剥离开关
+
+11 个 `ab_secure_skip_*_7630` 开关（默认全部 `false`）可逐项关闭无障碍列表、
+运行进程、WiFi 列表、位置、基站列表、壁纸、铃声、IP 列表、WiFi 配置、
+已连 WiFi 与 `eue20` 采集。开关的存在说明这些采集项是**有意的、可灰度的能力**，
+而非历史遗留代码。逐项表见 [privacy.md](privacy.md) §3.4。
+
+### 16.4 权限闸门
+
+位置、WiFi 扫描、基站三条路径在调用前经
+`com.xunmeng.pinduoduo.permission.scene_manager` 查询权限态，未授权直接返回
+空串；OAID 受同意闸门约束。设备实测 13 项 dangerous 权限中 12 项被拒
+（见 [permissions.md](permissions.md) §2），应用在此状态下仍能完成设备指纹、
+应用清单、无障碍列表、运行进程与 Root/模拟器判定的采集。

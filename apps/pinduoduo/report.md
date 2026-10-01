@@ -53,7 +53,16 @@
    反模拟器探测链与全部 `ab_secure_*` 风控总开关（native 29 个 + DEX 39 个，
    两集合无交集；[risk.md](risk.md) §14）。
    逐库清点见 [obfuscation.md](obfuscation.md) §9。
-8. 设备侧结论经**两次独立只读取证**交叉确认：设备上 `base.apk` 的 SHA-256 与
+8. **权限与告知面**：清单声明 59 项权限（35 标准 + 24 厂商），设备实测 13 项
+   runtime 权限中**仅 `POST_NOTIFICATIONS` 已授予**，其余 12 项全部被拒且 appops
+   `mode=ignore`；剪贴板与音量通道被应用主动限定为 `mode=foreground`。同意闸门
+   `ac2.b.n()`（末端读 MMKV `force_permission.privacy_passed_5200`）在设备信息
+   上报、anti-token、OAID、Titan 长连接、请求前置拦截、`rb2/j` 敏感 getter
+   共 6 个入口强制生效，**同意前无第一方数据外发**。隐私政策 V4.1.1 未列举
+   无障碍服务列表、运行进程、铃声摘要、壁纸摘要四项采集，且这四项均有专属
+   `ab_secure_skip_*` 灰度开关。见 [permissions.md](permissions.md) 与
+   [privacy.md](privacy.md)。
+9. 设备侧结论经**两次独立只读取证**交叉确认：设备上 `base.apk` 的 SHA-256 与
    本报告分析的样本**逐字节一致**（`d57b1ebc…`，26,325,735 字节、`versionCode`
    82600），22 个 SQLite 库的 **DDL 两次逐字节相同**，唯一差异是 6 处随使用增长
    的行数。见 [evidence.md](evidence.md) §8.1。
@@ -69,6 +78,8 @@
 | 全部风控代码 | anti-token / enCryptInfoV3 / scres / sdr / 54001 / root / 模拟器 / 多开 / 画像 / 降级 / Hook / 支付宝设备指纹 | [risk.md](risk.md) |
 | 无未分析混淆代码 | DEX 层、Efix 层、逐库 native 层结论、字符串池、动态注册 | [obfuscation.md](obfuscation.md) |
 | 本地数据库格式与信息范围 | 22 个库 DDL、行数、列形状；WAL 重放；MMKV 键名；组件框架登记表 | [storage.md](storage.md) |
+| 权限弹框与运行时授权 | 59 项声明权限分层、设备实测 13 项 runtime 中 12 项被拒、三级弹框路径与资源文案、同意闸门链 | [permissions.md](permissions.md) |
+| 隐私政策措辞 vs 实际采集 | 政策 V4.1.1 原文引用、两条采集面的字段表、四项未列举采集、零权限采集面、同意前外发阻断 | [privacy.md](privacy.md) |
 | 动态组件框架（Vita） | 两套落盘目录、组件清单三文件、`.vlock` 注册表 126 个、MMKV 登记表 46 条、7 个端点、MD5+RSA+AES 完整性链 | [vita.md](vita.md) |
 
 ## 证据等级
@@ -92,14 +103,24 @@
 3. `libpdd_secure.so` 池内 5 条**非文本**记录（45/12/12/12/12 字节）判为二进制
    密钥/IV 材料，只断言位置、长度、非文本三点，不做密钥语义推断；见
    [obfuscation.md](obfuscation.md) §9.4.5。
-4. ~~`libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点~~
-   **已闭合**：调用点（`0x3764c`/`0x37784`）、跳板与选择子结构、两把公钥的
+4. `libpdd_secure.so` 异或字符串池中的 RSA 公钥：调用点
+   （`0x3764c`/`0x37784`）、跳板与选择子结构、两把公钥的
    逐字节对照、以及"公钥加密上报体"的方向均已给出，见
-   [obfuscation.md](obfuscation.md) §9.4.6。FLA 分派核的逐块语义**亦已闭合**，
+   [obfuscation.md](obfuscation.md) §9.4.6。FLA 分派核的逐块语义亦已给出，
    见 [obfuscation.md](obfuscation.md) §9.4.7 与 [vita.md](vita.md) §8.4。
 5. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
    方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。
    **原因已定**：其候选提供库（`libriskplugin`/`libmeco_cookie`/`libshadowhook`）
    在 Vita 组件注册表中处于"**已注册但未下发**"状态，见
    [vita.md](vita.md) §5.2 与 [risk.md](risk.md) §15.1。
-6. ~~组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest` 只判为 RSA-1024 签名~~ **已闭合**：`digestVersion: 1` 为 SHA-256 + RSA/PKCS#1 v1.5，签名覆盖完整下载文件；已用断点库保留的 `x-pos-meta-digest`、对应 CDN 对象与 `ol0/a0.k()` 的 Vita 公钥复验。见 [vita.md](vita.md) §8.1。同时 ~~`qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失~~ **已闭合且原判断有误**：`security_key` 是硬编码 16 字节对称密钥的 AES-128 解密，实现为纯 native（`SecureNative.dv` → `libpdd_secure.so 0x1f75c`），AES-128 密钥扩展已与 FIPS-197 逐字节对齐。见 [vita.md](vita.md) §8.4 与 §12。
+6. 剪贴板：正则识别路径（`config_monitor_clipboard_info_80002` 四个可配
+   正则 + `a31.g` 位掩码上报）与政策 §2.6.3 一致；但 `lb2/t.b()` 的
+   `clipboard_md5` 是对剪贴板全文计算的 MD5，不经过该正则判定，随后随
+   `/project/meta_info` 上报。其识别函数 `SecureNative.y` → native `ecn`
+   的返回语义未断言到"是否为拼多多指令"这一层；见
+   [privacy.md](privacy.md) §4.4。
+7. 隐私政策正文引用的《拼多多权限申请清单》《拼多多第三方SDK目录》
+   《拼多多信息共享清单》三份清单均不可由客户端获取
+   （`permission_list.html` 等四条路径 302 → `/portal.html`），因此
+   §4.1–§4.3 的对照以政策正文与附录 6/7 为基准，不含三份清单的逐项核对。
+8. 组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest`：`digestVersion: 1` 为 SHA-256 + RSA/PKCS#1 v1.5，签名覆盖完整下载文件；已用断点库保留的 `x-pos-meta-digest`、对应 CDN 对象与 `ol0/a0.k()` 的 Vita 公钥复验。见 [vita.md](vita.md) §8.1。另：`security_key` **不是** RSA，而是硬编码 16 字节对称密钥的 AES-128 解密，实现为纯 native（`SecureNative.dv` → `libpdd_secure.so 0x1f75c`），AES-128 密钥扩展已与 FIPS-197 逐字节对齐。见 [vita.md](vita.md) §8.4 与 §12。
