@@ -29,7 +29,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | 服务端挑战 | `error_code 54001` → `verify_auth_token` | 触发条件、重试与刷新链路 | 结构已证实 |
 | 环境完整性 | root / 模拟器（加权打分）/ 多开 / 应用克隆 | 判定项、权重、上报字段 | 结构已证实 |
 | 设备画像 | `mi0/a.java` | 采集键含 `adb_enabled`、`development_settings_enabled` | 已验证 |
-| Hook 对抗 | `libdyncommon.so` native 环境探测、`libpdd_sa_hook.so`、bytehook 链 | 字符串池已全部还原（129 条）：Magisk/SuperSU/su、Riru/EdXposed/SandHook/`libSignatureKiller`、模拟器（vboxsf/nemusf/ttVM/ranchu）、SELinux 与 verified-boot、`/proc` 自省、无障碍外挂；外加 11 个 `ab_secure_*` 总开关，见 [risk.md](risk.md) §14 | 已验证 |
+| Hook 对抗 | `libdyncommon.so` native 环境探测、`libpdd_sa_hook.so`、bytehook 链 | 字符串池已全部还原（四掩码并集 458 条）：Magisk/SuperSU/su、Riru/EdXposed/SandHook/`libSignatureKiller`、模拟器（vboxsf/nemusf/ttVM/ranchu）、SELinux 与 verified-boot、`/proc` 自省、无障碍外挂；外加 `ab_secure_*` 总开关，见 [risk.md](risk.md) §14 与 [obfuscation.md](obfuscation.md) §9.4.5 | 已验证 |
 | 风控灰度开关 | `ab_secure_*` 键族（共 50 个：native 11 + DEX 39） | native 侧在 `libdyncommon` 池内；DEX 侧 `ab_secure_skip_*_7630` 一族可逐项剥离位置/基站/WiFi/应用清单/进程采集 | 已验证 |
 | 网络降级 | 熔断、https→http 改写、CDN 改写 | 触发条件与优先级 | 结构已证实 |
 | 客户端留痕 | `net_adapter/hera/netcapture` | 保留字段范围 | 结构已证实 |
@@ -50,7 +50,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | DEX 加壳 | 无加壳、无 DEX 加密 | 全部 `classes*.dex` 为标准 `dex\n035` 头，可解析出 25,156 个 Java 文件 |
 | DEX 控制流 | 6,648 处 Efix 跳板，未装补丁时全部短路 | `h4.g.f62701a == 0` 时 `h4.g.<letter>()` 直接返回 `{a=false}`；设备 `efix_sp_main.xml` 显示无补丁 dex、失败计数 0 |
 | native 控制流 | 三种标准变换，均可静态还原 | FLA 7,376+ 处（`libpdd_secure`）、IND-BR 19,801 处（`libdyncommon`）、ADR+RET 330 处（仅 `libdyncommon`） |
-| native 数据 | 标准常量表明文，**但存在异或字符串池，覆盖两个库** | 算法常量表明文位于 `.rodata`；`libpdd_secure`（池首 `0x1928c0`，**151 条**）与 `libdyncommon`（池首 `0x408fa0`，**129 条**）用**同一构建期工具与同一密钥**，两库均已全部还原，见 [obfuscation.md](obfuscation.md) §9.4 |
+| native 数据 | 标准常量表明文，**但存在异或字符串池，覆盖两个库** | 算法常量表明文位于 `.rodata`；`libpdd_secure`（池首 `0x1928c0`，**四掩码并集 634 条**）与 `libdyncommon`（池首 `0x408fa0`，**458 条**）用**同一构建期工具、同一张密钥表的四个字节行**，两库均已全部还原，见 [obfuscation.md](obfuscation.md) §9.4 |
 | native 绑定 | 无符号抹除，注册点已逐一定位 | 1,612 个声明方法中 646 个符号导出；`RegisterNatives`/`UnregisterNatives` 在 18 个库共 **28 处注册 + 1 处注销**真实调用点（函数表下标 `#1720`/`#1728`，两条判据见 [obfuscation.md](obfuscation.md) §9.1.1）；其余归属未落盘库 |
 
 在 48 个去重库中，**没有**出现：自解密代码段、字节码虚拟机、
@@ -58,7 +58,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 
 实际出现并被完整还原的手法有三类：
 
-- **异或字符串池**（`libpdd_secure.so` 151 条 + `libdyncommon.so` 129 条，同密钥同工具；含 `DeviceNative` 类名、RSA 公钥、Magisk/SuperSU/Xposed/模拟器路径与 `ab_secure_*` 开关）：见 [obfuscation.md](obfuscation.md) §9.4 与 [risk.md](risk.md) §14；
+- **异或字符串池**（`libpdd_secure.so` 634 条 + `libdyncommon.so` 458 条，并集；同一工具、同一密钥表的四个字节行 × `eor`/`eon` 两种算子；含 `DeviceNative` 类名、两把 RSA 公钥、Android Key Attestation OID、三星录屏组件名、Magisk/SuperSU/Xposed/模拟器路径与 `ab_secure_*` 开关）：见 [obfuscation.md](obfuscation.md) §9.4 与 [risk.md](risk.md) §14；
 - **`RegisterNatives` 动态注册**（18 个库 28 处注册 + 1 处注销）：见 [obfuscation.md](obfuscation.md) §9.1；
 - **`.rodata` 选择性加密**（明文与密文在 `libdyncommon` 同段共存，"有明文串"不能推出"无池"）：见 [obfuscation.md](obfuscation.md) §9.4.3。
 
@@ -104,8 +104,8 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 标准库，不含样本或秘密。最常用的两个是
 [db_snapshot.py](tools/db_snapshot.py)（对目录做只读 SQLite 快照，含 WAL 重放，
 只输出列形状聚合而不输出行值）与 [obfclass.py](tools/obfclass.py)（逐库混淆指纹）。
-字符串池用 [xorstr.py](tools/xorstr.py) 还原（自校验会从文件自身的密钥表推导
-密钥），注册点计数用 [rnbind.py](tools/rnbind.py)。
+字符串池用 [xorstr.py](tools/xorstr.py) 还原（默认取四个已还原掩码的并集，
+自校验会从文件自身的密钥表推导掩码 A），注册点计数用 [rnbind.py](tools/rnbind.py)。
 输入约定见 [evidence.md](evidence.md) §8。
 
 ## 6. 研究边界

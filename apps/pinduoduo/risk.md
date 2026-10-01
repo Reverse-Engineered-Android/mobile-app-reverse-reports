@@ -336,7 +336,8 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 ## 14. `libdyncommon.so`：native 侧环境探测与 AB 开关
 
 §6–§11 列的是 DEX 侧的风控判定。本版新增的 §9.4 解出了
-`libdyncommon.so` 的异或字符串池（129 条，**已验证**），池中内容是一条完整的
+`libdyncommon.so` 的异或字符串池（四掩码并集 **458** 条，**已验证**），
+池中内容是一条完整的
 **native 侧反 root / 反 hook / 反模拟器环境探测链**，其判定结果供 DEX 侧
 （`com.xunmeng.pinduoduo.secure` 与 `apm/risk/lock` 的 JNI 桥）取用。
 该库混淆最重（19,801 个间接派发块、330 处 ADR+RET 返回地址间接化），
@@ -362,32 +363,50 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 
 ### 14.2 `ab_secure_*` 开关（风控总闸）
 
-池中解出 11 个 `ab_secure_*` 键，**是本 app 风控能力的运行时总开关**：
+池中解出 **29** 个 `ab_secure_*` 键，**是本 app native 侧风控能力的运行时总开关**。
+这 29 个键是四掩码并集的结果（**已验证**；每个键只在其所属掩码下成词）：
 
-| 键 | 关联能力 |
-| --- | --- |
-| `ab_secure_hook_detect_7020` | hook 检测总开关（§11） |
-| `ab_secure_sys_clc_7310` | 系统级采集（`sys.*`） |
-| `ab_secure_smla_7230` | 小型/轻量采集 |
-| `ab_secure_repu_7760`、`ab_secure_repu_8180_001`、`ab_secure_repu_8180_002` | 上报（report/upload）分组 |
-| `ab_secure_emcd_7430` | EMC 采集 |
-| `ab_secure_dede_7700`、`ab_secure_dede_7970_001`、`ab_secure_dede_7970_002`、`ab_secure_dede_8170_002` | 去重/脱敏（de-dup）分组，带双版本号 |
+| 键 | 掩码 | 关联能力 |
+| --- | :---: | --- |
+| `ab_secure_hook_detect_7020` | A | hook 检测总开关（§11） |
+| `ab_secure_xposed_detect` | C | Xposed 检测 |
+| `ab_secure_xpmountd_7230` | C | Xposed 挂载点检测 |
+| `ab_secure_xp_8170_001` | C | Xposed 检测 8170 版 |
+| `ab_secure_emulator_detect_7030` | B | 模拟器检测 |
+| `ab_secure_debug_detect` | B | 调试器检测 |
+| `ab_secure_dump_7650` | B | 内存 dump 检测 |
+| `ab_secure_new_sig` | B | 新版签名校验路径 |
+| `ab_secure_sys_clc_7310` | A | 系统级采集（`sys.*`） |
+| `ab_secure_smla_7230` | A | 小型/轻量采集 |
+| `ab_secure_smla_7760` | B | 同上，7760 版 |
+| `ab_secure_uad_7430` | B | UA/设备采集子模块 |
+| `ab_secure_fdc_7430` | D | 文件/目录采集子模块 |
+| `ab_secure_emcd_7430` | A | EMC 采集 |
+| `ab_secure_emcd_8170` | B | EMC 采集 8170 版 |
+| `ab_secure_rep_767` | C | 旧版上报开关 |
+| `ab_secure_repu_7700` | B | 上报分组 |
+| `ab_secure_repu_7760` | A | 上报分组 7760 版 |
+| `ab_secure_repu_8180` | C | 上报分组 8180 版 |
+| `ab_secure_repu_8180_001` | A | 上报子开关 |
+| `ab_secure_repu_8180_002` | A | 上报子开关 |
+| `ab_secure_repu_8180_003` | D | 上报子开关 |
+| `ab_secure_dede_7700` | A | 去重/脱敏（de-dup）分组 |
+| `ab_secure_dede_7970_001` | A | 去重子开关 |
+| `ab_secure_dede_7970_002` | A | 去重子开关 |
+| `ab_secure_dede_7970_004` | C | 去重子开关 |
+| `ab_secure_dede_7970_005` | B | 去重子开关 |
+| `ab_secure_dede_7970_007` | D | 去重子开关 |
+| `ab_secure_dede_8170_002` | A | 去重子开关 8170 版 |
 
-DEX 侧另有 **39 个** `ab_secure_*` 键控制**逐项**采集，全部 **已验证**存在于
-`classes*.dex` 的常量池（下表为完整清单，非抽样）：
+合计 **68 个** `ab_secure_*` 键（native **29** + DEX 39，两集合**无交集**——
+逐键比对 `comm` 结果为 0 条共同项），构成一套完整的风控能力开关面。
 
-| 组 | 键 | 作用 |
-| --- | --- | --- |
-| 跳采集族（`_7630`） | `ab_secure_skip_acclist_7630`、`skip_celllist_7630`、`skip_connectwifi_7630`、`skip_iplist_7630`、`skip_location_7630`、`skip_ringrone_7630`、`skip_runproc_7630`、`skip_wallpaper_7630`、`skip_wificonfig_7630`、`skip_wifilist_7630`、`skip_eue20_7630` | **逐项剥离**：加速度、基站、已连 WiFi、IP 列表、定位、铃声、运行进程、壁纸、WiFi 配置、WiFi 列表、EUE2.0 |
-| 截屏/录屏 | `ab_secure_capture_7700`、`ab_secure_capture_timer_7730` | 截屏监听与其轮询周期 |
-| 上报分组 | `ab_secure_report_5660`、`ab_secure_report_extra_info_5660`、`ab_secure_report_meta_info_5660`、`ab_secure_appinfosize_5650` | 上报开关与包体裁剪 |
-| so 注入/加载 | `ab_secure_check_and_load_so_70200`、`ab_secure_cmd_so_6810` | 是否校验并加载动态 so |
-| Rubik 逻辑 | `ab_secure_do_rubik_logic_81700`、`ab_secure_rubik_81000`、`ab_secure_phantom_all` | Rubik/Phantom 风控逻辑总开关 |
-| 记录/广播 | `ab_secure_record_7440`、`ab_secure_broadcast_74800` | 本地记录与广播采集 |
-| 加解密/签名 | `ab_secure_logic_disable_pac2_6710`、`ab_secure_sign_openlog_6910`、`ab_secure_init_sotd_7170`、`ab_secure_gas_6840`、`ab_secure_srt_6840` | PAC2 逻辑关闭、签名日志、SOTD 初始化、GAS/SRT 子模块 |
-| 标识/环境 | `ab_secure_cia_pddid_6790`、`ab_secure_app_label_6920`、`ab_secure_t_20_7240`、`ab_secure_type12_config_7500`、`ab_secure_set_getapp_7560`、`ab_secure_logic_dm_6750`、`ab_secure_extdata_nonnull_6390`、`ab_secure_dot_7_7830` | PDDID 采集、应用标签、类型 12 配置、getApp 名单、设备管理、外置数据判空、dot7 |
-
-合计 **50 个** `ab_secure_*` 键（native 11 + DEX 39），构成一套完整的风控能力开关面。
+**本版更正**：上一版 native 侧记为 11 个。11 只是掩码 A 一个循环能解出的数量；
+四掩码并集后为 29 个。其中 `ab_secure_xposed_detect`、`ab_secure_emulator_detect_7030`、
+`ab_secure_debug_detect`、`ab_secure_dump_7650`、`ab_secure_new_sig`、
+`ab_secure_uad_7430`、`ab_secure_fdc_7430`、`ab_secure_xpmountd_7230`、
+`ab_secure_xp_8170_001` 这 9 个键此前完全不可见（分属 B/C/D 掩码），
+而它们恰好是**最直接的反分析开关**——漏掉它们会让本节的风控开关面明显低估。
 
 要点：**这套开关让 PDD 可以在服务端逐项关闭采集而不换包**——
 `ab_secure_skip_*_7630` 一族尤其说明 `7630` 版之后对"位置、基站、WiFi、

@@ -163,15 +163,16 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
 | [cff4.py](tools/cff4.py) | 按真实函数收尾定界的逐导出规模 | 34 个导出共 21,613 条指令 |
 | [native_closure2.py](tools/native_closure2.py) | DEX 声明 native ↔ 各库导出符号 | 646 已解析 / 966 未解析 |
 | [jnibind.py](tools/jnibind.py) | 绑定方式三分（导出 / `RegisterNatives` / 未判定） | 646 / 87 / 879（按必要条件口径） |
-| [rnbind.py](tools/rnbind.py) | `RegisterNatives`/`UnregisterNatives` 真实调用点（排除 `.plt` 桩与 packed-offset 派发器） | 28 / 1（18 个库，29 处） |
-| [xorstr.py](tools/xorstr.py) | `libpdd_secure.so` + `libdyncommon.so` 异或字符串池（自校验：密钥从文件自身密钥表推导） | 151 条 / 129 条，全部还原 |
+| [rnbind.py](tools/rnbind.py) | `RegisterNatives`/`UnregisterNatives` 真实调用点（排除 `.plt` 桩与 packed-offset 派发器）；`--all` 列出被排除项 | 28 / 1（18 个库，29 处）；`nMethods` 逐站点反汇编复核见 [obfuscation.md](obfuscation.md) §9.1.1 |
+| [xorstr.py](tools/xorstr.py) | `libpdd_secure.so` + `libdyncommon.so` 异或字符串池（四掩码并集；自校验：掩码 A 从文件自身密钥表推导） | 634 条 / 458 条，全部还原 |
 | [alipay_map.py](tools/alipay_map.py) | 支付宝 SDK `AD`/`AL` 编码 → 采集函数 | 41 / 41 全部定位 |
 | [so_manifest2.py](tools/so_manifest2.py) | `SoBuildInfo` 清单 ↔ 设备落盘 ↔ 加载点 | 199 条：22 APK / 26 落盘 / 54 未落盘 |
 | [db_snapshot.py](tools/db_snapshot.py) | 只读 SQLite 快照（含 WAL 重放），只输出列形状聚合，不输出行值 | 22 个库的 DDL、行数、列形状 |
 
 输入约定：`rnbind.py <lib.so|dir>` 直接反汇编并报告调用点（`--all` 附带被排除的
-假阳性）；`xorstr.py <lib.so|dir>` 解出字符串池（`--min-len` 调最短长度，
-`--count-only` 只打印条数与推导出的密钥，`--key` 可覆盖密钥）；
+假阳性）；`xorstr.py <lib.so|dir>` 解出字符串池（默认四掩码并集；`--min-len` 调最短
+长度，`--count-only` 按掩码分列打印条数，`--mask A|B|C|D` 单取一个掩码，
+`--key` 覆盖为任意 8 字节密钥）；
 `alipay_map.py <jadx-sources>` 从反编译源码重建编码映射；
 `obfclass.py` 需要反汇编文本（`objdump -d`）与输出 JSON 两个参数；
 `cff4.py` 读取工作目录下的 `libpdd_secure.dis`；`native_closure2.py`、

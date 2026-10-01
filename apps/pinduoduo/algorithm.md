@@ -193,7 +193,7 @@ return ij0.b.s(bArr, new SecretKeySpec(key.getBytes(), "AES"));
 | `libmedia_engine.so` | AES S-box、AES 逆 S-box、Base64 | 媒体引擎内 DRM/签名 |
 | `libpdd_j2v8.so` | AES S-box、AES 逆 S-box、zlib | JS 引擎桥接 |
 | `libtronavx.so` | AES 逆 S-box、Base64、ChaCha20 sigma | 播放器；含 ChaCha20 sigma 常量 |
-| `libdyncommon.so` | AES S-box、zlib | 反注入/环境探测；常量表明文，但字符串池异或保护（129 条），见 [obfuscation.md](obfuscation.md) §6.1、§9.4 与 [risk.md](risk.md) §14 |
+| `libdyncommon.so` | AES S-box、zlib | 反注入/环境探测；常量表明文，但字符串池异或保护（并集 458 条），见 [obfuscation.md](obfuscation.md) §6.1、§9.4 与 [risk.md](risk.md) §14 |
 | `libcmtreport.so` | CRC32、MD5/SHA-1 IV | 埋点上报 |
 | `libpcrash_dumper.so` | SHA-256 H0、Base64 | 崩溃转储 |
 
@@ -226,7 +226,8 @@ qb2.d.b().L(url, bodyBytes, headerMap);
   出现的取值仍属未决，见 [report.md](report.md) "未决事项"。
 - `libpdd_secure.so` 内未发现虚拟机或自解密代码段，全部函数可静态解释。但该库
   `.rodata` 中存在一个**异或字符串池**（池首 `0x1928c0`，8 字节循环密钥），
-  已完整还原 **151 条**；`libdyncommon.so` 另有一个**同密钥同工具**的池
-  （池首 `0x408fa0`，129 条）。方法与明文清单见
+  已完整还原（掩码 A 151 条；四掩码并集 **634 条**）；`libdyncommon.so` 另有
+  一个**同工具、同密钥表四个字节行**的池（池首 `0x408fa0`，并集 **458 条**）。
+  方法与明文清单见
   [obfuscation.md](obfuscation.md) §9.4。本文件给出的常量表地址均为解保护后的
   明文位置。
