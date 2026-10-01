@@ -36,7 +36,7 @@
 
 已确认：上传内容清单（媒体本体 + 全文件 MD5 + 文件名/fileId + MIME + 业务参数）；令牌/许可 3 个端点与选择条件；`RobusterToken`/`RobusterTokenPermit` 全字段；去重算法（`md5`）与命中判定；分块公式的完整推导与档位；Qiniu 配置项、断点记录键与 48 h 过期；COS 整对象 PUT 与临时凭据；MIME 表与回退链；EXIF/副本可选开关。
 
-缺口：`uploader_breakpoint_and_resume` 埋点的**实际调用方未定位**（仅埋点定义存在）。已显式标注，未宣称断点恢复的运行路径。
+`uploader_breakpoint_and_resume` 埋点的调用方**已用 dex 层证据证明不存在**：`l1` 的 5 个 `method_id`（23631–23635）在 `classes17.dex` 的全部 14485 个 `class_data_item` 中除自身定义处外零引用（详见 [upload.md](upload.md) §7）。该埋点为保留定义、不再被调用。
 
 ### 5. 下载数据范围
 
@@ -73,8 +73,10 @@
 7 项要求全部达成。显式缺口共 4 处，均已声明且给出推进条件，未以结论口吻覆盖：
 
 1. Cookie/session 实际作用（需运行时抓包）；
-2. `uploader_breakpoint_and_resume` 埋点调用方未定位；
-3. 服务端 `http_range_size` 取值与 CDN `Accept-Ranges` 行为（需运行时抓包）；
-4. `0x50010` 覆盖全部 CFF 路径的统一逻辑门级闭式（需逐块/逐路径 lift）。
+2. 服务端 `http_range_size` 取值与 CDN `Accept-Ranges` 行为（需运行时抓包）；
+3. `0x50010` 覆盖全部 CFF 路径的统一逻辑门级闭式（需逐块/逐路径 lift）；
+4. Tiny 逐操作码语义 lift（操作码全集 31 个已枚举，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)）。
+
+已关闭的原缺口：`uploader_breakpoint_and_resume` 埋点调用方——经 dex 全量校验确定为**零引用**（`re/dex_ref4.py`），不再作为缺口。
 
 本轮修正记录：撤回了 [crypto.md](crypto.md) §4.2 中“rodata 常量表引用 0 处”的错误结论（源于有缺陷的操作数匹配器），并连带修正 [report.md](report.md)、[algorithm.md](algorithm.md)、[evidence.md](evidence.md) 中同一表述；同时修正了 `re/xyass_type6_ref.py` 的对比宽度缺陷，并据此得出“单 trace lift 不具泛化性”的结论。

@@ -177,7 +177,29 @@ return uploadKey + mixedToken.chunkSize + "_._" + reverse(file.getAbsolutePath()
 
 - COS 路径无本地断点记录，失败即整对象重传。
 - 框架级重试：`UploaderFlow` 在 `retryCount > 0` 时 `retryWhen(new r(f0, …))`（`f0(retryCount, delayMs)`）。
-- APM 埋点名 `uploader_breakpoint_and_resume`（`l1.a/b`），带 `task_id`/`file_type`/`error_code`。样本反编译结果中未定位到该埋点的调用方，故**只记录埋点定义，不宣称断点恢复的实际触发路径**。
+- APM 埋点名 `uploader_breakpoint_and_resume`（`l1.a`/`l1.b`），带 `task_id`/`file_type`/`error_code`。
+
+**注意：`h2b.b` 不是断点登记表**。`c0`（Qiniu 上传器）里紧邻 `FileRecorder` 的这几行容易被误读为断点跟踪：
+
+```java
+h2b.b.d(this.f153191a, this.f152939j);        // 开始上传
+h2b.b.c(mixedToken2, str3, true, j100, false); // 上传成功
+h2b.b.b(c0Var.f153191a, …);                    // 上传失败
+```
+
+实测 `h2b.b` 面向的是**测速**：`h2b.b.f211170a` 是 `Map<taskId, elapsedRealtime>`，`f211171b` 是 `List<h2b.a>` 监听器表；唯一的注册方是 `j2b.i`（`SpeedTestImpl`，日志串 `"SpeedTestManager"`/`"SpeedTestImpl"`/`"测速"`），其中 `j2b.i$a.b(...)` 的日志是 `"业务文件上传成功，加入到测速数据源…"`，并用 `h2b.b.a()`（"业务文件上传中"）来决定是否跳过测速。因此它是**上传事件到测速子系统的通知通路**，不是断点登记。
+
+**`uploader_breakpoint_and_resume` 的调用方：已用 dex 层证据证明不存在**（此前只写"反编译未见调用方"，现升级为可复核的否定结论）：
+
+| 项 | 值 |
+| --- | --- |
+| 所在 dex | `classes17.dex`（`l1` 的 type descriptor 仅出现 1 次） |
+| `l1` 自有 `method_id` | 5 个：`<clinit>`、`a`、`b`、`c`、`d`（索引 23631–23635） |
+| 校验方法 | 解析 `class_def_item`（定长 u4 七字段）取 `class_data_off`，再按 uleb128 遍历 `encoded_method` 的 `method_idx` |
+| 扫描结果 | `14485 / 14485` 个 `class_data_item` **全部解析成功，0 个跳过**；除 `l1` 自身定义处外，**其余 14484 个类无一引用这 5 个 `method_id`** |
+| 结论 | **该埋点在整个 dex 中零外部调用方**，不是"未定位"，而是"确实没有" |
+
+复现：`re/dex_ref4.py`（产物 `re/dex_ref4.txt`）。由于 walk 了全部 15072 条 `class_def` 且 0 跳过，这排除了"调用方存在于未解析区域"的可能。埋点自身 `status` 固定为 `success`（`d`/`c`）或 `failed`/`start`（`a`/`b`），因此它更像**保留的历史埋点**：`l1` 已被保留定义但不再被调用。
 
 ## 8. MIME 与文件名
 
@@ -217,4 +239,4 @@ return new UploadOptions(EMPTY_MAP, ct, true /*checkCrc*/, progressHandler, canc
 | Qiniu 配置、断点记录键与 48 h 过期 | 已验证 |
 | COS 整对象 PUT、无 Range | 已验证（`PutObjectRequest` 单次调用；未发现 `GetObjectRequest.setRange` 用于上传） |
 | MIME 表与回退链 | 已验证 |
-| `uploader_breakpoint_and_resume` 实际触发路径 | **未定位**：仅埋点定义存在，反编译未见调用方 |
+| `uploader_breakpoint_and_resume` 实际触发路径 | **已验证为不存在**：dex 层全量校验 14485/14485 个 `class_data_item`，`l1` 的 5 个 `method_id` 除自身定义处外零引用（`re/dex_ref4.py`） |
