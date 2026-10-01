@@ -43,7 +43,19 @@
 
 同一引擎还承担 **TLS 证书链上报**（`0xae8750a7` ← `nlb.q.intercept` 取 `handshake().peerCertificates()`）、**HTTP/2 peer principal 上报**（`0x9701e74c` ← `i4c.a.invoke`）、**长连接下行消息处理**（`0xb20a0be3` ← `nlb.g.onMessage`）、**定位上报**（`0x2f036831` ← `com.xingin.xhs.net.t1.i`，3×double + 2×float）、**传感器注册**（`0xcf7db9ff` ← `j6`）、**前台状态**（`0xc23a168e` ← `r`）、**动态代理转发**（`0x2ad1c199` ← `f6.invoke`）。
 
-完整 31 项对照表见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.3。**仅剩**内部逐块算术步骤未 lift（§5.6.8）；分发层结构量已闭环（§5.6.6–§5.6.7）。
+完整 31 项对照表见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.3。**仅剩**内部逐块算术步骤未 lift（§5.6.8），其范围与校验量见 §5.6.9；分发层结构量已闭环（§5.6.6–§5.6.7）。
+
+#### 2.1 Tiny 引擎内的三处额外成分（本轮回补）
+
+此前本节只描述"opcode 分发 + 签名头生成"，漏掉了 `libtiny.so` 内的三处实质成分。三者均已定名：
+
+| 成分 | 位置 | 角色 | 证据 |
+| --- | --- | --- | --- |
+| **内联 X25519 域运算** | `0x525000`–`0x531bc4`（入口 `0x525024`） | SDK 初始化/配置注入路径上的曲线域运算（`0x3c6d0ac1` / `0xae821439` 两个操作码执行） | radix-2⁵¹ 掩码 178 处 + `extr #51` 130 处 + ×19 归约 18 处 + **a24 = 121666** + RFC 7748 标量钳位逐位吻合；Ed25519 常量 0 命中（§2.2.1） |
+| **字符串加密（两个解码器）** | `0x18c940`（203 次调用）、`0x18d5e4`（118 次调用） | 隐藏全部上报端点、检测文案、ART 符号名 | 20 项调度表的逐字节双射，闭式还原；**320 个调用点解出 312 条明文**（§2.4.5） |
+| **内嵌 Lua 解释器** | 明文标识符落点见 §2.4.5 | 脚本化风控逻辑 | 解出 `pcall`/`setmetatable`/完整元表运算符集/`__index`/`__newindex`/协程/`popen`/`lines`/`input`/`getupvalue` 等 |
+
+**字符串加密解出的内容直接扩大了风控面认知**（§2.4.5 有完整分类）：四个上报端点（`.../api/v1/register/android`、`/cfg/android`、`/prb/android`、`/dvf/vab/android`）、两套 SDK 配置 JSON、反调试文案（`TracerPid:`、`detect tracer …`、`GetUntrustedIPackageManager`）、以及一组 **ART 内部符号**（`_ZN3art2gc9collector17ConcurrentCopying12MarkingPhaseEv`、`_ZN3art9JNIEnvExt11NewLocalRefEPNS_6mirror6ObjectE`、`_ZNK3art12StackVisitor24GetCurrentQuickFrameInfoEv`）——后者是典型的 **ART 内联/内存扫描检测**手法（按符号名定位运行时结构）。
 
 ## 3. 设备指纹：`libxyasf.so` 与 Java 调度层
 

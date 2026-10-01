@@ -52,12 +52,20 @@
 | `0x15e9f4` | 模拟器捕获的 native handler | 已验证 |
 | `0x16b08c` / `0x17cdb0` | opcode `0x96f7fcac` 的**两个 CFF 重复比较块**（非二叉比较） | 已验证（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §4）|
 | `.data 0x754AC0`-`0x7701C0` | 112 384 字节高熵区，熵 7.9982945 | 已验证（见下） |
+| `0x525024` | **内联 Curve25519/X25519 域运算入口**（由 `0x524f58` 的 `blr x8` 进入）；域区 `0x525000`–`0x531bc4` | 已验证（四条结构证据，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.2.1） |
+| `0x527db0` | `a24 = 121666`（`mov w9,#0xdb42` + `movk w9,#1,lsl#16`）——曲线身份的判定性常量 | 已验证 |
+| `0x527fb0` / `0x527fc4` | X25519 标量钳位（`k[0]&=248`；`k[31]=(k[31]&0x3f)\|0x40`），与 RFC 7748 逐位吻合 | 已验证 |
+| `0x18c940` / `0x18d5e4` | **字符串解码器 A / B**（20 项调度表的逐字节双射，无扩散） | 已验证（闭式还原，见 §2.4） |
+| 320 个解码器调用点 | 密文 blob + 长度可静态确定；**312 条解出纯可打印明文** | 已验证（`re/tiny_strings_decode.py` → `re/tiny_strings_decoded.json`） |
+| `0x750fe0`–`0x76d000` | 114 720 字节高熵载荷：静态 4 项引用扫描 **0 命中**，`JNI_OnLoad` 全程读写 hook **reads=0 / writes=0** | 已验证（见 §2.3） |
 | `0xf7b80` | 普通字符串常量拷贝（非解密） | 已验证 |
 | `0x4948A8` | `adrp/add/ldr` 序列 | 已验证 |
 | `0x53296C` | `memcpy` | 已验证 |
 
 高熵区三路引用扫描（`adrp` 目标 / `mov` 立即数 / 重定位加数）**合计 0 命中**；区域内容 SHA-256 `706dbd99b5d75c8ba5529a538f8e9ae86fe4a355d6c7fb39a1c454dbefb4ff62`。
 结论：**未发现静态或已覆盖动态路径引用的高熵数据区**。
+
+> **本轮回补**：把"三路引用扫描"扩到**五项**并加了运行期验证——静态 `adrp+add` 落点 0、`.rela.dyn` 加数 0、`.data`/`.data.rel.ro` 指针槽 0、容器魔数 0、`JNI_OnLoad` 期间对该区间的读写 hook **reads=0 / writes=0**（`re/tiny_blobwatch.py`）。载荷统计：熵 7.9982775、256 值全出现、每值计数 395–508、**0 个重复 16 字节块**。结论收紧为"**实测零引用**"（不声称其用途）。详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.3。
 
 ## `libtinyd.so`
 

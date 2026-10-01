@@ -26,6 +26,7 @@
 另有独立的深挖批次，覆盖原生加密算法的逐字节恢复与传输链路逐点定位，入口为 [deepdive/](deepdive/README.md)：
 
 - `libxyass.so` RC4 外层、定制 HMAC-H（含 64 轮调度）、`0x50010` type 6/7 会话变换的常量池/依赖矩阵/确定性向量，以及 CFF 转移图的饱和枚举（412 site / 767 边 / 417 目标）与选择层分类（FIXED/BASE/DATA）。
+- `libtiny.so` 内联 X25519 域运算、两个字符串解码器的闭式还原（320 调用点解出 312 条明文）、内嵌 Lua 解释器标识符；以及**全应用 164 个 `.so` 的混淆形态普查**（重度 CFF 仅 `libtiny.so` / `libtinyd.so` / `libxyass.so` 三个）。
 - 上传 permit/去重/分块/云厂商分支与令牌全字段；下载 Range 构造点与总长解析。
 - 原生请求的拦截器链、协议映射与认证字段来源。
 - 该批次与上述文件集**互补而非替代**，口径差异见 [deepdive/README.md](deepdive/README.md)。
