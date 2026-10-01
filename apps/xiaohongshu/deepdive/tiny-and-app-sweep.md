@@ -29,17 +29,30 @@
 - **已知算法常量**：标准 MD5 轮常量表 `MD5-T[0:8]`、标准 MD5 初值 `MD5-IV`、AES S 盒前 16 字节、SM4 S 盒前 16 字节、标准 Base64 字母表、CRC32 表、ChaCha20 `sigma` 常量；
 - **大整数域特征**：radix-2⁵¹ 掩码 `0x7ffffffffffff`、`extr #51` 进位提取、乘 19 归约（Curve25519 / Ed25519 域），或 radix-2²⁶ 掩码 `0x3ffffff`、乘 38 归约（Poly1305）；
 - **≥ 8 KB 高熵区**：段内连续 ≥ 8192 字节且熵显著高于普通代码/字符串的区域（用于发现未被常量命中的加密数据或打包载荷）。
+- **自解密数据表**：库在加载期（`.init_array`）或在自身代码里**原地改写自己的 `.data`/`.rodata`**，把密文表变成可用字符串——即"分派层看不到、常量表也没有"的自解密表。判据见 §1.6；`libturingmfa.so` 就是被这一条捞回来的假阴性。
 
-三者互不替代：只看指令会漏掉查表实现，只看常量会漏掉指令实现，只看高熵区会漏掉两者都不明显的库。因此采用**并集**判定，宁多勿少。
+四者互不替代：只看指令会漏掉查表实现，只看常量会漏掉指令实现，只看高熵区会漏掉两者都不明显的库，而只看前三者会漏掉**密文熵被打散**的自解密表（见 §1.6：`libturingmfa.so` 的表熵仅 6.978，因为每个条目的 `\0` 是明文存储的）。因此采用**并集**判定，宁多勿少。
 
-### 1.3 结果：32 带 / 132 不带
+### 1.3 结果：33 带 / 131 不带（口径修正：原 32/132 少算了 1 个库）
 
-- **32 个库命中**（有加密指令、或已知常量、或 ≥8 KB 高熵区）；
-- **132 个库三者全无**——完整名单见 `re/sweep_crypto_final.txt` 末节，包含 `libc++_shared.so`、130 余个 React Native / Yoga / folly / hermes 渲染与基础设施库、`libshadowhook.so`、`libbytehook.so` 等 hook 框架、`libmarsxlog.so` 等。
+> **本节口径修正（本轮）**：原结论"32 带 / 132 不带"**必须作废**。`libturingmfa.so` 原
+> 落在"132 个库三者全无"名单里（见 `re/sweep_crypto_final.txt:107`），
+> 但它实际带一张**加载期原地自解密**的字符串表——属于典型的加密代码，
+> 只因加密方式（逐字节 `b ^ key` 拆成互补掩码 + 随后 `eor`）既不产生加密指令、
+> 也不产生已知算法常量、还把密文熵压到 6.978（`\0` 明文存储）而**同时躲过三条旧判据**。
+> 详见 §1.6（判据）与 §1.7（`libturingmfa.so` 逐条证据）。
 
-**这句话的意义**：`crypto.md` 矩阵的"无未知加密代码"结论此前建立在核心 `libxyass.so` / `libtiny.so` 的逐字节恢复上；本节把**其余 163 个库**也纳入全量普查后，仍**没有任何库**出现"既非已知算法、又无法归因的加密代码"。134 行的二分清单使得任何一个库都可以被单独复核。
+- **33 个库命中**（有加密指令、或已知常量、或 ≥8 KB 高熵区、或**加载期自解密数据表**）；
+- **131 个库四条全无**——完整名单见 `re/sweep_crypto_final.txt` 末节（**移除 `libturingmfa.so` 后**），包含 `libc++_shared.so`、130 余个 React Native / Yoga / folly / hermes 渲染与基础设施库、`libshadowhook.so`、`libbytehook.so` 等 hook 框架、`libmarsxlog.so` 等。
 
-### 1.4 32 个命中库逐条证据
+**这句话的意义**：`crypto.md` 矩阵的"无未知加密代码"结论此前建立在核心 `libxyass.so` / `libtiny.so` 的逐字节恢复上；把**其余 163 个库**纳入全量普查后，出现过**一处假阴性**（`libturingmfa.so`），本轮已补齐并新增第 4 条判据。修正后 33/131 的二分清单使得任何一个库都可以被单独复核，且第 4 条判据**已对全 164 个库重跑**（§1.6）。
+
+> **对读者的提醒**：本节（含 §1.5）旧版给出的"三条判据的并集即可保证无遗漏"是一个
+> **过强的断言**——它实际上只被"这 164 个库恰好都被三条判据覆盖"所支持，而不是被
+> 判据本身的完备性所支持。`libturingmfa.so` 就是反例。除非补充更强的判据，
+> 此类普查结论都应读作**当时口径下的覆盖**，而不是"不存在任何此类代码"的证明。
+
+### 1.4 32 个命中库逐条证据（按旧三条判据的命中情况；第 33 个见 §1.7）
 
 | 库 | .text 指令数 | 加密指令族 | 命中常量 | 高熵区 | `JNI_OnLoad` |
 | --- | ---: | --- | --- | --- | --- |
@@ -84,7 +97,9 @@
 - **`libchopper_v2.so` crc32=19 + 139 KB 高熵**：图像编解码链路（Chopper）的 CRC 校验 + 一张较大的压缩/量化表；
 - **`libxyass.so` / `libtiny.so`** 即本目录主体分析对象，属小红书自研风控链路。
 
-**结论**：164 个库全部有归因，无"未识别加密库"。
+**结论（修正后）**：164 个库全部有归因，无"未识别加密库"；但**归因的完整性依赖四条判据的并集**，
+而其中第 4 条（§1.6 加载期自解密数据表）是本轮为了补上一处假阴性才新增的——
+`libturingmfa.so` 在旧三条判据下被判为"不带加密代码"，实际带一张自解密字符串表（§1.7）。
 
 ### 1.5 混淆形态普查：164 个库逐个量测（本轮回补）
 
@@ -107,25 +122,364 @@
 | `libtiny.so` | 1 528 000 | **4.124** | **849** | **92.8** | 763 | **重度 CFF + 字符串加密** |
 | `libtinyd.so` | 26 330 | **4.098** | 12 | **88.4** | 24 | **重度 CFF + 字符串加密**（§[tinyd](tinyd-companion-daemon.md)） |
 | `libxyass.so` | 110 102 | **3.400** | 27 | **81.1** | 356 | **重度 CFF + 字符串加密**（§[crypto.md](crypto.md) §4） |
-| `libturingmfa.so` | 66 080 | 0.020 | — | **61.3** | 331 | 常量物化密集，无 CFF |
+| `libturingmfa.so` | 66 080 | 0.020 | 0 | **61.3** | **331**（密度 5.01/1k，**全应用第 3**） | ~~常量物化密集，无 CFF~~ → **修正：字符串加密（非循环形态），见 §1.7** |
 | 第 4 名之后（`libreact_debug` 等 4 个 ≤85 条指令的小库） | ≤ 85 | ≤ 5.0 | 0 | 0.0 | 0 | **样本过小，`br_pct` 无统计意义** |
 | 其余 157 个库 | — | **全部 < 0.9** | — | — | — | 无 CFF 指纹 |
 
 **三条可复核的判读**：
 
 1. **`br_pct` 高于 3% 的只有 3 个真实库**：`libtiny.so`(4.124)、`libtinyd.so`(4.098)、`libxyass.so`(3.400)。第 4–7 名是 `libreact_render_debug.so`(5.0)、`libruntimeexecutor.so`(5.0)、`libreact_debug.so`(2.04) 等**总指令数 ≤ 85** 的库——它们的百分比来自分母过小，不是平坦化。**这三个库恰好就是本报告已完整闭环的对象**。
-2. **`movz_movk_per_1k` 前三名同样只有这 3 个库**（92.8 / 88.4 / 81.1；第 4 名 `libturingmfa.so` 61.3 但 `br_pct` 仅 0.020，属常量密集而非混淆）。这一指标与 CFF 的"不透明常量"机制高度一致，构成**对 `br_pct` 的独立佐证**。
+2. **`movz_movk_per_1k` 前三名同样只有这 3 个库**（92.8 / 88.4 / 81.1；第 4 名 `libturingmfa.so` 61.3 但 `br_pct` 仅 0.020）。这一指标与 CFF 的"不透明常量"机制高度一致，构成**对 `br_pct` 的独立佐证**。
+
+   > **旧版此行曾写"属常量密集而非混淆"——已作废，而且旧版对 `movz/1k` 的归因也是错的。**
+   > 逐条复核（本节新增）：
+   >
+   > - `libturingmfa.so` 的 `movz_movk_per_1k` = 61.3 来自 **4 050 条 `movk`**（`movz`/`movn` 各 0 条），
+   >   而这些 `movk` **全部在解密器之外**（Turing 采集项比较常量与 Binder 事务码）；
+   > - **解密器本身（`0x34d74`–`0x39ecc`）`movz`/`movk`/`movn` 全为 0**，它用 **471 条 `mov w, #imm`**
+   >   物化互补掩码对与密钥。
+   >
+   > 也就是说 `movz/1k` 这一列**既没有指向 CFF，也没有指向这个解密器**——它数的是另一处的 `movk`。
+   > 真正指向解密器的是 **`eor_branch`=331**，而旧版恰好用一个无关指标把它解释掉了。
+   > 旧版把"没有 CFF"误读成"没有混淆"，这是本节最需要记住的一条纠正（§1.7）。
+
+2b. **`eor_branch` 密度（`eor_branch / insns`）才是字符串加密的可用排序**，绝对计数会系统性偏向大库：
+
+    | 库 | `eor_branch` | 指令数 | **密度 /1k** | 实际性质 |
+    | --- | ---: | ---: | ---: | --- |
+    | `libentryexpro.so` | 144 | 9 424 | **15.28** | 银联 UPX\* 加密工具（导出名明文，非混淆） |
+    | `libed25519.so` | 131 | 9 227 | **14.20** | mbedtls 的 AES/MD5/Ed25519（导出名明文，非混淆） |
+    | **`libturingmfa.so`** | **331** | **66 080** | **5.01** | **自解密字符串表（真）** |
+    | `libxyass.so` | 356 | 110 102 | 3.23 | 自解密字符串表（真，§[crypto.md](crypto.md) §4） |
+    | `libeidjni.so` | 191 | 70 646 | 2.70 | eID 组件，导出名明文 |
+    | `libtiny.so` | 763 | 1 528 000 | 0.50 | 自解密字符串表（真，§2.4） |
+
+    前两名之所以"密度高但不是混淆"，是因为**导出符号表里函数名明文可读**
+    （`_ZN6UPXAES5sm_T8E`、`mbedtls_aes_crypt_ecb` 等），即 AES 的 S 盒访问天然是
+    `ldrb`+`eor` 形态；而 `libturingmfa.so` 的 331 处落在 `.data` 自己的字符串表上
+    （见 §1.6 的判据 D4：目标是**可写段**），因此是货真价实的自解密。
 3. **`libtiny.so` 的 `tblsig`=849 是全应用最高**（第 2 名 `libkasa_sdk.so` 仅 130，且 `br_pct`=0.054）——再次独立指向"只有 Tiny 做了大规模分派表平坦化"。
 
-**因此，全应用混淆面收敛为 3 个库**，且三者的混淆机制与处理状态如下：
+**因此，全应用混淆面收敛为 4 个库**（修正：原写 3 个，漏了 `libturingmfa.so`），
+且四者的混淆机制与处理状态如下：
 
 | 库 | 混淆机制 | 状态 |
 | --- | --- | --- |
 | `libxyass.so` | CFF（`0x50010`，504 处间接跳转）+ 字符串加密 | **已闭环**：转移图饱和枚举（412 site / 767 边 / 417 目标）+ 选择层分类（262 FIXED / 69 BASE / 18 DATA）+ 字符串加密机制已恢复 |
 | `libtiny.so` | CFF（61 分派块）+ 字符串加密 + 内联 X25519 | CFF 结构**已完全枚举**（三向双射 + 61 位移全复现）；**逐块算术 lift 已完成**（154 原语 + 九项指纹守恒 EXACT，§5.6.9）；字符串加密见 §2.4 |
 | `libtinyd.so` | CFF（381 槽分发池）+ 字符串加密 | **已闭环**：4 解码器 × `i%20` 调度表闭式（7/7 明文）+ 14/14 动态跳转验证 |
+| **`libturingmfa.so`** | **加载期原地自解密字符串表**（`.init_array[6]` → `0x34d74`，5 207 条指令、**0 调用、0 入边、1 个 `ret`**、**完全展开**）+ 互补掩码形式的 `b ^ key` | **已闭环**：密钥调度 `key_index = src_index mod 8`（348/348 条目验证；**旧稿的 `key_i = (0x0F+0xA0*i)&0xFF` 闭式已作废，仅 42/348 命中**）；逐个条目 1 密钥（8 412/8 412 字节）；**348 个非空条目 + 68 个不可见空串 = 源列表 416 项**（§1.7） |
 
 > **口径说明**：本节的"无 CFF 指纹"是**基于可复算指标的否定**（`br_pct` < 0.9、`movz/1k` 无同步抬升），与 §1.2 用指令族+常量做的密码学否定**相互独立**。两者都不依赖人工抽样，任意库可单独复核：`python3 re/obf_census.py` 重建全表。
+
+> **但这套指标的盲区必须写清楚**：`br_pct` / `tblsig` / `opaque_csel` 测的是**控制流平坦化**，
+> `movz/1k` 测的是**常量密度**，`rodata_entropy` 只看 `.rodata`。
+> 一个"只把 `.data` 里的字符串表逐字节 XOR、且**把解密完全展开成直线代码**"的库，
+> **四个指标全部正常**——`libturingmfa.so` 就是这样（`br_pct`=0.020、`tblsig`=0、
+> `opaque_csel`=0、`.rodata` 熵 5.71）。因此本节新增 **§1.6 的第 4 条判据**
+> （原地改写自己 `.data`/`.rodata` 的加载期自解密表），并**已对全 164 个库重跑**。
+
+---
+
+### 1.6 第 4 条判据（本轮新增）：加载期自解密数据表 + 全 164 库重跑
+
+§1.5 的指标测不到"**把字符串表 XOR 后完全展开成直线代码、在加载期原地改回来**"这类库。
+本轮补上第 4 条判据，并**对全 164 个库各跑一遍**，三台独立仪器：
+
+| 仪器 | 手段 | 口径 | 结果 |
+| --- | --- | --- | --- |
+| `re/inplace_strdec_scan.py` | 静态反汇编 | 同基址 + 同偏移的 `ldrb`→变换→`strb`，基址须由 `adrp+add`/`adrp+ldr` 解析到**具体全局地址**，目标段须**可写**（D1–D4） | 164/164 成功；30 个库 ≥1 位点 |
+| `re/initarray_run.py` | Unicorn 模拟 | 跑 `.init_array` 全部构造子，比对 `.data`/`.rodata`/`.bss` **运行前后字节**，并统计改写后像里跨改写字节的字符串 | 164/164 成功 |
+| `re/xor_table_test.py` | 单字节 XOR 扫描 | 对 `.data`/`.rodata` 试全部 255 个单字节密钥，看"可打印率 + NUL 占比"是否跃迁；**拒绝常量填充**（主字节占比 > 0.55 即淘汰） | 164/164 成功 |
+| `re/initarray_census.py` | 构造子清点 | 解析 `.rela.dyn` 的 `R_AARCH64_RELATIVE` 还原每个 `.init_array` 条目地址，并量出函数线性长度 | 164/164 成功 |
+| `re/inplace_site_content.py` | 目标内容定性 | 取每个 `.data` 位点的**目标字节 + 解密后像**，把「自解密字符串表」与「初始化/句柄」分开 | 11/11 成功；唯一真解密 = `libturingmfa.so` |
+| `re/inplace_form_scan.py` | **寻址形态正交**扫描 | 在 D1–D4 之上加入 post-index / writeback / `ldp-stp` / `ld1-st1` 等**结构化与后索引**寻址，不再要求"同基址同位移" | 164/164 成功；80 库 ≥1 位点 |
+| `re/inplace_form_content.py` | 上述位点的**内容定性** | 对非 `.bss` 目标取文件原像 + 解密后像，区分字符串表 / 初始化 / 句柄 | 26 库有非 `.bss` 目标；新增的 4 个 `.data` 目标**全为初始化** |
+| `re/inplace_xref_scan.py` | **跨寻址+跨宽度**范围匹配 | 不再比较"位移相等"，改为比较**有效地址区间是否相交**，并加入**寄存器偏移**（`str q2,[x10,x9]`）与**宽存储**（`str d0,[x10,#imm]`） | 164/164 成功；113 库 ≥1 位点；对 `libturingmfa.so` **348/348 命中模拟器真值** |
+| `re/inplace_xref_content.py` | 全应用内容定性 | 对上述全部非 `.bss` 目标分类；`.data` 未被构造子改写的库标为 `unproven` 而不上升为结论 | 268 项需人工定性 → **仅 `libturingmfa.so` 是真表**（见下） |
+
+**判据定义（D1–D5）**：
+
+| 编号 | 条件 | 目的 |
+| --- | --- | --- |
+| D1 | `strb wA,[xG,#d]` 的值可证来自**同基址同偏移**的 `ldrb wA,[xG,#d]` | 是"读回自己"而不是普通写 |
+| D2 | `xG` 的溯源解析到**具体全局地址**（`adrp+add` / `adrp+ldr`），且目的寄存器在每次其它写指令处**先失效再重建** | 排除"指针参数"造成的普通编解码循环（`libpng16.so`/`libfreetype.so`/`libc++_shared.so` 的假阳性即由 D2 排除） |
+| D3 | 载荷到存回之间至少有一条**值变换**指令，且载入寄存器确实被消费 | 是解码而非拷贝 |
+| D4 | 目标段**可写**（`.data`/`.bss`/`.data.rel.ro`） | 写 `.rodata` 运行期必崩，不可能是解码器 |
+| D5 | 位点处于循环中（有回边目标 ≤ 载入地址）**——仅作旁证，不作硬条件** | `libturingmfa.so` 的解密**完全展开**、无循环，D5 会把真阳性判掉（本判据的反例正说明"无循环"本身是规避手段） |
+
+> **为什么必须逐版收紧扫描口径（本轮实测）**：同一张表，四个版本给出的位点数差 40 倍——
+> 原始静态口径（要求同基址同位移）在 `libturingmfa.so` 上只找到 **8 个目标**；
+> 这 8 个**恰好就是那 9 个前导常量单元**，一个表项都没覆盖到。原因是该表项用的是
+> **寄存器偏移寻址**：`adrp x10,#0x56000 ; add x10,x10,#0xbed ; ldr q2,[x10,x9] ;
+> … ; str q2,[x10,x9]`——位移槽里是 `x9` 而不是立即数，位移字段为 0，
+> **任何"同位移配对"的写法都永远匹配不到它**（348 个条目里 **306 个**是这种形态）。
+> 换成"有效地址区间相交 + 寄存器偏移可解析"后，348/348 命中模拟器真值。
+> **这就是同一个库在 §1.6 早先版本里被写成"只有 8 个位点"的根因**，不是数据变了。
+
+**重跑结果**：
+
+- **静态扫描**：30 个库 ≥1 位点；其中 **11 个库的目标段含 `.data`**。位点**形状在 11 个库里完全相同**（都是"读回自己的全局字节再改写"），所以**只数形状会得到 11 个结果**。判定必须把**目标内容**一并量（`re/inplace_site_content.py`，联合 `re/initarray_run.json` 的**解密后像**——因为目标在构造子跑之前是**密文**，"是否可打印"只能问解密后）：
+
+  | 库 | `.data` 位点 | 目标处字节（文件原样） | 解密后像里的字符串 | 判定 |
+  | --- | ---: | --- | ---: | --- |
+  | **`libturingmfa.so`** | **8** | `59 00 00 00 f5 00 00 00 …` | **316** | **自解密字符串表** |
+  | `libreddb.so` | 5 | `03 00 00 00 3a 00 00 00 …` | 0 | 结构体字段（小整数元组） |
+  | `libzeusEngine.so` | 5 | 指针数组 / `00 00 00 00` | 0 | 运行期句柄 |
+  | `libhermes_executor.so` | 4 | `01 00 00 00` / `ff ff ff ff` | 0 | 标志位、`-1` 哨兵 |
+  | `libInsightWrapper.so` | 3 | 全 `00` | 0 | 计数器清零 |
+  | `libares.so` | 2 | `ff ff ff ff 00 00 00 00` | 0 | 位掩码表 |
+  | `libkasa_sdk.so` | 1 | `01 00 00 00` | 0 | 标志位 |
+  | `libpredy-native-ri.so` | 1 | `01 00 00 00 01 00 00 00 …` | 0 | 结构体字段 |
+  | `libreddownload.so` | 1 | `01 00 00 00` | 0 | 标志位 |
+  | `libtiny.so` | 1 | `ff ff ff ff` | 0 | 哨兵 / 清零 |
+  | `libxyass.so` | 1 | 全 `00` | 0 | 计数器清零 |
+
+  复现：`python3 re/inplace_site_content.py`（末列取自 `re/initarray_run.json` 的
+  `sections['.data'].n_strings`）。**11 个里只有 1 个是真解密**，其余是初始化
+  （写标志位、清零、填掩码、填结构体字段）——这正是"必须量内容、不能只数位点"的原因。
+  两个计数口径不同，勿混：**316** = 解密后像中「与改写字节重叠」的 6+ 字符可打印串；
+  §1.7(d) 的 **325** = 被改写字节自身构成的 4+ 字符全可打印串。两者都来自同一次模拟。
+  > 注：`libxyass.so` 的**字符串加密在别处**（`0x50010` CFF 路径，见 [crypto.md](crypto.md) §4），
+  > 本节这一列只说明"它的 `.data` 里这个位点不是自解密表"，不否定它另有字符串混淆。
+- **模拟改写**：11 个库有构造子跑到底。判定分布为
+  `nothing_ran_or_no_change` 150、`bss_only_init` 12、
+  `data_changed_no_coherent_strings` 1（`libquickjs-android.so`，**仅 1 字节**，无字符串）、
+  **`in_place_decoder_found` 1（`libturingmfa.so`）**。
+- **单字节 XOR**：**0 个库**被判为单字节 XOR 加密表（35 个段本就是明文、146 个段非文本）。这同时**是否定证据**：`libturingmfa.so` 的表**不是**单字节 XOR，用固定密钥解不开——与 §1.7 的**轮转密钥**一致。
+- **构造子清点**：**102 个库至少有一个可用的 `.init_array` 条目**（`libtxmapengine.so` 162 个、`libkyctoolkit.so` 77 个、`libXHSNN.so` 56 个……）。这顺带把 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10 里"`.init_array` 全 0 ⇒ 不在加载时自启"这条**只对单个库做过的观察**推广成全量事实：加载期执行在样本里是**常态（102/164）**，因此"某个库不在加载期做事"不能靠默认推断，必须逐库量。
+  > **一处仪器不一致（本轮修掉）**：上一版此数写作 103。差异来自 `libsentry_dumper.so`：它的 `.init_array` 有 2 个槽，第 1 槽在文件里是 `0xffffffffffffffff` 且**没有重定位**。`initarray_census.py` 把非零字当条目（故得 103），而 `initarray_run.py` 只读重定位 addend、读不到就退回 0（故它把该库算作"无条目"）。**两处都已改为同一约定**：有重定位取 addend，否则取**文件原字**；`0` = 空槽，`-1` = 未使用槽标记，**两者都不是函数**。修正后两个仪器一致：**102 个库有可用条目**，与"62 无条目 + 11 已实测 + 91 未跑到底"闭合。
+
+> **结论与边界（口径必须按下面三类分开读）**：四条判据的并集下，
+> **164 个库中只有 `libturingmfa.so` 存在加载期原地自解密数据表**。但"其余 163 个库无改写"
+> 的**证据强度并不齐**，`re/initarray_run.py` 把 164 个库分成三类：
+>
+> | 类别 | 库数 | 证据强度 |
+> | --- | ---: | --- |
+> | **无 `.init_array` 条目** ⇒ 结构上不存在加载期执行 | **62** | **结构性**（最硬：连可执行的构造子都没有） |
+> | 有构造子且**≥1 个跑到底** | **11** | **已实测**：跑完后 `.data`/`.rodata` 逐字节比对。`libturingmfa.so` 在这一类里（其余 10 个为 `libInsightWrapper.so`、`libXHSNN.so`、`libchopper_v2.so`、`libfolly_runtime.so`、`libhermes_executor.so`、`libj2v8.so`、`libliteavsdk.so`、`libtxmapvis.so`、`libxhslonglink.so`、`libxyasf.so`） |
+> | 有构造子但**无一跑到底** | **91** | **边界**：需真实 Android 运行时的 `JNIEnv`、libc、`DT_NEEDED` 符号，或其目标页未映射。其"无改写"只能读作"**在我们能执行的范围内无改写**"，**不等于真机证明** |
+>
+> 也就是说：**62 个库可以从结构上排除加载期执行，11 个库已实测，91 个库仍是模拟边界**。
+> 要闭合这 91 个库需进程内插桩。该边界已如实记入 [audit.md](audit.md) 判据 7b。
+> 另外，**第 4 条判据对"加密表"的召回力也有已知上限**：它只能发现"**构造子可执行**"的那类
+> 自解密表；一个把解密挂在 `JNI_OnLoad` 或某个业务入口（而非 `.init_array`）上的库，
+> 需要更强的入口覆盖才能扫到——本轮的仪器只覆盖 `.init_array` 路径。
+
+**本轮把扫描口径收紧到极限后的全应用结果**（`re/inplace_xref_scan.py` +
+`re/inplace_xref_content.py`，164/164 成功）：**113 个库**存在"读回自己并改写"的位点，
+非 `.bss` 目标共 **595 个**。逐个定性后：
+
+| 类别 | 项数 | 含义 |
+| --- | ---: | --- |
+| 全零区域（`zero-fill`） | **226** | 清零/惰性缓冲，`.data` 中原像即 `00` |
+| 文件内已是明文（`plaintext-in-file`） | **82** | 就在明文串里改写，无编码 |
+| 高熵但**未证实**（`high-entropy-unproven`） | **268** | 见下 |
+| 文本型（`text-ish`） | **8** | |
+| 标志位/哨兵/指针（`flag/sentinel/pointer`） | **9** | |
+
+那 **268 项"高熵未证实"里 257 项属于 `libturingmfa.so` 自己**（就是本节的表）。
+**剩下 11 项分散在 7 个库**，且**全部位于构造子并未改写 `.data` 的库里**——
+即它们的高熵是**读出即如此**，不是"密文被解出来"，且实测熵上界仅 **4.11**
+（`libsentry.so 0x24244`）。作为对照，`libturingmfa.so` 的表区**文件原像整体熵 7.074**、
+单条目窗口最高 **5.19**。因此这 11 项**不构成第二张加密表**：
+它们与真表的区别不是主观判断，而是**熵的量级差**加上**构造子是否真的改写过该处**这个二值事实。
+（这 11 项已按 `unproven` 记入 [audit.md](audit.md)，不上升为"发现"，也不留作"未知加密"。）
+
+> **本节口径最终状态**：`libturingmfa.so` 的字符串表是本轮 164 个库里**唯一**
+> 经"构造子实测改写 + 内容定性 + 熵量级"三重独立的原地自解密表；
+> 其余 163 个库的"无此类改写"按前表**三类证据强度**分开记载，其中 **91 个库仍是模拟边界**。
+
+---
+
+### 1.7 `libturingmfa.so`：加载期原地自解密字符串表（本轮新增，补齐 §1.3 的假阴性）
+
+#### (a) 身份与它在风控链里的位置
+
+`libturingmfa.so`（66 080 条指令）是**腾讯 TuringFD/MFA** 的设备指纹与风险上报 SDK：
+
+| 项 | 值 |
+| --- | --- |
+| `.rodata` 明文字符串 | `com/tencent/turingface/sdk/mfa/TNative$aa`、`TuringFD v%d (%s, %s, %s, compiled %s)`、`turingRiskDetect`、`TuringFdNative` |
+| 动态注册方法表 | `.data` `0x56540`（**15 条**：14 个 `x91_FC6D5B0A7013DB60` + `onServiceConnected`）、`0x56690`（1 条）——与本报告 [evidence.md](evidence.md) 记的"14 + 1 个动态注册方法"**独立吻合** |
+| 关键签名 | `k91_…` = `([B)[B`（字节变换，对应 `getDFPWup`）、`l91_…` = `(InvocationHandler, AtomicReference, ClassLoader)V`（**动态代理安装器**，对应 `java/lang/reflect/Proxy` / `newProxyInstance` 字符串）、`j91_…` = `()Ljava/lang/String;` |
+| 入口 | `JNI_OnLoad @ 0x1fcc4`；**代码入口面只导出它** |
+| 上报 | [risk.md](../risk.md) §4 记的 `https://tdid.m.qq.com/tmf`（WUP/Tars）。**注意该 URL 不在本库的加密表里**（表内 `tdid`/`qq.com`/`http` 命中均为 0），它由 Java 侧明文持有；本库只持 `getDFPWup`/`deviceIdentify`/`getTFConfig`/`turingdfp` 等**方法名字符串** |
+
+#### (b) 解密器本体：完全展开、零调用、零入边
+
+| 项 | 值 |
+| --- | --- |
+| 地址 | `0x34d74`（线性区 `0x34d74`–`0x39ecc`） |
+| 大小 | **5 207 条指令**（20 856 字节），**1 个 `ret`** |
+| 调用 | **0 个 `bl`/`blr`**；**0 条分支从区外跳入**（`b`/`bl` 目标扫描为空） |
+| 到达方式 | **不是被调用**，而是 `.init_array` **第 6 项**（`vaddr 0x51b40`，由 `R_AARCH64_RELATIVE` 绑定）在该库**加载时直接执行一次** |
+| 附带发现 | 该库 `.init_array` **9 项全部非零**（`0xdaf4 / 0x15120 / 0x2abfc / 0x2c590 / 0x2e588 / 0x34c34 / 0x34d74 / 0x4cc1c / 0x4d174`），`0x34d74` 是其中**最大的一个** |
+
+因为**没有回边、没有循环**，[tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.5 的
+`eor_branch`（"字节加载后 8 条内有 `eor wN`"）虽然数到了 331 次，却无法把它认成"解密循环"。
+
+#### (c) 编码形式：`b ^ key` 写成"互补掩码选择 + eor"
+
+解密器对每个字节做的是**异或**，但源代码把它写成了**两个互补掩码的位选择**：
+
+| 形态 | 指令序列 | 恒等式 |
+| --- | --- | --- |
+| 标量 | `mvn wT, wKey ; and wT, wT, #~K ; and wB, b, #K ; orr wB, wT, wB ; eor wB, wB, #(K^K2)`（`#~K` 由 `bic/and/orr` 三元组构成） | `(K & ~b) \| (b & ~K) == b ^ K`（已对全部 8 个密钥 × 全部 256 个字节值验证） |
+| NEON | `mvn vT.16b, vK.16b ; bit vK.16b, vT.16b, vM.16b ; eor vK.16b, vK.16b, vKey.16b` | 同上，一次 16 字节 |
+
+静态证据：区内出现 **103 个 `bic`+`and`+`orr`+`eor` 四连**与 **3 个 `mvn`+`bit`+`eor`+`str` 四连**，
+`mov w, #imm` 共 **471 条**（162 个互异立即数）。也就是说**密钥对是逐条目物化的**。
+
+> **口径提醒（本轮实测）**：这 471 条是 `mov`，而**不是** `movz`/`movk`——
+> 解密器内 `movz`/`movk`/`movn` **全为 0 条**。该库 `movz_movk_per_1k`=61.3 来自
+> **4 050 条散布在区内之外的 `movk`**，与这个解密器无关。
+> 因此 §1.5 的 `movz/1k` 列对本库是**无关指标**，唯一有信号的是 `eor_branch`=331。
+
+#### (d) 密钥调度：逐条目查表（**旧稿的闭式公式已作废**）
+
+对模拟器改写过的**每一个**字节求 `密文 ^ 明文`，可以得到该字节用的是哪个密钥。
+两条事实（`re/tmfa_keys.py`）：
+
+| 结论 | 校验 | 值 |
+| --- | --- | --- |
+| **一个条目整体只用一个密钥** | 逐字节 `密文^明文` 与该条目首字节的密钥比对 | **8 412 / 8 412 字节成立** |
+| **所有密钥都在同一个 8 值周期里** | 8 412 字节逐字节判定 | `0F AF 4F EF 8F 2F CF 6F`（即 `key & 0x1F == 0x0F`） |
+
+> **纠错（本报告上一版在此处写错，现作废）**：旧稿把调度写成一个闭式公式
+> `key_i = (0x0F + 0xA0 * i) & 0xFF`（`i` = 条目序号）。**该公式不成立**：
+> 它只在前 18 个条目上恰好为真，对全部 348 个条目仅有 **42 / 348** 命中，
+> **第 19 个条目（`i = 18`，`0x56ae7`）即首次违反**。
+> 根因是把"周期内的 8 个取值"误当成了"按条目序号线性推进"——
+> 两者在表头一致，之后立刻分叉。
+
+**正确的调度（闭式，已对 348/348 条目验证）**：
+
+```
+key_index(条目) = src_index(条目) mod 8        src_index ∈ [0, 416)
+```
+
+其中 **`src_index` 是"源字符串列表中的位置"，这个列表把空串也算进去**——
+而**空串在密文里不留任何字节差**（空串异或后仍是空串），所以只看二进制只能看到 348 项，
+真实列表长度是 **416 = 348 个非空 + 68 个不可见空串**。
+相邻非空条目之间的 `src_index` 步长直方图为 `1→295, 2→37, 3→14, 4→1`，
+`Σ(步长-1) = 68` 与 416−348 精确吻合——**这就是那 68 个空串的个数由来的独立校验**。
+
+> 也就是说：**"密钥按条目序号 +1 递推"是错的，"密钥按源列表序号递推、空串照样占一个序号"才是对的。**
+> 后者只有在能数出空串时才可写成闭式；纯静态（不跑构造子）无法得到 416 这个数。
+
+表结构（`BASE = 0x569c0`）：
+
+| 段 | 内容 |
+| --- | --- |
+| `0x569c0` – `0x569e3` | **9 个固定 4 字节单元**，每个只有第 1 字节参与异或（其余 3 字节为明文 `00`）；解出为 `V Z B C S I J F D`（9 个单字符常量，`R_AARCH64_RELATIVE` 里**没有任何指针指向这 9 个单元**，故判定为**就地使用的常量**而非字符串表项） |
+| `0x569e4` – `0x58caf` | **NUL 结尾的字符串序列**，每个条目整体用**一个**密钥（该条目的 `src_index mod 8`，见 (d)）；长度是**编译期常量**（解密完全展开），运行期没有分隔符可扫 |
+
+**条目计数**（口径要分开写，避免误读）：
+
+| 量 | 值 | 来源 |
+| --- | ---: | --- |
+| 被改写的**非空条目** | **348** | 模拟器字节差 |
+| 其中 ≥4 字符全可打印 | **325** | 同上 |
+| 密钥推进直方图 | `1→295, 2→37, 3→14, 4→1` | 相邻条目密钥相差的周期步数 |
+| **源字符串列表总项数** | **416** = 348 非空 + **68 空串** | `Σ(步长−1) = 68`，与 416−348 精确吻合（§1.7(d)） |
+
+> **为什么"空条目"看不见**：空条目就是一个空串（0 字节），异或后仍是空串，**不在字节差里**。
+> 因此**任何**基于"密文里找分隔符/按字节差切分"的静态还原都只能得到**非空条目数（348）**，
+> 而拿不到**源列表项数（416）**。本报告早期版本写的是"∿425（含 ∿77 空条目）"——
+> **该估计已作废**：它是按"9 + Σ推进 + 1"的近似式推的，其中把 9 个前导常量单元也当成了列表项。
+> 现在 416 是由**两个互相独立的量**（密钥推进之和；源列表序号上界）同时算出的定值。
+> 权威方法是执行解密器（`re/tmfa_initarray.py`，Unicorn）+ 读它写出的指针数组
+> （`re/tmfa_pointer_arrays.py`，见 §1.7(i)），表内 348/325/416 均出自这两者。
+
+#### (e) 为什么旧口径必然漏掉它：三条判据同时失效
+
+| 旧判据 | 对 `libturingmfa.so` 的读数 | 为什么失效 |
+| --- | --- | --- |
+| 加密指令族 | **0**（无 `aes*`/`sha*`/`pmull`/`sm4*`） | 逐字节 XOR 不用任何加密指令 |
+| 已知算法常量 | **0**（无 MD5-T/IV、AES-Sbox、Base64 表……） | 自研轮转密钥没有标准常量可匹配 |
+| ≥8 KB 高熵区 | **不命中** | 表 10 136 B，**熵只有 6.978**（前 8 192 B = 7.073），因为**每个条目的 `\0` 是明文存储**（零字节占比 **11.8%**），把熵压到 7.9 阈值以下；按 4 096 字节窗口扫描，**熵 > 7.9 的窗口数 = 0**，最长连续高熵段 = **0 字节** |
+| 混淆指标（§1.5） | `br_pct`=0.020、`tblsig`=0、`opaque_csel`=0、`.rodata` 熵 5.71 | 解密完全展开 ⇒ 没有 CFF 指纹、没有分派表 |
+
+**旧文本把它写进"132 个库三者全无"名单**（`re/sweep_crypto_final.txt:107`）并注明
+"常量物化密集，无 CFF"。本轮两处都已改（§1.3、§1.5）。
+
+#### (f) 解出的明文：这张表保护的是什么
+
+325 条可打印明文可按用途分五类（`re/tmfa_initarray.json`）：
+
+| 类别 | 条数 | 代表条目 |
+| --- | ---: | --- |
+| **OAID / 厂商设备 ID**（跨 10 余家厂商的 AIDL 服务名） | 37 | `com.uodis.opendevice.aidl.OpenDeviceIdentifierService`（华为）、`com.hihonor.cloudservice.oaid.IOAIDService`（荣耀）、`com.samsung.android.deviceidservice.IDeviceIdService`、`com.asus.msa.SupplementaryDID.IDidAidlInterface`、`com.zui.deviceidservice.IDeviceidInterface`（联想）、`com.bun.lib.MsaIdInterface`/`com.mdid.msa`（MSA）、`content://com.huawei.hwid.pps.apiprovider/oaid_scp/get`、`content://com.meizu.flyme.openidsdk/oaid`、`content://com.vivo.vms.IdProvider/IdentifierId/OAID`、`pps_oaid`、`tencent_identifier`、`com/android/id/impl/IdProviderImpl`、`android_id`、`ANDROID_ID` |
+| **反模拟器 / 环境与完整性** | 57 | `/proc/self/maps`、`/proc/self/mountinfo`、`/proc/self/cgroup`、`/proc/interrupts`、`/proc/net/arp`、`/proc/version`、`/proc/sys/kernel/random/boot_id`、`/sys/bus/virtio`、`/sys/block/mmcblk0/device/cid`、`/sys/class/net/wlan0/address`、`/dev/block/loop`、`/dev/block/dm`、`/system/bin/df`、`/system/bin/run-as`、`/system/xbin/procmem`、`init.svc.qemud` / `init.svc.noxd` / `init.svc.droid4x` / `init.svc.vbox86-setup` / `init.svc.ttVM_x86-setup`（**模拟器特征**）、`microvirt.vbox_dpi`、`Hypervisor\|goldfish`、`qemu\|vbox\|eth`、`ro.boot.serialno`/`ro.serialno`/`gsm.serial`、`ro.build.fingerprint`、`ro.product.*`、`/DCIM/.tmfs`、`/DCIM/.android`、`/.turing.dat`、`/.t.log`、`/.tgt.log`、`/.android_system_config.prop` |
+| **反射 / Binder 直取**（绕开公开 API） | 17 | `android/os/ServiceManager` / `ServiceManagerNative` / `com/android/internal/os/BinderInternal`、`android/content/pm/IPackageManager$Stub`、`android/hardware/display/IDisplayManager$Stub`、`android/view/IWindowManager$Stub`、`java/lang/reflect/Proxy` + `newProxyInstance(...)`、`asInterface(...)` ×4、`getContextObject()`、`checkService(...)` |
+| **密码学方法名**（只持有"要调什么"的字符串） | 12 | `javax/crypto/spec/SecretKeySpec`、`javax/crypto/Cipher`、`javax/crypto/spec/IvParameterSpec`、`javax/crypto/spec/GCMParameterSpec`、`javax/crypto/Mac`、`AES/GCM/NoPadding`、`HmacSHA256`、`getInstance(...)`、`init(ILjava/security/Key;Ljava/security/spec/AlgorithmParameterSpec;)V`、`init(Ljava/security/Key;)V`、`doFinal([B)[B` |
+| **Turing 自身配置与采集面** | 19 | `turingdfp`、`getDFPWup`、`deviceIdentify`、`getTFConfig`、`platform`、`version`、`channel`、`targetSdkVersion`、`battery.capacity`、`/sys/class/thermal/`、`/proc/cpuinfo`、`/proc/meminfo`、`/sys/class/android_usb`、`/system/fonts`、`getOAID()` / `getOAID(Landroid/content/Context;)`、`getSubscriberId`、`getOwnerUid`、`getOwnerPackageName` |
+| 其余 | ~180 | `Landroid/content/pm/ApplicationInfo;` 等类型描述符、`getPackageInfo(...)`/`queryIntentActivities(...)` 等 Binder 事务签名、`myUserId`/`myUid()I`、`com/applisto/appcloner/hooking/Hooking`（**应用克隆检测**）、`ZteDeviceIdentifyManager` |
+
+#### (g) 未闭环（具体到地址与原因，无"未知加密"）
+
+| 项 | 具体环节 | 原因 |
+| --- | --- | --- |
+| `.init_array` 其余 8 个构造子 | `0xdaf4`、`0x15120`、`0x2abfc`、`0x2c590`、`0x2e588`、`0x34c34`、`0x4cc1c`、`0x4d174` | 在 Unicorn 下抛 `UC_ERR_EXCEPTION` / `UC_ERR_READ_UNMAPPED`——需要真实 `JNIEnv`、libc 与 `DT_NEEDED` 符号才能继续；本库**只有 `0x34d74` 是自足的**（这本身也是它被选为"表解密"实现的原因） |
+| 9 个前导单元的语义 | `0x569c0`–`0x569e3`（`V Z B C S I J F D`） | **本轮已闭环**：文件里确实没有任何重定位指向它们，但构造子跑完后它们**全部出现在 `.bss` 指针数组的前 9 个槽位里**（§1.7(i)）——数组按表序排列，前 9 项就是它们。剩余仅「业务上谁读这 9 个字符」，属运行期观测 |
+| 61.3/1k 的 `movz` 中**非**密钥部分 | 162 个互异立即数里，`{K, ~K}` 16 个已归因为密钥；**其余 146 个**（`0x79`/`0x86`/`0xac`… 各出现 1–6 次）是 Turing 采集项的比较常量与 Binder 事务码 | 逐条语义需运行期观测；**不属加密**，仅是常量 |
+| WUP/Tars 上行协议内部 | `getDFPWup` 的序列化细节 | 上报 URL 与协议由 **Java 侧**（`classes4.dex` 引用本库）与腾讯服务端共同定义，本库只提供字节变换 `k91_…`；协议本体不在客户端静态可证范围内 |
+
+#### (h) 复现
+
+```bash
+cd /data/Sync/all/projects/2026-02-11-cc-work/telethon/downloads/rednote-9.37.0-re
+
+# 1) 跑 .init_array 构造子，得到每条被改写字节的 (密文, 明文) 与 325 条明文
+python3 re/tmfa_initarray.py            # -> re/tmfa_initarray.json
+
+# 2) 由字节差反推密钥周期并闭式校验（无需模拟器）
+python3 re/tmfa_schedule.py             # -> re/tmfa_schedule.json
+
+# 3) 全 164 库：原地自解密位点（静态，逐版收紧）
+python3 re/inplace_strdec_scan.py       # -> re/inplace_strdec_scan.json  (原始口径)
+python3 re/inplace_form_scan.py         # -> re/inplace_form_scan.json    (+ post-index/writeback/pair/NEON)
+python3 re/inplace_form_content.py      # -> re/inplace_form_content.json (内容定性)
+python3 re/inplace_xref_scan.py         # -> re/inplace_xref_scan.json    (+ 寄存器偏移/宽存储；348/348 命中)
+python3 re/inplace_xref_content.py      # -> re/inplace_xref_content.json (全应用内容定性)
+
+# 4) 全 164 库：构造子清点 + 模拟改写 + 单字节 XOR 扫描
+python3 re/initarray_census.py          # -> re/initarray_census.json
+python3 re/initarray_run.py libs/lib/arm64-v8a/*.so        # -> re/initarray_run.json
+python3 re/xor_table_test.py            # -> re/xor_table_test.json
+
+# 5) libturingmfa 专项：逐条目密钥表 + .bss 指针数组
+python3 re/tmfa_keys.py                 # -> re/tmfa_keys.json
+python3 re/tmfa_pointer_arrays.py       # -> re/tmfa_pointer_arrays.json
+```
+
+样本基线：`libs/lib/arm64-v8a/libturingmfa.so`
+SHA-256 = `537edc54d6d4ab39d4e7aa6d6f5bddb8e14264d52585d0d69124fbcf61d45dc0`。
+
+#### (i) 构造子在 `.bss` 里建出的**指针数组**（本轮新增）
+
+此前只统计了 `.data` 侧的 8 412 字节改写，把 `.bss` 那部分当作「临时状态」略过。**这是漏读**：
+同一个构造子还在 `.bss` 写出 **348 个 8 字节指针**，按**表序**指向刚解密的每一条非空条目，
+**这才是后续代码真正用来索引表的对象**（`re/tmfa_pointer_arrays.py`）：
+
+| 项 | 值 |
+| --- | --- |
+| 数组位置/尺寸 | `0x59458` – `0x59f38`，**348 槽 × 8 字节** |
+| 槽位解码 | 每个槽只有**低 3 字节**非零（改写 1 042 B = 348 × 3），高位为 0；按 8 字节小端读出的值**全部**落在表内（`0x569c0`–`0x58c9e`） |
+| 与表序的关系 | **严格递增**，且**恰好等于 348 个非空条目地址的升序序列**（逐项相等，0 漏 0 多） |
+| 前 9 个槽位 | `0x569c0 / 0x569c4 / … / 0x569e0` —— **正是那 9 个「无重定位指向」的前导常量单元**，见 (g) |
+| 死条目 | **0 个**（每个非空条目都被数组引用） |
+
+> **一条方法论教训**：这 348 个指针必须按 **8 字节步长**读。若按「连续非零 run」去读，
+> 会因为某些指针低 3 字节后面恰好跟一个非零字节而把相邻槽位粘起来，得到 78/227/41 这种
+> **错误分段**，并凭空造出「未被引用的死条目」。本报告第一版正是这么读的，已作废——
+> `.bss` 要按**它自己的数组步长**解释，而不是按「改动了哪些字节」解释。
+
+`.bss` 改写总量 **1 045 B = 1 042 B（数组载荷）+ 3 B**。那 3 B 位于 `0x58cd1`
+（内容 `"." "i" "n"`）**不属于数组**：它由 `0x34d74` 之外的**更早那 6 个构造子**写下
+（单独跑 `0x34d74` 时 `.bss` 恰为 1 042 B 且完全不碰该地址；单独跑前 6 个则恰好只改这 3 B），
+是它们在模拟器里执行到一半（随后 `UC_ERR_EXCEPTION`）留下的**部分执行痕迹**，不是静态表的一部分。
 
 ---
 
@@ -1640,6 +1994,17 @@ cd rednote-9.37.0-re
 # 全应用普查（约 15 min）
 PYTHONPATH=re python3 re/sweep_crypto.py
 
+# 第 4 条判据：全 164 库的加载期自解密数据表（本轮新增；单库约 40 s，建议按 --out= 分片并行）
+python3 re/inplace_strdec_scan.py                # 静态位点（D1–D5） -> re/inplace_strdec_scan.json
+python3 re/initarray_census.py                   # 构造子清点 + 函数长度 -> re/initarray_census.json
+python3 re/initarray_run.py libs/lib/arm64-v8a/*.so   # Unicorn 跑构造子比对前后字节 -> re/initarray_run.json
+python3 re/xor_table_test.py                     # 单字节 XOR 全扫（否证用） -> re/xor_table_test.json
+python3 re/inplace_site_content.py               # 每个 .data 位点的目标内容定性 -> re/inplace_site_content.json
+
+# libturingmfa.so 逐条还原（§1.7）
+python3 re/tmfa_initarray.py                     # 执行解密器 -> re/tmfa_initarray.json
+python3 re/tmfa_schedule.py                      # 密钥周期闭式校验 -> re/tmfa_schedule.json
+
 # libtiny 密码学画像
 PYTHONPATH=re python3 re/tiny_crypto_char.py
 
@@ -2240,4 +2605,3 @@ new dalvik.system.DexFile(file).loadClass("a")
 | `dex/assets/fd2x1e4e2x3f1v2b1s.dex`（守护 dex，78 008 B） | `3609a27662f09e1f82cbf11de2174f228ce7f48fdbeffc91573347ba229a4538` |
 | `dex/assets/c4d121c215evx1s51d.dex`（940 B） | `2c48d73f5479148c0d87397eeeb3440b7bc2efd1478d86f3198c72737afef52c` |
 | `re/daemon_embedded_dex.bin`（588 B，Base64 还原） | `2ce6593bc280f14b9b714cc9ab226d168d9d3e30d8fa06176fdf1dca100f092c` |
-
