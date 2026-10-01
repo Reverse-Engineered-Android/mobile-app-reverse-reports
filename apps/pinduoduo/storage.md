@@ -218,8 +218,28 @@ protobuf 风格的键值对。**未加密**：读取 `MMKVCompat.a.b(String)` �
 | `device_info_setting_monitor` | `USER_SETTING_MONITOR_LAST_SETTING_DATA`、`USER_SETTING_MONITOR_LAST_TIME` |
 | `PDD.Wallet`、`pdd_limited_kv`、`fcm_token` | 样本中为空 |
 
-`enCryptInfoV3` 与 `pdd_id` 的值为 `5ec1` + 长度 + 密文的二进制串；`scres` 为
-单字节值。
+`enCryptInfoV3` 的**具体构串格式已验证**（`lb2/p0.java:284–300`、`lb2/l0.java:105`）：
+
+```
+enCryptInfoV3 = "5ec1"
+              + %08x( len(encStr) ) + encStr          # SecureNative.enc(设备信息 JSON, version)
+              + %08x( len(b64) )    + b64             # l0.b(同一份 JSON)
+              + %08x( crc32(str5) )
+```
+
+即**两路独立加密的结果拼在一个长度前缀框架里**，末尾是 CRC32：
+
+| 段 | 来源 | 算法 |
+| --- | --- | --- |
+| `encStr` | `SecureNative.enc(json, version)` | native 实现（见 [algorithm.md](algorithm.md)） |
+| `b64` | `lb2/l0.b(json)` | `AES/GCM/NoPadding`，12 字节随机 IV 前置，整体 `Base64(NO_WRAP)` |
+| 尾部 | `CRC32` of 前两段的长度前缀拼接 | `java.util.zip.CRC32` |
+
+`b64` 段（Android 6.0+ 分支，`Build.VERSION.SDK_INT >= 23`）的密钥来自
+**AndroidKeyStore**，别名 `pdd_secure_cipher_key`，由 `l0.e()` 在首次使用时
+生成并持久化；这是密钥**不落在应用私有目录**的原因——只能通过 Keystore 访问。
+
+`pdd_id` 为 `5ec1` 前缀的同类串；`scres` 为单字节值。
 
 `pdd_config_common` 里的 `longlink_local_ip`/`longlink_local_port` 是长连接本地端口
 记录，用于进程间复用；按 `SECURITY.md` 其值不公开。
@@ -304,6 +324,27 @@ protobuf 风格的键值对。**未加密**：读取 `MMKVCompat.a.b(String)` �
 | `pdd_config.xml`、`pdd_config_common.xml` | 迁移前的旧键 |
 | `mipush*.xml` | 推送 devId/regId/appToken（设备标识，不公开） |
 | `WebViewChromiumPrefs.xml`、`efix_sp_main.xml`、`ut_sp.xml`、`meco64_storage_sp.xml`、`sp_client_report_status.xml` | 组件状态 |
+
+### 8.1 支付宝设备指纹 SDK 的本地落盘
+
+`apmobilesecuritysdk`（见 [risk.md](risk.md) §13）在本应用私有目录下另有一组
+落盘，**与拼多多自研存储完全分离**：
+
+| 形式 | 名称 | 键 / 路径 | 说明 |
+| --- | --- | --- | --- |
+| SharedPreferences | `vkeyid_settings` | `random`、`vkey_valid`、`last_apdid_env`、`log_switch`、`agent_switch` | vkey 轮换状态与开关 |
+| SharedPreferences | `openapi_file_pri` | `openApi` | 上游开放接口返回值缓存 |
+| SharedPreferences | `alipay_vkey_random` | — | 随机数种子 |
+| SharedPreferences | `virtualImeiAndImsi` | — | **虚拟 IMEI/IMSI 缓存**（非真实设备值） |
+| 日志 | `files/log/ap/yyyyMMdd.log` | 按日滚动 | `apmobilesecuritysdk.c.a` 写入 |
+
+其中 `virtualImeiAndImsi` 是本次分析中值得单独注意的一项：它表明该 SDK 会在
+本地缓存一套**虚构的** IMEI/IMSI，用于在无 `READ_PHONE_STATE` 或读取失败时
+提供替代值，而不是上报空串。
+
+**取证边界**：本节内容由 DEX 代码路径判定（**结构已证实**）。设备在本次会话
+末段不可达，上述文件未能与真机快照逐一比对，故**未标注为已验证**——它们的
+存在性与键名以代码为准。
 
 ## 9. 安全结论
 

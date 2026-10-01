@@ -43,10 +43,12 @@
 6. 本地存储以明文 SQLite 为主（22 个库），MMKV 397 个文件（约 19 MB）多数未加密，
    仅少数模块显式传入 crypt key。运行时下载的 native 库以**明文、未加壳**形式
    落在 `files/dynamic_so`，目录名携带 `名称_epoch毫秒_MD5`。
-7. **混淆闭包**：DEX 无字符串加密、无加壳、无 `RegisterNatives` 隐藏；APK 内
-   6,648 处 Efix 跳板（`h4.g.*`）在未安装热补丁时全部短路。native 侧按证据分为
-   OLLVM 控制流平坦化、ADR+RET 返回地址间接化、.text 内嵌数据三类，逐库清点见
-   [obfuscation.md](obfuscation.md)。
+7. **混淆闭包**：DEX 层无字符串加密、无加壳；APK 内 6,648 处 Efix 跳板
+   （`h4.g.*`）在未安装热补丁时全部短路。native 侧实际出现的手法有四种，均已
+   完整还原：OLLVM 控制流平坦化、ADR+RET 返回地址间接化、.text 内嵌数据，
+   以及**异或字符串池**（`libpdd_secure.so` 基址 `0x1928c0`，113 条有效串）
+   与 **`RegisterNatives` 动态注册**（12 个库 25 处真实调用点）。逐库清点见
+   [obfuscation.md](obfuscation.md) §9。
 
 ## 覆盖矩阵
 
@@ -56,8 +58,8 @@
 | 协议具体格式 | 公共头、anti-token、v1/v2 签名、`sdr` 描述符、multipart 表单、Titan 结构 | [network.md](network.md) |
 | 认证机制 | `AccessToken` 来源链、登录接口族、token 刷新、54001 挑战、cookie 保护名单 | [auth.md](auth.md) |
 | 上传下载数据范围 | 逐接口字段清单与上传表单全字段 | [transfer.md](transfer.md) |
-| 全部风控代码 | anti-token / enCryptInfoV3 / scres / sdr / 54001 / root / 模拟器 / 多开 / 画像 / 降级 / Hook | [risk.md](risk.md) |
-| 无未分析混淆代码 | DEX 层、Efix 层、逐库 native 层结论 | [obfuscation.md](obfuscation.md) |
+| 全部风控代码 | anti-token / enCryptInfoV3 / scres / sdr / 54001 / root / 模拟器 / 多开 / 画像 / 降级 / Hook / 支付宝设备指纹 | [risk.md](risk.md) |
+| 无未分析混淆代码 | DEX 层、Efix 层、逐库 native 层结论、字符串池、动态注册 | [obfuscation.md](obfuscation.md) |
 | 本地数据库格式与信息范围 | 22 个库 DDL、行数、列形状；WAL 重放；MMKV 键名 | [storage.md](storage.md) |
 
 ## 证据等级
@@ -78,3 +80,7 @@
    `cdnMd5` 指向增量下发基线，而不是当前内置文件。
 2. `SecureNative.b/s` 的选择子语义由调用点归纳，选择子取值集合尚未逐一断言到
    具体密钥用途。
+3. `libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点，用途为假说
+   （见 [obfuscation.md](obfuscation.md) §9.4.2）。
+4. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
+   方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。

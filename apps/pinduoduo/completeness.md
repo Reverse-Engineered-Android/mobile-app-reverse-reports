@@ -13,9 +13,9 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | 认证机制 | `AccessToken`/`PDDAccessToken` 来源链、登录接口族、token 刷新、`53001`/`54001` 挑战、cookie 保护名单、`getLoginKey` | [auth.md](auth.md) | 已确认来源、规范化与传输边界；秘密值与可重放材料不公开 |
 | 上传数据范围 | 对象存储端点与任务类型、multipart 全字段、视频秒传字段、风控/环境上报字段、上传相关开关 | [transfer.md](transfer.md) | 逐接口、逐字段列出；区分"业务上传""诊断上报""风险上报" |
 | 下载数据范围 | iris/okdownload 两个下载器、断点续传元数据、下载内容分类、落盘结构 | [transfer.md](transfer.md)、[storage.md](storage.md) | 按来源、格式与本地缓存范围列出 |
-| 全部风控代码 | anti-token、`enCryptInfoV3`、`scres`、`sdr`、54001、root/模拟器/多开、设备画像、网络降级、Hook 对抗、网络留痕 | [risk.md](risk.md) | 组件、Java/native 入口、采集类别、上报边界与处置链已覆盖 |
+| 全部风控代码 | anti-token、`enCryptInfoV3`、`scres`、`sdr`、54001、root/模拟器/多开、设备画像、网络降级、Hook 对抗、网络留痕、**第三方支付宝设备指纹 SDK** | [risk.md](risk.md) | 组件、Java/native 入口、采集类别、上报边界与处置链已覆盖；含 41 个 `AD`/`AL` 编码的逐条定位 |
 | 本地数据库格式与信息范围 | 22 个 SQLite 库的 DDL/行数/列形状、未 checkpoint 的 WAL 重放、397 个 MMKV 文件、`files/secure`、`files/network`、`files/dynamic_so`、SharedPreferences | [storage.md](storage.md) | 逐库列出表名、列名、行数与值域形状；不公开任何行值 |
-| 无未分析混淆代码 | DEX 层、Efix 跳板层、51 个已取得 ELF 的逐库混淆清点、绑定方式三分、动态库清单与在机情况 | [obfuscation.md](obfuscation.md) | 见 §3 与 §4：已取得库上闭环，54 个未落盘库明确列为未覆盖 |
+| 无未分析混淆代码 | DEX 层、Efix 跳板层、51 个已取得 ELF 的逐库混淆清点、`RegisterNatives` 调用点、异或字符串池、动态库清单与在机情况 | [obfuscation.md](obfuscation.md) | 见 §3 与 §4：已取得库上闭环，54 个未落盘库与 3 类未绑定 native 方法明确列为未覆盖 |
 
 ## 2. 风控组件清单
 
@@ -32,6 +32,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | Hook 对抗 | `libdyncommon.so` 环境探测、`libpdd_sa_hook.so`、bytehook 链 | ART/Xposed/链接器/SELinux/nativebridge 符号枚举与 hook 探测 | 已验证 |
 | 网络降级 | 熔断、https→http 改写、CDN 改写 | 触发条件与优先级 | 结构已证实 |
 | 客户端留痕 | `net_adapter/hera/netcapture` | 保留字段范围 | 结构已证实 |
+| 第三方指纹 | `apmobilesecuritysdk` + `SecurityClientMobile` | 支付链路触发、41 个 `AD`/`AL` 编码到采集函数的逐条映射、`mobilegw.alipay.com` 上报协议 | 结构已证实（传输与字段）；文件落盘为代码判定 |
 
 ## 3. 混淆闭包（用户重点要求）
 
@@ -48,12 +49,18 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | DEX 加壳 | 无加壳、无 DEX 加密 | 全部 `classes*.dex` 为标准 `dex\n035` 头，可解析出 25,156 个 Java 文件 |
 | DEX 控制流 | 6,648 处 Efix 跳板，未装补丁时全部短路 | `h4.g.f62701a == 0` 时 `h4.g.<letter>()` 直接返回 `{a=false}`；设备 `efix_sp_main.xml` 显示无补丁 dex、失败计数 0 |
 | native 控制流 | 三种标准变换，均可静态还原 | FLA 7,376+ 处（`libpdd_secure`）、IND-BR 19,801 处（`libdyncommon`）、ADR+RET 330 处（仅 `libdyncommon`） |
-| native 数据 | 无加密常量表隐藏 | 标准算法常量表明文位于 `.rodata`；`libpdd_secure` 全镜像恰好 2 张 256 字节置换表 = AES 正/逆 S-box |
-| native 绑定 | 无符号抹除 | 1,612 个声明方法中 646 个符号导出、87 个 `RegisterNatives` 判定成功，其余归属未落盘库 |
+| native 数据 | 标准常量表明文，**但存在异或字符串池** | 算法常量表明文位于 `.rodata`；`libpdd_secure` 另有基址 `0x1928c0` 的异或字符串池（113 条有效串，已全部还原，见 [obfuscation.md](obfuscation.md) §9.4） |
+| native 绑定 | 无符号抹除，注册点已逐一定位 | 1,612 个声明方法中 646 个符号导出；`RegisterNatives`/`UnregisterNatives` 在 12 个库共 25 处真实调用点（函数表下标 `#1720`/`#1728`）；其余归属未落盘库 |
 
-在 51 个已取得库中，**没有**出现：自解密代码段、字节码虚拟机、字符串解密循环、
-不透明谓词之外的虚假分支、常量表异或/分片隐藏、DEX 加壳。逐库清点见
-[obfuscation.md](obfuscation.md) §4–§6。
+在 51 个已取得库中，**没有**出现：自解密代码段、字节码虚拟机、
+不透明谓词之外的虚假分支、常量表异或/分片隐藏、DEX 加壳。
+
+实际出现并被完整还原的手法有两类：
+
+- **异或字符串池**（`libpdd_secure.so`，113 条，含 `DeviceNative` 类名与 RSA 公钥）：见 [obfuscation.md](obfuscation.md) §9.4；
+- **`RegisterNatives` 动态注册**（12 个库 25 处）：见 [obfuscation.md](obfuscation.md) §9.1。
+
+逐库清点见 [obfuscation.md](obfuscation.md) §4–§6。
 
 ### 3.2 明确未覆盖的部分
 
@@ -91,7 +98,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 
 ## 5. 可复现工具
 
-上述每一项结论都随报告附带了工具，位于 [tools/](tools/)：8 个只读脚本，只用 Python
+上述每一项结论都随报告附带了工具，位于 [tools/](tools/)：11 个只读脚本，只用 Python
 标准库，不含样本或秘密。最常用的两个是
 [db_snapshot.py](tools/db_snapshot.py)（对目录做只读 SQLite 快照，含 WAL 重放，
 只输出列形状聚合而不输出行值）与 [obfclass.py](tools/obfclass.py)（逐库混淆指纹）。
