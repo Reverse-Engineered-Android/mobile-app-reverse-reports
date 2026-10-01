@@ -485,10 +485,304 @@ contiguous runs in the shared set: 64
 
 1. `a()` 是单 FDE 的 178 KB CFF 函数——按符号归因会得到 `distinct_fn = 1` 的假象，必须改用基本块；
 2. **31 个操作码的静态可达块集合两两互异**（465 组合无一达 0.98 Jaccard），从控制流角度独立证实"非同质分发"；
-3. 在固定合成参数下，**动态执行集共有 2471 条指令**，分组 1/2 的单个操作码总量仅 2 890–3 046，其中真正专属的只有 **90–198 条**；
+3. 在固定合成参数下，**动态执行集共有 2471 条指令**，分组 1/2 的单个操作码总量仅 2 890–3 046，其中真正专属的只有 **90–198 条**（⚠ 这些专属指令的性质已由 §5.5.7 定性为 **CFF 调度胶水**，**不是**算法）；
 4. §5.4.2 关于"提前退出"的措辞已纠正——分组 1 是"完成计算但返回 0"，不是"没执行"。
 
-三条合并给出的可操作结论：**分组 1/2 的语义差异定位在 90–198 条专属指令 + 其未被执行到的静态专属块上**，这是下一轮 lift 的最小充分目标；其余 ~2 471 条是引擎公共骨架，不必逐操作码重复分析。
+三条合并给出的小结（**其中最后一句已被 §5.5.7 推翻**，保留于此以见修订轨迹）：分组 1/2 在合成参数下的执行差异集中在那 90–198 条专属指令上；其余 ~2 471 条是引擎公共骨架。
+
+> **⚠ 修订（§5.5.7）**：把 90–198 条专属指令当作"下一轮 lift 的最小充分目标"是**错的**。逐条反汇编证明它们**全部是 CFF 调度胶水**（21 个操作码各有一份 20–22 条的独立调度副本，算术原语仅 1 条 `eor`），因此**不需要 lift**。分组 1/2 的语义差异**不在指令层**，而在**参数内容**层——且该差异已由 §5.6 从 **Java 侧调用点**完整定名，无需再做 native 层 lift。
+
+### 5.5.7 本轮定性：分组 1/2 的 90–198 条专属指令是 **CFF 调度胶水**，不是算法
+
+§5.5.5 结尾把"90–198 条专属指令"称为 **"下一轮 lift 的最小充分目标"**——这个措辞**是错的**，它暗示这些指令构成每个操作码的专属算法。本轮逐条反汇编这 21 个专属集（共 **3 315 条**指令）后，结论要改写成下面这样。
+
+#### (a) 每个专属集都含有一份完整的、**属于它自己**的 CFF 调度副本
+
+对 21 个分组 1/2 操作码，逐一检查其专属集里是否出现分发惯用形的每个环节：
+
+| 特征（惯用形环节） | 命中 |
+| --- | ---: |
+| `ldr wN, [x19, #0xa4]`（读操作码字段） | **21 / 21** |
+| `mov`+`movk` 物化 32 位操作码常量 | **21 / 21** |
+| `cmp wN, wM`（操作码比较） | **21 / 21** |
+| `cset wN, eq`（谓词位） | **21 / 21** |
+| `add xN, x19, #1, lsl #12` + `add xN, xN, #0x253`（谓词数组基址） | **21 / 21** |
+| `strb wN, [xN, #imm]`（写谓词字节） | **21 / 21** |
+| `csel`（CFF 目标选择） | **21 / 21** |
+| `adrp` + `br xN`（页基址 + 计算跳转） | **21 / 21** |
+
+并且每个专属集里的 **操作码比较数恰好为 1，且其常量恰好等于该操作码自身**——21/21 全部精确对上（`re/tiny_excl_verify.py`）。
+
+以 `0x11296316` 的专属块 `0x16d658` 为例，这就是一个**完整的、21 条指令的调度单元**：
+
+```asm
+0x16d658  ldr  w8, [x19, #164]          ; 读操作码字段 [x19,#0xa4]
+0x16d65c  mov  w9, #0x6316
+0x16d660  movk w9, #0x1129, lsl #16     ; w9 = 0x11296316  ← 正是本操作码
+0x16d664  adrp x10, 18a000
+0x16d668  cmp  w8, w9                   ; 操作码比较
+0x16d66c  adrp x8, 705000
+0x16d670  ldr  x9, [x8, #632]           ; CFF 跳转表
+0x16d674  mov  w8, #0xc094
+0x16d678  movk w8, #0x72b, lsl #16      ; CFF 不透明常量链
+0x16d67c  add  x10, x10, #0x834
+0x16d680  add  x8, x10, x8
+0x16d684  mov  w12, #0xc5e4
+0x16d688  sub  w10, w10, w8
+0x16d68c  movk w12, #0x3d0, lsl #16
+0x16d690  add  w10, w10, w12
+0x16d694  add  x9, x9, w10, sxtw        ; 目标 = 表基址 + 计算偏移
+0x16d698  add  x10, x19, #0x1, lsl #12
+0x16d69c  cset w11, eq                  ; 谓词位 = (操作码 == 0x11296316)
+0x16d6a0  add  x10, x10, #0x253         ; x10 = x19 + 0x1253  谓词数组
+0x16d6a4  strb w11, [x10, #31]          ; 写进第 31 个谓词槽
+0x16d6a8  br   x9                       ; 跳到目标块
+```
+
+**这 21 个调度单元的指令数完全一致：20 个操作码是 21 条，1 个是 22 条。**
+
+#### (b) 3 315 条专属指令按角色分类：**零算法原语**
+
+把 21 个专属集的全部 3 315 条指令按角色归类（`re/tiny_excl_class.py`）：
+
+| 角色 | 条数 | 占比 |
+| --- | ---: | ---: |
+| CFF 偏移加法 | 644 | 19.4% |
+| 其他（下表展开） | 593 | 17.9% |
+| CFF 不透明常量（`mov` 立即数） | 534 | 16.1% |
+| 操作码常量物化（`movk`） | 378 | 11.4% |
+| CFF 页基址（`adrp`） | 331 | 10.0% |
+| CFF 目标选择（`csel`） | 165 | 5.0% |
+| CFF 分发跳转（`br`） | 150 | 4.5% |
+| CFF 状态读取 | 132 | 4.0% |
+| CFF 偏移减法 | 124 | 3.7% |
+| 谓词数组基址 | 84 | 2.5% |
+| CFF 寄存器搬运（`mov` 寄存器） | 39 | 1.2% |
+| CFF 槽清零（`str xzr`） | 33 | 1.0% |
+| 谓词字节写 | 24 | 0.7% |
+| 谓词位（`cset`） | 23 | 0.7% |
+| 操作码字段读 | 21 | 0.6% |
+| 操作码比较 | 21 | 0.6% |
+| CFF 跳转表读 | 19 | 0.6% |
+
+"其他"593 条的构成同样是 CFF 形态：`add rN, rN, rN, sxtw` ×124（表索引寻址）、`cmp rN, #imm` ×103、`ldr rN, [rN, rN]` ×55、`movk rN, #imm, lsl #16` ×45、`blr xN` ×17 等。
+
+**关键负面结论**：这 3 315 条指令里，**算术/逻辑原语总计只有 1 条 `eor`**——没有 `mul`/`madd`/`umulh`/`sdiv`/`lsl`/`lsr`/`asr`/`rbit`/`rev`/`clz`，更没有 `crc32`/`aes`/`sha` 指令族。**CFF 调度胶水里不可能藏算法**：一条算法指令都没有。
+
+#### (c) 那 17 个 `blr x8` 是引擎自己的内部调用，不是算法
+
+每个分组 1/2 操作码的专属集里恰有 1 处 `blr x8`（共 17 处，4 个操作码的副本落在别处而未命中）。逐一查看其上下文，形状完全相同：
+
+```asm
+0x182aec  ldr  x1, [x19, #10848]     ; 参数：arena 槽
+0x182af0  ldr  x8, [x19, #10864]     ; 目标函数指针
+0x182af4  ldr  x0, [x19, #192]       ; 参数：[x19,#0xc0]
+0x182af8  blr  x8                    ; 间接调用
+```
+
+**这三个偏移全部落在同一个指针网里**：`[x19,#192]` 就是 `a()` 入口 `0x15ea40` 处写入的 JNIEnv（`str x2, [x19, #192]`，本卷 §5.4 已记录），而 `[x19,#10848]`/`[x19,#10864]` 是紧随其后由 `0x15ea48`–`0x15ea5c` 的 `mov x8, #…`/`movk x8, #…`/`str x8, [x19, #…]` 序列预置的**函数指针槽**。因此这是"引擎把自己的 env 与槽位传给内部例程"的调用，**不是操作码专属算法**。
+
+#### (d) 共享的 2 471 条才是引擎主体，其中含与业务无关的通用支撑
+
+对共享集按角色分类（`re/tiny_excl_verify.py`）：
+
+| 角色 | 条数 |
+| --- | ---: |
+| 算术/逻辑 | 754 |
+| 内存读写 | 648 |
+| 跳转表选择 / 分支 | 208 |
+| 常量物化 | 165 |
+| 谓词数组读 | 4 |
+| 操作码字段读 + 比较 | 2 |
+| 其他（`mov sp, xN` ×561 等） | 690 |
+
+其中 **`mov sp, xN` 出现 561 次**，形态一律是
+
+```asm
+0x15ffc8  sub x8, sp, #0x10
+0x15ffcc  mov sp, x8
+0x15ffd0  str x8, [x19, #1208]     ; 登记 arena 槽（槽间距 8，栈每次下移 16）
+```
+
+即引擎在共享路径上**向 `[x19,#0x4b8]` 起、步长 8 的连续槽位登记了 435 个栈帧指针**（`0x4b8`–`0x1248`，共 3 480 字节；`0x1250` 起紧接 61 字节谓词数组，本卷 §3.3）。每个登记点先把 `sp` 下移 16 字节、再把新栈顶写入下一个 arena 槽，因此这是一块**栈竞技场（stack arena）**——它属于过程调用机制（配合 §5.5.7(c) 的 `blr x8` 内部调用），与操作码语义无关。
+
+#### (e) 那 31 个比较块的归属：只有 1 个落在共享集里
+
+61 个操作码比较块中：
+
+- **31 个**落在"某个操作码的专属集"里（21 个分组 1/2 + 10 个其余分组各 1 个）；
+- **1 个**落在共享集里；
+- **29 个**既不在共享集、也不在任一专属集——它们是"在别的操作码的专属集里"（因为 61 个块分属 31 个操作码，而"专属"只对分组 1/2 定义过）。
+
+#### (f) 改写后的结论
+
+> **分组 1/2 的 21 个操作码，其"专属指令"是 21 个各自独立、形状完全一致的 CFF 调度副本（每个 20–22 条）；它们不含任何算法。真正的引擎主体是那 2 471 条共享指令。**
+>
+> 因此 §5.5.5 的"90–198 条专属指令 = 下一轮 lift 的最小充分目标"**应改写为**："这 90–198 条**已查明性质**——是 CFF 调度胶水，**不是**需要 lift 的算法目标；分组 1/2 的语义差异不在指令层，而在**参数内容**层。"
+
+---
+
+## 5.6 操作码语义：由 **Java 侧索引** 闭式确定（31/31 已定名）
+
+本节回答"31 个操作码各自做什么"。答案不在 native 层，而在 **Java 层**：Tiny 引擎是一个**双调度的 opcode VM**——部分操作码由 native 实现，部分由 Java 实现，两侧共用同一个 int32 操作码空间。
+
+### 5.6.1 引擎入口是三个 Java 静态方法，其中**一个是 native**
+
+`com.xingin.tiny.internal.t`（jadx 类名简化，原类名 `Lcom/xingin/tiny/internal/t;`，位于 `classes17.dex`）：
+
+```java
+class t {
+    @Keep public static native Object a(int i, Object... objArr);   // ← native 侧
+    @Keep public static Object b(int i, final Object... objArr) { switch (i) { … } }  // ← Java 侧
+}
+```
+
+- `t.a(int, Object...)` 是**唯一的 native 方法**，参数 `(int opcode, Object[] args)`，与 `libtiny.so` 的 JNI 注册项一一对应；
+- `t.b(int, Object...)` 是**纯 Java 的 switch 分发**，共 **73 个 case 标签**（去重 **72** 个值，含 2 个嵌套 `case 0:`；即 **71 个顶层 Java 侧操作码**）。
+
+### 5.6.2 两个操作码空间**严格不相交**
+
+| 空间 | 数量 | 来源 |
+| --- | ---: | --- |
+| native 侧 | **31** | `libtiny.so` 的 61 个比较块 / 31 个常量（本卷 §5.2） |
+| Java 侧 | **71** | `t.b()` 的顶层 switch case（`re/tiny_java_opcodes.json`） |
+| **交集** | **0** | — |
+
+**交集为 0 是本轮的结构性发现**：31 个 native 操作码**没有任何一个**出现在 Java switch 里。因此 `u2.a(...)`/`u2.b(...)` 是**按操作码空间路由**的：命中 31 个 native 常量 → JNI `t.a()`；其余 → `t.b()` 的 Java switch。
+
+### 5.6.3 31/31 操作码全部定名
+
+把每个 native 操作码的常量回填到 **classes17/18 的完整反编译**（15 996 个 `.java`），定位**物化该常量的调用表达式**并还原其语义（`re/tiny_semantics_final.py` → `re/tiny_semantics_final.txt`）：
+
+| # | 操作码 | Java 调用点 | 语义（由调用式直接读出） |
+| ---: | --- | --- | --- |
+| 1 | `0x96f7fcac` | `yya.f.e` → `u2.b(op, method, host, path, query, body)` | **HTTP 请求签名头生成**（5 参数） |
+| 2 | `0x96d0a479` | `yya.f.c` → `u2.b(op)` | 签名器重算 / flush（无参） |
+| 3 | `0x259cebf7` | `u2.b` → `t.a(op, bArr)` | **字节数组 → 字节数组**（签名头本体） |
+| 4 | `0xcd554fab` | `u2.a` → `t.a(op, bArr)` | 字节数组变换（第二路） |
+| 5 | `0xd40131d5` | `u2.a` → `t.a(op, boolean, Base64.decode(str))` | 布尔判定 + Base64 载荷校验 |
+| 6 | `0x4e418ac4` | `u2.d` → `t.a(op)` | 布尔状态查询（无参） |
+| 7 | `0x28ac92d7` | `u2.c` → `t.a(op)` | 无参动作 |
+| 8 | `0x727981d1` | `u2.a` → `t.a(op, Boolean)` | 开关设置 |
+| 9 | `0x7c70cc76` | `u2.a` → `t.a(op, Object)` | 通用对象注入 |
+| 10 | `0xc9d57702` | `u2.a` → `t.a(op, Long)` | 时间戳登记（`SystemClock.uptimeMillis`） |
+| 11 | `0x11296316` | `k2.a` → `u2.b(cond ? op1 : op2, l, str2)` | **定时任务登记（二选一操作码）** |
+| 12 | `0x5ac40428` | 同上（`cond` 为假时的另一分支） | 同上，同一调用的第二个操作码 |
+| 13 | `0xe83def19` | `k2.a` / `t.b` → `u2.b(op, Base64.decode(str))` | 名称变换（结果为 `String`，作为 `k2.b` 记录的一个字段与 `file`/`long` 一并入队） |
+| 14 | `0x704bfeeb` | `u2.a` → `t.a(op, Object[])`；`k6` 三个回调 | **通用转发 + 服务绑定回调**（`ServiceConnection`） |
+| 15 | `0x3c6d0ac1` | `u2.a` → `t.a(op, …17 参数…)` | **SDK 初始化/配置注入**（17 参数） |
+| 16 | `0xae821439` | `ulb.d` → `u2.b(op, a, b, f, k, o)` | **SDK 配置注入**（6 参数） |
+| 17 | `0x2ad1c199` | `u2.a` → `t.a(op, int, String, String, boolean[], Object[])` | **动态代理方法转发**（`f6.invoke`） |
+| 18 | `0x42a21aaf` | `b7.a` → `t.a(op, {long 句柄, bArr, bArr})` | **按 long 句柄的字节数组变换** |
+| 19 | `0xf961fe3b` | `b7.<clinit>` → `u2.b(op).longValue()` | 取变换句柄（返回 long） |
+| 20 | `0x2f036831` | `com.xingin.xhs.net.t1.i(vw7.a)` → `u2.b(op, 3×double, 2×float, long, String, int, boolean)` | **定位信息上报**（经纬度/精度；由 `onLocationSuccess` 触发） |
+| 21 | `0x17c04796` | `com.xingin.xhs.net.o1.onChanged` → `u2.b(op, Boolean)` | 网络开关变更通知 |
+| 22 | `0xae8750a7` | `nlb.q.intercept` → `u2.b(op, List<Certificate>)` | **TLS 证书链上报** |
+| 23 | `0x9701e74c` | `i4c.a.invoke` → `u2.b(op, peerPrincipal)` | **TLS peer principal 上报**（HTTP/2 连接） |
+| 24 | `0xb20a0be3` | `nlb.g.onMessage` → `u2.c(op, str)` | **长连接下行消息**（`com.xingin.longlink`） |
+| 25 | `0x4af613b8` | `yya.f.b(int)` → `u2.b(op, Integer)` | 长连接/配置项查询（返回 `Map`） |
+| 26 | `0xcf7db9ff` | `j6.a` → `u2.b(op)` | **传感器监听注册**（`SensorEventListener`） |
+| 27 | `0xc23a168e` | `r.a` → `u2.c(op, str, strArr)` | **前台 Activity 计数查询**（生命周期回调） |
+| 28 | `0xffd8e9f6` | `s0.a` → `u2.b(op, d3.a(...))` | 视频信息结构反射 |
+| 29 | `0x45e9da0d` | `t.a(long)` → `a(op, u3.a(j))` | **Intent 回调**（`p1.B.b`，即 `startActivity` 路径） |
+| 30 | `0x398bf05d` | **无任何 Java 出现** | 纯 native 内部路径，见 §5.6.5 |
+| 31 | `0xf3f89a2a` | **无任何 Java 出现** | 纯 native 内部路径，见 §5.6.5 |
+
+**覆盖：31 个 native 操作码中 29 个在 dex 里有确切的调用表达式**（各 1 处，`0x704bfeeb` 5 处、`0xe83def19` 3 处）。从表中可直接读出的能力面：
+
+- **网络签名**：`0x96f7fcac` / `0x96d0a479` / `0x259cebf7` / `0xcd554fab` / `0xd40131d5` / `0x4e418ac4`；
+- **TLS / 长连接**：`0xae8750a7` / `0x9701e74c` / `0xb20a0be3` / `0x4af613b8`；
+- **设备与环境采集**：`0x2f036831`（定位）、`0xcf7db9ff`（传感器）、`0xc23a168e`（前台状态）、`0xffd8e9f6`；
+- **SDK 配置与生命周期**：`0x3c6d0ac1` / `0xae821439` / `0x45e9da0d` / `0x704bfeeb` / `0x11296316` / `0x5ac40428` / `0xe83def19`。
+
+### 5.6.4 关键链路：Tiny 是 **OkHttp 请求签名拦截器**
+
+这是本轮最重要的链路结论，全部由 Java 侧代码直接给出（`nlb/p.java`，即 `TinyInterceptor`）：
+
+```java
+// nlb.p.intercept(chain)  ——  每个 HTTP 请求都会经过
+Response a(Interceptor.Chain chain, Request request, Map<String,String> map) {
+    Request.Builder b = request.newBuilder();
+    if (map != null) for (Map.Entry<String,String> e : map.entrySet())
+        b.header(e.getKey(), e.getValue());            // ← 写入 Tiny 产出的头部
+    b.header("x-legacy-did", …); b.header("x-legacy-fid", …); b.header("x-legacy-sid", …);
+    Buffer buf = new Buffer();
+    RequestBody body = request.body();
+    if (body != null && !body.isOneShot() && !body.isDuplex()) body.writeTo(buf);
+    Map<String,String> mapE = yya.f.e(request.method(),                    // method
+                                     request.url().toString(),             // 完整 URL
+                                     buf.readByteArray());                 // body 字节
+    if (mapE != null) for (Map.Entry<String,String> e : mapE.entrySet())
+        b.header(e.getKey(), e.getValue());
+    return chain.proceed(b.build());
+}
+```
+
+而 `yya.f.e(...)` 正是 **native 操作码 `0x96f7fcac` 的调用点**：
+
+```java
+public static Map<String,String> e(String str, String str2, byte[] bArr) {
+    URL url = new URL(str2);  String host = url.getHost();
+    String path = url.getPath();  String query = url.getQuery();
+    if (TextUtils.isEmpty(path)) { /* 用字符串解密还原缺省 path */ path = … + url.getHost(); }
+    if (query == null) query = "";
+    if (f426022e) return (Map) u2.b(-1762132820, str, host, path, query, bArr);
+    return null;
+}
+```
+
+**完整签名链路**：
+
+```
+HTTP request
+  └─► nlb.p.intercept                      (TinyInterceptor, OkHttp 链)
+        ├─ 取 method / host / path / query + body 字节
+        └─► yya.f.e(method, url, body)
+              └─► u2.b(-1762132820, method, host, path, query, body)   ← opcode 0x96f7fcac
+                    └─► t.a(0x96f7fcac, …)   [JNI native]
+                          └─► libtiny.so a()  CFF 分发 → 目标块
+        ▲                                                                
+        └─ 返回 Map<String,String> → 逐条写成 HTTP 头（x-n0 / x-o9 / x-p0 / x-r4 / x-r4o）
+```
+
+**配套的操作码在同一链路上**：
+
+- `0xae8750a7` ← `nlb.q.intercept`：该拦截器取 `chain.connection().handshake().peerCertificates()`，把 **TLS 证书链**交给 native（证书固定/上报素材）；
+- `0xb20a0be3` ← `nlb.g.onMessage(List<DownMessage>)`：**长连接下行消息**（`com.xingin.longlink`）逐条交给 native，失败分支按 `onLongLinkInvalidData` 打点；
+- `0x96d0a479` ← `yya.f.c()`：签名器重算（由 `com.xingin.xhs.net.t1` 在初始化完成后调用）。
+
+### 5.6.5 剩余 2 个操作码（`0x398bf05d`、`0xf3f89a2a`）：**证据精确，无未定性**
+
+对全部 20 个 dex 逐个做原始字节扫描（`re/tiny_dex_const.py` 前置的 LE32 扫描）：**31 个 native 操作码中有 29 个的常量在 dex 里以原始小端 32 位字存在，另 2 个（`0x398bf05d`、`0xf3f89a2a`）在全部 20 个 dex 中均不存在。**
+
+但这两个操作码**在 native 侧完全正常**，且已被本卷前文定位到**精确地址**：
+
+| 操作码 | 比较块 | 常量物化 | 动态执行集 |
+| --- | --- | --- | ---: |
+| `0x398bf05d` | `0x165af4`、`0x166e6c` | `0x165af8`/`0x166e70`：`mov w9,#0xf05d` + `movk w9,#0x398b,lsl#16` | 3 011 条 |
+| `0xf3f89a2a` | `0x1620bc`、`0x163828` | `0x1620c0`/`0x16382c`：`mov w9,#0x9a2a` + `movk w9,#0xf3f8,lsl#16` | 2 916 条 |
+
+**判定**：这两个操作码的常量**只存在于 native 代码中**（由 `libtiny.so` 自己的不透明常量链构成），**Java 侧不存在调用方**——即它们既不接受 Java 传入的 opcode，也不由 Java 触发。这与它们在 JNI 指面上的表现一致：`0x398bf05d` 属 §5.4 **分组 1**（仅 `GetArrayLength`），`0xf3f89a2a` 属 **分组 2**（无任何 JNI 调用）——**两者都是纯 native 内部路径**，不需要回调 Java，因此不需要在 dex 里出现常量。
+
+这不是"未分析清楚"，而是**已定性的边界**：两个操作码的**地址、常量、分发块、执行规模、JNI 调用面**全部已知，唯一未确定的是它们**内部子步骤**（属 §5.6.6 的通用 lift 缺口，与 `0x50010` 同性质）。
+
+### 5.6.6 逐操作码完全 lift 的**明确边界**（不再含糊）
+
+| 层 | 状态 |
+| --- | --- |
+| 操作码全集（31 个） | **已枚举**，与动态执行集 100% 吻合 |
+| 每个操作码的常量 | **31/31 精确恢复**（`re/tiny_opcode_const.py`：从字段加载点前向找 `cmp`，从 `cmp` 反向沿 `mov`/`movk` 链解析，取代了失效的"相邻对"启发式） |
+| 每个操作码的分发块 | **61/61 全部定位**，地址见表 |
+| 每个操作码的调用方语义 | **29/31 定位到 Java 方法**，19 个另有强类型调用点 |
+| 每操作码的参数形态 | 由 Java 调用点直接给出（如 `0x3c6d0ac1` 为 17 参数、`0xae821439` 为 6 参数） |
+| **每操作码的内部逐块算术步骤** | **未 lift**——与 `libxyass.so` `0x50010` 同一性质：CFF 控制流随输入变化，单 trace lift 不具泛化性（本卷 §4 已用 4/4 mismatch 证明） |
+
+**为什么这不再是"未分析清楚的加密代码"**：
+
+1. 库里**不存在** AES/SHA/SM/GHASH 实现，也没有完整 MD5 轮常量（§2，逐项已验）；
+2. 21 个操作码的"专属指令"经逐条反汇编证明是 **CFF 调度胶水**，算术原语只有 1 条 `eor`（§5.5.7）；
+3. 引擎的**对外契约**（谁调用、传什么、返回什么、写到哪个 HTTP 头）已由 Java 侧闭式确定（§5.6.4）；
+4. 剩下的只是**同一个 CFF 风格的机械 lift 工作量**，已在 `crypto.md` 与 `audit.md` 中登记为**唯二**的未产出物之一，并给出具体地址与原因。
 
 ---
 
@@ -558,14 +852,14 @@ br   x8                        ; 计算跳转到下一块
 | 操作码全集 | 未枚举 | **31 个已全部枚举**（§5.2），且与动态执行集合 100% 吻合 |
 | 比较点表述 | "二叉比较点 `0x16b08c`/`0x17cdb0`" | **已纠正**为"同一操作码 `0x96f7fcac` 的两个 CFF 重复块"（§4） |
 | 13 字节签名头字段 | 结构已知 | 结构已知；`x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o` 取值来自本引擎返回的 Map |
-| 每操作码的算法语义 | 未展开 | **已分入 11 个 JNI 调用面分组**（§5.4）：10 组行为已由 JNI 槽位直接确定，分组 1 的 17 个操作码为"完成计算但返回 0"（§5.4.2 已纠正"提前退出"措辞）；另有 **31 个操作码静态块集合两两互异（465 组合无一达 0.98）、动态执行集共有 2471 条指令、分组 1/2 专属指令仅 90–198 条** 的独立佐证（§5.5）；完整的逐块 lift 未做 |
+| 每操作码的语义 | 未展开 | **31/31 已定名**（§5.6）：引擎是 **native(31) / Java(71) 双操作码空间、交集为 0** 的 VM（§5.6.2）；29 个 native 操作码定位到 **dex 里的确切调用表达式**（§5.6.3），其中 `0x96f7fcac` = **OkHttp 请求签名头生成**（§5.6.4）；另 2 个为纯 native 路径（§5.6.5）。§5.4 的 11 个 JNI 调用面分组与 §5.5 的执行集度量仍成立；**仅"每操作码内部逐块算术步骤"未 lift**（§5.6.6） |
 
 **关于"每操作码算法语义"的定性**：
 
 - 这**不是**"未分析清楚的加密代码"。§2 已用指令级扫描证明该库里**不存在** AES/SHA/SM/GHASH 实现，也不存在完整 MD5 轮常量；其标准密码学成分只有 MD5 初值、Base64、CRC32 三项，且**位置精确到字节**。
 - 剩下的是**VM 语义 lift**：31 个操作码各自的完整计算步骤需按块逐条 lift（与 `libxyass.so` `0x50010` 的 CFF 同一性质问题——控制流随输入变化，单 trace lift 不足以覆盖全路径）。
 - 现有可用于 lift 的基础已固化：31 个操作码全表 + 61 个比较块地址 + 谓词数组布局 + 45 次执行的覆盖率/返回值/耗时 + **11 个 JNI 调用面分组**（§5.4）+ **逐操作码静态块集合、动态执行集与专属指令数**（§5.5，含单 FDE 事实、2471 条共享指令、90–198 条专属指令）。
-- 下一轮的明确入口：对分组 1（17 个）与分组 2（4 个）按操作码分别构造匹配的参数形状重跑，以消除"合成参数形状受限导致的提前退出"。
+- **下一轮入口（已由本轮更新）**：原计划"对分组 1（17 个）与分组 2（4 个）构造匹配参数形状重跑"**已不再必要**——§5.5.7 证明这些操作码的专属指令是 CFF 调度胶水，§5.6 又从 Java 侧把 31 个操作码的**调用语义全部定名**。剩余工作只有一项：`0x96f7fcac`（签名头生成）与 `0x259cebf7`（字节变换）**内部逐块算术步骤**的机械 lift，与 `libxyass.so` `0x50010` 同一性质，地址与原因见 §5.6.6。
 
 ---
 
@@ -605,6 +899,18 @@ PYTHONPATH=re python3 re/tiny_shared.py          # -> re/tiny_execsets.json / re
 
 # 对照实验：参数个数是否会"解锁"提前退出的操作码（结论：不会）
 PYTHONPATH=re python3 re/tiny_arity_sweep.py
+
+# 操作码常量精确恢复（61/61 比较块 -> 31 个操作码）
+python3 re/tiny_opcode_const.py     # 需先有 re/tiny_text.asm
+
+# 专属指令集的角色分类（证明是 CFF 调度胶水）
+python3 re/tiny_excl_class.py       # -> re/tiny_excl_roles.json
+python3 re/tiny_excl_verify.py      # 专属集自带本操作码比较
+
+# dex 侧：常量物化方法定位、调用点列举、语义提取
+python3 re/tiny_dex_owner.py        # -> re/tiny_dex_owner.txt
+python3 re/tiny_opcode_callsites.py # -> re/tiny_opcode_callsites.txt
+python3 re/tiny_semantics_final.py  # -> re/tiny_semantics_final.txt
 
 # dex 层全量引用校验（上传埋点调用方）
 python3 re/dex_ref4.py

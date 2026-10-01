@@ -59,7 +59,11 @@
 
 **伴随守护（`libtinyd.so`）**：不是网络组件，也不是加密组件——38 个导入中无任何网络符号。动作由 `JNI_OnLoad` 触发（`.init_array` 全 0，不在加载时自启）。核心是**无名管道 IPC**：`pipe2` → `fork` → **定长 4 字节**信令 + 写后即 `close`，读侧循环到恰好 4 字节。配合 `android/os/Process.setArgV0("zygote")` 与 `prctl(PR_SET_NAME)` 双重改名，把子进程在 `ps`/`cmdline`/`comm` 三个视图里伪装成 zygote 派生进程，并用 `/proc/<pid>/status` 的 `TracerPid:` 反调试。其字符串加密（4 个解码器 × `i%20` 调度表的旋转+模加/XOR 双射）已闭式还原，**7/7 明文全部解出**。
 
-**Tiny 引擎执行集**：`a()` 是**单个 FDE 覆盖的 181 732 字节 CFF 巨函数**（按符号归因会得到 `distinct_fn = 1` 的假象）。31 个操作码的静态可达块集合**两两 Jaccard 全部 < 0.84**（465 组合无一达 0.98），动态执行集**共有 2471 条指令**、并集 43 258 条；分组 1/2 的单个操作码总量仅 2 890–3 046，其中**真正专属的只有 90–198 条**——这是下一轮 lift 的最小充分目标。
+**Tiny 引擎：31 个操作码全部定名**。引擎是 `com.xingin.tiny.internal.t` 上的 **双操作码空间 VM**——**native 侧 31 个**（`libtiny.so`，`JNI_OnLoad` @ `0x18afd8`，操作码字段 `[x19,#0xa4]`，61 个 CFF 比较块 + 61 字节谓词数组）与 **Java 侧 71 个**（`t.b()` 的 switch）**交集为 0**。
+
+**31/31 操作码常量精确恢复**（61/61 比较块全部对上），**29 个**在 classes17/18 里定位到**确切的调用表达式**。核心链路是 **OkHttp 请求签名**：`nlb.p`（TinyInterceptor）→ `yya.f.e(method, url, bodyBytes)` → **`u2.b(0x96f7fcac, method, host, path, query, body)`** → `t.a(op, …)` → `Map<String,String>` → 逐条写成 `x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o`。同一引擎还承担 TLS 证书链上报（`0xae8750a7`）、HTTP/2 peer principal 上报（`0x9701e74c`）、长连接下行消息（`0xb20a0be3`）、定位上报（`0x2f036831`）、传感器注册（`0xcf7db9ff`）、前台状态（`0xc23a168e`）、动态代理转发（`0x2ad1c199`）。
+
+**执行集度量**：`a()` 是**单个 FDE 覆盖的 181 732 字节 CFF 巨函数**（按符号归因会得到 `distinct_fn = 1` 的假象）。31 个操作码的静态可达块集合**两两 Jaccard 全部 < 0.84**（465 组合无一达 0.98），动态执行集**共有 2471 条指令**、并集 43 258 条。分组 1/2 的 90–198 条"专属指令"经**逐条反汇编证明是 CFF 调度胶水**（21 份 20–22 条的独立调度副本，算术原语仅 1 条 `eor`），**不是算法、不需要 lift**（原稿称其为"下一轮 lift 的最小充分目标"已撤回）。
 
 ## 关键纠正（相对早期结论）
 
@@ -78,6 +82,8 @@
 | `libtinyd.so` 明文含 `p6ro` | **撤回**：长度参数错配（4→2），正确值为 `am` |
 | `libtinyd.so` 字符串算法是纯 XOR | **撤回**：位置相关的旋转+模加/XOR 双射，非线性 |
 | Tiny 分组 1 的 17 个操作码是"参数形状受限的提前退出" | **撤回**：实测执行 3070 条指令，返回 0 是因结果写入随后被清零的栈槽 |
+| Tiny 操作码"逐操作码语义未展开" | **撤回**：31/31 已定名（native/Java 双操作码空间 + dex 调用表达式），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6 |
+| Tiny 90–198 条"专属指令 = 下一轮 lift 的最小充分目标" | **撤回**：逐条反汇编证明是 CFF 调度胶水（算术原语仅 1 条 `eor`），**不是算法**，见 §5.5.7 |
 
 ## 公开范围与边界
 
@@ -85,7 +91,7 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出，主要五类：Tiny opcode→语义映射（操作码全集 31 个已枚举，专属指令已收窄至 90–198 条/操作码，仍需逐块 lift）、`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+未闭环项已在各文档显式列出，主要五类：Tiny 操作码**内部逐块算术步骤** lift（**调用语义已全部定名 31/31**；专属指令已证明是 CFF 胶水而非算法）、`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
 
 设备指纹一项本轮已由"结构已证实"升为**已恢复**，见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)：该库未做字符串加密，采集面可静态穷举，无需 VM 级 lift。
 

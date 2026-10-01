@@ -7,7 +7,7 @@
 | 层 | 组件 | 角色 | 证据等级 |
 | --- | --- | --- | --- |
 | 请求签名 | `libxyass.so`（Shield） | 全 native OkHttp 拦截器，生成 `shield` / `xy-platform-info` | 算法已恢复（见 crypto.md） |
-| 请求签名 | `libtiny.so`（Tiny） | opcode 引擎生成 `x-n0/x-o9/x-p0/x-r4/x-r4o` | 结构已证实 |
+| 请求签名 | `libtiny.so`（Tiny） | opcode 引擎生成 `x-n0/x-o9/x-p0/x-r4/x-r4o` | **已恢复**（签名操作码 `0x96f7fcac` 已定名，见 §2） |
 | 设备指纹 | `libxyasf.so`（xya FP SDK） | 82 个 JNI 入口、51 个采集字段，自行 HTTP 上报 | **已恢复**（见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)） |
 | JS 指纹 | 隐藏 WebView + 服务端下发 JS | 独立进程跑风控 JS | 已验证（硬编码密钥已定位） |
 | 人机验证 | Walify（RN）+ ValidateActivity（H5） | 命中风控后的验证 | 已验证（触发链 + URL 来源边界） |
@@ -39,7 +39,11 @@
 - dex 中可见混淆头名：`x-n0`、`x-o9`、`x-p0`、`x-r4`、`x-r4o`、`x-legacy-did/sid/fid/smid`。
 - `JNI_OnLoad` @ `0x18afd8`；操作码字段 `[x19,#0xa4]`（写入点 `0x15ea20`），分发为 **61 个操作码比较块 + 61 字节谓词数组**，非二叉比较。`0x16b08c` / `0x17cdb0` 是同一操作码 `0x96f7fcac` 的两个 CFF 重复块，详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §3–§5。
 
-**未闭环**：opcode 编号到算法语义的映射未逐条还原（引擎用 int32 操作码而非方法名）。已确认的是分发机制、**31 个操作码全集**（与动态执行集合 100% 吻合）与覆盖范围，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)。
+**已闭环（本轮）**：31 个 native 操作码**全部定名**。引擎是 **native(31) / Java(71) 双操作码空间、交集为 0** 的 VM；29 个 native 操作码在 dex 里定位到**确切的调用表达式**。其中签名主操作码为 **`0x96f7fcac`**（`yya.f.e` → `u2.b(op, method, host, path, query, body)`），另有 `0x96d0a479`（重算）、`0x259cebf7`/`0xcd554fab`（字节数组变换）、`0xd40131d5`（Base64 载荷校验）与之配套。
+
+同一引擎还承担 **TLS 证书链上报**（`0xae8750a7` ← `nlb.q.intercept` 取 `handshake().peerCertificates()`）、**HTTP/2 peer principal 上报**（`0x9701e74c` ← `i4c.a.invoke`）、**长连接下行消息处理**（`0xb20a0be3` ← `nlb.g.onMessage`）、**定位上报**（`0x2f036831` ← `com.xingin.xhs.net.t1.i`，3×double + 2×float）、**传感器注册**（`0xcf7db9ff` ← `j6`）、**前台状态**（`0xc23a168e` ← `r`）、**动态代理转发**（`0x2ad1c199` ← `f6.invoke`）。
+
+完整 31 项对照表见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.3。**仅剩**内部逐块算术步骤未 lift（§5.6.6）。
 
 ## 3. 设备指纹：`libxyasf.so` 与 Java 调度层
 
@@ -162,12 +166,12 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 
 | 项 | 未闭环的具体环节 | 原因 |
 | --- | --- | --- |
-| Tiny opcode 语义 | int32 操作码 → 算法映射 | 引擎为独立 VM，需逐 opcode lift；操作码全集已枚举（31 个） |
+| Tiny opcode 内部算术 | `0x96f7fcac`/`0x259cebf7` 等操作码**内部逐块**算术步骤 | **调用语义已全部定名**（31/31，见 §2 与 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）；剩余为 CFF 逐块机械 lift，与 `0x50010` 同性质 |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | `libtinyd.so` 的 `JNINativeMethod` 表 | 类名/方法名/签名三元组 | 表在 `JNI_OnLoad`（CFF，`0xa630`）内运行时构造，静态数据中不存在；需带真实 `JNIEnv` 的进程内插桩 |
 | `libtinyd.so` 4 字节载荷语义 | `+0x494` 各取值含义 | 协议形状已确定（定长 4 字节、写后关）；"哪个值代表哪种状态"需 Java 侧调用方或运行时观测 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
-| `x-n0`…`x-r4o` 语义 | 头部名已知，取值语义未反推 | 需 Tiny opcode 逐块 lift（操作码全集已枚举） |
+| `x-n0`…`x-r4o` 语义 | 头部名已知；**生成机制已定名**（`0x96f7fcac` 返回 `Map<String,String>`，由 `nlb.p` 逐条写成 header） | 头名出现在 `classes2/15/16/17/20.dex`；取值本身属运行期产物，需真实请求观测 |
 | Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 无需运行时验证 |
 | 服务端风控阈值 | ares 判定阈值 | 服务端逻辑，客户端不可见 |
