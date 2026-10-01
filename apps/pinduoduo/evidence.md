@@ -116,7 +116,7 @@
 | 项 | 值 |
 | --- | --- |
 | 数据库数 | 22（全部 `SQLite format 3`） |
-| MMKV 文件数 | 397（约 19 MB） |
+| MMKV 文件数 | 397（约 19 MB；第二次取证为 396，差 1 个属运行时增删） |
 | SharedPreferences | 12 个 xml |
 | 应用数据目录合计 | 约 157 MB |
 | `files/dynamic_so` | 26 个目录，77,203,139 字节 |
@@ -179,6 +179,62 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
 `jnibind.py`、`so_manifest2.py` 从 `jadx-out/sources`、`unpack/lib/arm64-v8a`、
 `unpack/assets-so`、`evidence/runtime-so`、`evidence/dynso/dynamic_so` 读取；
 `db_snapshot.py <src-dir> <out.txt>` 直接对目录做只读快照。
+
+### 8.1 设备端复验（第二次独立取证）
+
+本节记录对同一台取证设备的**第二次只读取证**，用于确认报告中设备侧结论不是
+一次性快照的偶然结果。全部操作仍是只读（列目录、读文件、`tar` 到本地后分析），
+未注入、未调试、未读进程内存、未重启应用、未修改设备任何文件。
+
+**样本同一性（关键前提，已验证）**：设备上 `base.apk` 的
+`sha256 = d57b1ebcd757207ad569233ec8d7cf663dd1acb69a2fde8915b58af0aa0d7c1c`、
+大小 26,325,735 字节、`versionCode=82600` / `versionName=8.26.0`、
+`lib/arm64` 下 22 个 `.so`——与 [README.md](README.md) 记录的分析样本**逐项一致**。
+因此本报告对 APK 的全部静态结论直接适用于该设备上正在运行的这一版。
+
+**数据库结构一致性（已验证）**：把 `databases/` 下 66 个文件（22 个库 + 伴随
+文件，合计 1.9 MB）只读取回后重放 WAL 并快照，与报告 §2 的清单逐库逐表比对：
+
+| 比对项 | 结果 |
+| --- | --- |
+| 库数量 | 22（与 §1 一致） |
+| 表数量 | 89 |
+| **DDL 文本** | **逐字节相同**，无一条新增/删除/改名 |
+| 行数差异 | 仅 6 处计数变化，全部是使用量增长（见下） |
+
+行数差异全部落在"会随使用增长"的表上，没有出现任何结构变化：
+
+| 库 / 表 | 首次取证 | 第二次取证 |
+| --- | ---: | ---: |
+| `iris_downloader_main_v12.db` / `irisStartInfo` | 111 | 112 |
+| `okdownload-breakpoint.db` / `block` | 2 | 1 |
+| `okdownload-breakpoint.db` / `breakpoint` | 2 | 1 |
+| `okdownload-breakpoint.db` / `taskFileDirty` | 3 | 4 |
+| `vita-database` / `UriInfo` | 0 | 3 |
+| `vita-database` / `VitaAccessInfo` | 39 | 43 |
+| `vita-database` / `VitaVersionInfo` | 42 | 46 |
+
+`vita-database` 的主库也从 49,152 增长到 57,344 字节（WAL 从 416 KB 重放而来），
+与"vita 是组件/路由的增量登记库"这一判断一致（见 [storage.md](storage.md) §2.5）。
+
+**动态库逐字节同一性（已验证）**：设备 `files/dynamic_so` 下 26 个 `.so` 的
+**总字节数 77,200,448**，与本报告分析所用副本的合计**逐字节相同**；抽查
+`libdyncommon.so`（`00cd567d…`）、`libpdd_rubik.so`（`662ab3e3…`）、
+`libmedia_engine.so`（`98209345…`）三个库的 SHA-256，设备副本与分析副本**一致**。
+因此 §2、§3 与 [obfuscation.md](obfuscation.md) §9.4 中对这些库的结论直接适用于
+设备上运行的那一份——这排除了"设备上的库与分析的库不是同一份"这一最根本的
+有效性风险。
+
+**其余存储面复核（已验证）**：`files/mmkv` 396 个文件 / 19,931 KB（首次取证为
+397，差 1 个属运行时增删，非结构差异）；
+`shared_prefs` 12 个 XML；`files/dynamic_so` 27 个条目（26 个库目录 + 1 个
+`buildInSoFix.config`）/ 75,687 KB；`files/secure` 仅 `p29_info.cache`；
+`files/network` 为 `pnet` + `titancache`；`no_backup` 为空。均与
+[storage.md](storage.md) 的记载一致。
+
+**结论**：设备侧结论（库数量、DDL、信息范围）在两次独立取证间**稳定**，
+唯一变化是随使用增长的行数。这使 [storage.md](storage.md) 从"一次性快照"
+升级为"经两次独立只读取证交叉确认"。
 
 ## 9. native 声明与库的归属
 

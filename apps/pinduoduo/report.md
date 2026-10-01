@@ -40,7 +40,7 @@
 5. 上传走 `/api/galerie/*` 与 `/image|/file/signature`，multipart 固定 boundary，
    视频类任务额外带秒传字段；下载走 iris/okdownload 两个下载器，断点续传元数据
    落在 SQLite。
-6. 本地存储以明文 SQLite 为主（22 个库），MMKV 397 个文件（约 19 MB）多数未加密，
+6. 本地存储以明文 SQLite 为主（22 个库），MMKV 396–397 个文件（约 19 MB）多数未加密，
    仅少数模块显式传入 crypt key。运行时下载的 native 库以**明文、未加壳**形式
    落在 `files/dynamic_so`，目录名携带 `名称_epoch毫秒_MD5`。
 7. **混淆闭包**：DEX 层无字符串加密、无加壳；APK 内 6,648 处 Efix 跳板
@@ -50,8 +50,13 @@
    两库同工具、同密钥表的四个字节行 × `eor`/`eon` 两种算子）、以及
    **`RegisterNatives` 动态注册**（18 个库 28 处注册
    + 1 处注销）。其中字符串池承载了 `libdyncommon` 的 native 侧反 root/反 hook/
-   反模拟器探测链与全部 `ab_secure_*` 风控总开关（[risk.md](risk.md) §14）。
+   反模拟器探测链与全部 `ab_secure_*` 风控总开关（native 29 个 + DEX 39 个，
+   两集合无交集；[risk.md](risk.md) §14）。
    逐库清点见 [obfuscation.md](obfuscation.md) §9。
+8. 设备侧结论经**两次独立只读取证**交叉确认：设备上 `base.apk` 的 SHA-256 与
+   本报告分析的样本**逐字节一致**（`d57b1ebc…`，26,325,735 字节、`versionCode`
+   82600），22 个 SQLite 库的 **DDL 两次逐字节相同**，唯一差异是 6 处随使用增长
+   的行数。见 [evidence.md](evidence.md) §8.1。
 
 ## 覆盖矩阵
 

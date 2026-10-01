@@ -14,7 +14,7 @@ token 生成或风控规避指南；仓库只发布脱敏结构、证据地址�
 | 上传数据范围 | 对象存储端点与任务类型、multipart 全字段、视频秒传字段、风控/环境上报字段、上传相关开关 | [transfer.md](transfer.md) | 逐接口、逐字段列出；区分"业务上传""诊断上报""风险上报" |
 | 下载数据范围 | iris/okdownload 两个下载器、断点续传元数据、下载内容分类、落盘结构 | [transfer.md](transfer.md)、[storage.md](storage.md) | 按来源、格式与本地缓存范围列出 |
 | 全部风控代码 | anti-token、`enCryptInfoV3`、`scres`、`sdr`、54001、root/模拟器/多开、设备画像、网络降级、Hook 对抗、网络留痕、**第三方支付宝设备指纹 SDK** | [risk.md](risk.md) | 组件、Java/native 入口、采集类别、上报边界与处置链已覆盖；含 41 个 `AD`/`AL` 编码的逐条定位 |
-| 本地数据库格式与信息范围 | 22 个 SQLite 库的 DDL/行数/列形状、未 checkpoint 的 WAL 重放、397 个 MMKV 文件、`files/secure`、`files/network`、`files/dynamic_so`、SharedPreferences | [storage.md](storage.md) | 逐库列出表名、列名、行数与值域形状；不公开任何行值 |
+| 本地数据库格式与信息范围 | 22 个 SQLite 库（89 张表）的 DDL/行数/列形状、未 checkpoint 的 WAL 重放、396 个 MMKV 文件、`files/secure`、`files/network`、`files/dynamic_so`、SharedPreferences | [storage.md](storage.md) | 逐库列出表名、列名、行数与值域形状；不公开任何行值。**经两次独立只读取证交叉确认**（[evidence.md](evidence.md) §8.1） |
 | 无未分析混淆代码 | DEX 层、Efix 跳板层、51 个已取得 ELF 的逐库混淆清点、`RegisterNatives` 调用点、异或字符串池、动态库清单与在机情况 | [obfuscation.md](obfuscation.md) | 见 §3 与 §4：已取得库上闭环，54 个未落盘库与 3 类未绑定 native 方法明确列为未覆盖 |
 
 ## 2. 风控组件清单
