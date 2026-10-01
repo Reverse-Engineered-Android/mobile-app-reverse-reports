@@ -287,7 +287,7 @@ enCryptInfoV3 = "5ec1"
 
 | 文件 | 内容 |
 | --- | --- |
-| `lib<name>.so` | **明文 ELF**（未加壳、未加密） |
+| `lib<name>.so` | **明文 ELF**（未加壳、未加密；库内可另有异或保护的字符串池，见下） |
 | `extra_info.json` | 117 字节的元数据 |
 | `modified_<epoch毫秒>` | 空标记文件 |
 | `uuid_<32位hex>` | 空标记文件 |
@@ -313,6 +313,13 @@ enCryptInfoV3 = "5ec1"
 `libpdd_rubik` 暴露 `com.xunmeng.pinduoduo.secure_rubik.SecureRubik.rubik(Context, Map)`
 （native），由 `SecureRubik.a()` 包装、`RU.getInfo(long tid)` 读取，`type` 取
 `TaskScore.SYNC_QUERY_RESULT_FAILED`。
+
+**落盘形态与混淆的关系**：落在这里的都是原样 ELF，可直接 `readelf`/`objdump`，
+没有加壳、没有自解密段。但"文件是明文 ELF"不等于"库里字符串是明文"——
+`libdyncommon.so` 的 `.rodata` 就同时含明文与异或密文（池首 `0x408fa0`，
+129 条，与 `libpdd_secure.so` 同密钥同工具），内容是该库的反 root/反 hook/
+反模拟器探测面与 `ab_secure_*` 开关。还原方法与完整清单见
+[obfuscation.md](obfuscation.md) §9.4 与 [risk.md](risk.md) §14。
 
 ## 8. SharedPreferences
 
