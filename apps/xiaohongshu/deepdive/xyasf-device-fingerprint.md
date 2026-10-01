@@ -463,7 +463,7 @@ prefs("jsfsts").edit().putLong("jsfsts", System.currentTimeMillis()).commit();
 | 项 | 未闭环的具体环节 | 原因 |
 | --- | --- | --- |
 | 根消息字段编号 | 8 个子消息在父消息中的字段编号 | 父消息走的是一张**运行时计算的 type-info 表**（分发循环 @ `0x33990` 用 `ldr w10,[x9]; ldr w10,[x25,x10]` 从类型描述符间接取号），编号不在静态数据里。子消息内部 51 个字段编号**已全部取得** |
-| `0x50010` 转移选择谓词 | 转移关系已枚举（404 site/750 边/409 目标），谓词未符号化 | 与 `libxyass.so` 同一遗留项，见 [crypto.md](crypto.md) §4.6 |
+| `0x50010` 转移选择谓词 | **已闭环**（412 site/767 边/417 目标；262 FIXED/69 BASE/18 DATA） | 见 [crypto.md](crypto.md) §4.6.4 |
 | `libtinyd.so` IPC | 通道协议 | 与本文无关的独立遗留项 |
 | 服务端消费逻辑 | `as.xiaohongshu.com` 如何用这 51 个字段做判定 | 服务端逻辑，客户端不可见 |
 
