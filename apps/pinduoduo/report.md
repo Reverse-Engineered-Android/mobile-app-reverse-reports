@@ -80,7 +80,7 @@
 | 本地数据库格式与信息范围 | 22 个库 DDL、行数、列形状；WAL 重放；MMKV 键名；组件框架登记表 | [storage.md](storage.md) |
 | 权限弹框与运行时授权 | 59 项声明权限分层、设备实测 13 项 runtime 中 12 项被拒、三级弹框路径与资源文案、同意闸门链 | [permissions.md](permissions.md) |
 | 隐私政策措辞 vs 实际采集 | 政策 V4.1.1 原文引用、两条采集面的字段表、四项未列举采集、零权限采集面、同意前外发阻断 | [privacy.md](privacy.md) |
-| 动态组件框架（Vita） | 两套落盘目录、组件清单三文件、`.vlock` 注册表 126 个、MMKV 登记表 46 条、7 个端点、MD5+RSA+AES 完整性链 | [vita.md](vita.md) |
+| 动态组件框架（Vita） | 两套落盘目录、组件清单三文件、`.vlock` 注册表 128 个、MMKV 登记表 46 条、7 个端点、MD5+RSA+AES 完整性链 | [vita.md](vita.md) |
 
 ## 证据等级
 
