@@ -13,6 +13,8 @@
 | arm64 config SHA-256 | `b2580ad86d27ec595cb8e07c104d8b90ff0a780d963c876de52ef0ae6afc2487` |
 | `libxyass.so` SHA-256 | `8e7db9e41ec7cacaf504fa07e68a325aa1bae220cabb5a745d31e3154922a17b` |
 | `libtiny.so` SHA-256 | `b403a883b6bba843197fe076deb332b71be5c74c442781b26c89be69de21f6fd` |
+| `libtinyd.so` SHA-256 | `ea32c231da936398b06fa42b1a2726e195ee5fe36bf799a0a4d42ff9c66ac618` |
+| `libxyasf.so` SHA-256 | 见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md) |
 | 规模 | 22 dex（20 个 `classes*.dex` + 2 个 `assets/*.dex`）/ 164 个 arm64 `.so` / 105 877 个 jadx 还原源文件 |
 
 ## 目录
@@ -24,6 +26,9 @@
 | 上传链路与数据范围 | [upload.md](upload.md) |
 | 下载链路与 Range 范围 | [download.md](download.md) |
 | 风控组件清单 | [risk-controls.md](risk-controls.md) |
+| 伴随守护 `libtinyd.so` | [tinyd-companion-daemon.md](tinyd-companion-daemon.md) |
+| 设备指纹 `libxyasf.so` | [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md) |
+| 全应用加密普查与 Tiny 引擎 | [tiny-and-app-sweep.md](tiny-and-app-sweep.md) |
 | 加密代码覆盖矩阵 | [crypto.md](crypto.md) |
 | 证据索引 | [evidence.md](evidence.md) |
 | 算法边界与公式 | [algorithm.md](algorithm.md) |
@@ -50,7 +55,11 @@
 
 **加密**：shield 外层 = RC4（13 字节静态 key）+ 16 字节头 + Base64（逐字节验证）；摘要 = 定制 MD5 族 HMAC（IV 逆序存储、K16/K19/K29 篡改、K39/40 与 K41/42 互换、第 63 轮累加器与 c63 特殊处理），3 组向量 0 mismatch；type 6/7 会话变换已固化接口、字节级依赖矩阵、504 处间接跳转与 8 项跳转表、16 张 rodata 常量向量表（含动态可达性）、8 组确定性向量与扩散统计。**覆盖全部 CFF 路径的统一逻辑门级闭式尚未产出**，单 trace lift 经实测不具泛化性（4/4 mismatch），故不作为参考实现。
 
-**风控**：Shield / Tiny / 设备指纹（82 个 JNI 入口 + 51 个采集字段逐条恢复）/ JS 指纹（AES-128 硬编码 key 已定位）/ 两套人机验证 / 人脸核身 / 支付风控 / 端智能 / 伴随守护，共 9 类组件，逐条给出证据等级与未闭环环节。
+**风控**：Shield / Tiny / 设备指纹（82 个 JNI 入口 + 51 个采集字段逐条恢复）/ JS 指纹（AES-128 硬编码 key 已定位）/ 两套人机验证 / 人脸核身 / 支付风控 / 端智能 / 伴随守护，共 10 类组件，逐条给出证据等级与未闭环环节。
+
+**伴随守护（`libtinyd.so`）**：不是网络组件，也不是加密组件——38 个导入中无任何网络符号。动作由 `JNI_OnLoad` 触发（`.init_array` 全 0，不在加载时自启）。核心是**无名管道 IPC**：`pipe2` → `fork` → **定长 4 字节**信令 + 写后即 `close`，读侧循环到恰好 4 字节。配合 `android/os/Process.setArgV0("zygote")` 与 `prctl(PR_SET_NAME)` 双重改名，把子进程在 `ps`/`cmdline`/`comm` 三个视图里伪装成 zygote 派生进程，并用 `/proc/<pid>/status` 的 `TracerPid:` 反调试。其字符串加密（4 个解码器 × `i%20` 调度表的旋转+模加/XOR 双射）已闭式还原，**7/7 明文全部解出**。
+
+**Tiny 引擎执行集**：`a()` 是**单个 FDE 覆盖的 181 732 字节 CFF 巨函数**（按符号归因会得到 `distinct_fn = 1` 的假象）。31 个操作码的静态可达块集合**两两 Jaccard 全部 < 0.84**（465 组合无一达 0.98），动态执行集**共有 2471 条指令**、并集 43 258 条；分组 1/2 的单个操作码总量仅 2 890–3 046，其中**真正专属的只有 90–198 条**——这是下一轮 lift 的最小充分目标。
 
 ## 关键纠正（相对早期结论）
 
@@ -65,6 +74,10 @@
 | 疑似 AES-ECB 魔数 `35 16 11` | 就是 RC4 密钥流前三字节 |
 | `captcha_link` 端点 | 样本内**不存在**该字面端点；验证页 URL 来自服务端下发 |
 | 上传用 Range | **否**：COS 整对象 PUT，Qiniu 走 SDK 分块 |
+| `libtinyd.so` 靠 socket 与主进程通信 | **撤回**：38 个导入无网络符号，通道是无名管道 |
+| `libtinyd.so` 明文含 `p6ro` | **撤回**：长度参数错配（4→2），正确值为 `am` |
+| `libtinyd.so` 字符串算法是纯 XOR | **撤回**：位置相关的旋转+模加/XOR 双射，非线性 |
+| Tiny 分组 1 的 17 个操作码是"参数形状受限的提前退出" | **撤回**：实测执行 3070 条指令，返回 0 是因结果写入随后被清零的栈槽 |
 
 ## 公开范围与边界
 
@@ -72,7 +85,7 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出，主要四类：Tiny opcode→语义映射（操作码全集 31 个已枚举，仍需逐块 lift）、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+未闭环项已在各文档显式列出，主要五类：Tiny opcode→语义映射（操作码全集 31 个已枚举，专属指令已收窄至 90–198 条/操作码，仍需逐块 lift）、`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、以及 `libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
 
 设备指纹一项本轮已由"结构已证实"升为**已恢复**，见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)：该库未做字符串加密，采集面可静态穷举，无需 VM 级 lift。
 

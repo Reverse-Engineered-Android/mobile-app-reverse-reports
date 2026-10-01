@@ -14,7 +14,7 @@
 | 人脸核身 | 腾讯慧眼 WBCF + turingcam + 优图 + SM2 | 实名场景 | 结构已证实 |
 | 支付风控 | Alipay+ / Antom 收银台组件 | 海外卡 | 结构已证实 |
 | 端智能 | PMML LightGBM 模型 | 用户行为分群 | 结构已证实 |
-| 伴随守护 | `libtinyd.so` | fork/syslog/abort 特征 | 结构已证实 |
+| 伴随守护 | `libtinyd.so` | 管道 IPC + 进程伪装（`setArgV0("zygote")`）+ 崩溃兜底 | **已恢复**（见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md)） |
 
 对抗特征：OLLVM 字符串加密、CFF 控制流平坦化、注解驱动方法名加密（代号 Petal）、native 数字 opcode 分发、自定义 XOR 字节串解密。
 
@@ -142,9 +142,21 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 
 ## 10. 伴随守护组件（`libtinyd.so`）
 
-fork / syslog / abort-message 特征支持“独立守护进程”判断：主进程被终止时该组件仍存活并负责上报。
+完整分析见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md)。摘要：
 
-**未闭环**：`libtinyd.so` 与主进程的 IPC 协议未还原。
+- **定位**：不是网络组件，也不是加密组件。导入表 38 项中**没有任何** socket/connect/send/recv/dlopen/system/popen/exec/SSL/inet（扫描命中 0）。它唯一的对外通信是**无名管道**。
+- **启动时机**：`.init_array` 120 字节**全为 0**（15 项），故**不在加载时自启**；所有动作由 `JNI_OnLoad`（`0xa630`）或 Java 侧显式调用触发。
+- **导出面**：仅 `JNI_OnLoad`；无 `Java_*` 导出；`.data.rel.ro`/`.data` 中不存在 `JNINativeMethod` 三元组（下游表项只有 5 个，而 `RegisterNatives` 表至少需 `3×方法数`）→ 注册表在 CFF 内运行时构造。
+- **字符串加密**：**已闭式还原**。4 个解码器（`0x7b8c`、`0x14fa0`、`0x1b5e4`、`0x70c8`），算法为"按 `i%20` 查表的 旋转+模加/XOR 逐字节双射"（**不是** XOR 流）。全部 **7 条明文**已解出：`LD_LIBRARY_PATH=`、`State:`、`zygote`、`TracerPid:`、`am`、`setArgV0`、`android/os/Process`。
+- **IPC 协议**：`pipe2`（内联 `svc` 59）建管道 → `fork` → **定长 4 字节**信令（`write(fd, &buf, 4)`）+ 写后立即 `close`；读取侧 `__read_chk` 循环到恰好收满 4 字节，`< 1` 置错误标志。**无长度前缀、无类型字段、无魔数**。
+- **进程伪装链**：`android/os/Process` + `setArgV0` + `zygote` 构成"把子进程 `argv[0]` 改成 zygote 派生进程"的闭环；叠加 `prctl(PR_SET_NAME)`（`w0=15`，`0x15d0c`/`0x16434`）改写线程名，对 `ps`/`cmdline`/`comm` 三个视图同时生效。
+- **反调试**：`openat` → `fdopen("r")` → `fgets` 读取 `/proc/<pid>/status`，比对 `TracerPid:`。
+- **退出/替换**：内联 `exit(0)` ×3（`svc` 93，不经 libc `exit`，不跑 `atexit` 链）、`execve` ×1（`svc` 221）、`prctl(PR_SET_NAME)` ×2（`svc` 167）、`nanosleep` ×2（`svc` 101）、`wait4` ×1（`svc` 260）。
+- **CFF**：`.data` 分发池 381 槽（`R_AARCH64_RELATIVE`），`br` 直接承载目标。动态跟踪 14 个跳转，**14/14 目标均落在 `.text` 合法块首** → 平坦化不隐藏语义，按 `br` 目标重建后继边即可还原。
+
+**修正旧稿侧重**：原文把 `fork / syslog / abort-message` 并列作为"独立守护进程"的依据。实测 `syslog` 只有 **1 个**调用点，而 `fork` 2 个、`close` 7 个、`write` 3 个、`__read_chk` 2 个——**日志是辅助能力**，主功能是管道信令与进程伪装。
+
+**未闭环**：`JNI_OnLoad` 注册的 `JNINativeMethod` 三元组（表在 CFF 内运行时构造，需进程内插桩）；4 字节载荷的取值语义（协议形状已定，需 Java 侧调用方或运行时观测）。**协议本身不再是"未知"。**
 
 ## 11. 未闭环清单（汇总）
 
@@ -153,7 +165,8 @@ fork / syslog / abort-message 特征支持“独立守护进程”判断：主�
 | Tiny opcode 语义 | int32 操作码 → 算法映射 | 引擎为独立 VM，需逐 opcode lift；操作码全集已枚举（31 个） |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
-| `libtinyd.so` IPC | 与主进程的通道协议 | 未做动态跟踪 |
+| `libtinyd.so` 的 `JNINativeMethod` 表 | 类名/方法名/签名三元组 | 表在 `JNI_OnLoad`（CFF，`0xa630`）内运行时构造，静态数据中不存在；需带真实 `JNIEnv` 的进程内插桩 |
+| `libtinyd.so` 4 字节载荷语义 | `+0x494` 各取值含义 | 协议形状已确定（定长 4 字节、写后关）；"哪个值代表哪种状态"需 Java 侧调用方或运行时观测 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
 | `x-n0`…`x-r4o` 语义 | 头部名已知，取值语义未反推 | 需 Tiny opcode 逐块 lift（操作码全集已枚举） |
 | Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 无需运行时验证 |

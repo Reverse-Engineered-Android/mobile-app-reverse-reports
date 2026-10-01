@@ -13,6 +13,8 @@
 - 加密算法恢复：RC4 外层（逐字节验证）、定制 HMAC-H（含 64 轮调度，3 向量 0 mismatch）、`0x50010` type 6/7 变换（常量池、CFF、依赖矩阵、确定性向量）。
 - 风控组件清单与证据等级。
 - `libxyasf.so` 设备指纹：82 个 JNI 入口、8 个 protobuf 子消息 51 字段（含编号）、4 个 native 检测方法判定、`as.xiaohongshu.com` 上报端点与载荷封装、标准 MD5 核对。
+- `libtinyd.so` 伴随守护：字符串加密闭式还原（4 解码器 × `i%20` 调度表，7/7 明文）、管道 IPC 定长 4 字节协议、`setArgV0("zygote")` 进程伪装链、CFF 分发池与 14/14 跳转验证。
+- Tiny 引擎执行集度量：单 FDE 178 KB CFF 巨函数、31 个操作码静态块集合两两互异、动态执行集共有 2471 条指令、分组 1/2 专属指令仅 90–198 条。
 - 需求对照审计。
 
 ## 入口
@@ -26,6 +28,7 @@
 - [风控组件清单](risk-controls.md)
 - [全应用加密普查与 libtiny.so 深挖](tiny-and-app-sweep.md)
 - [libxyasf.so 设备指纹深挖](xyasf-device-fingerprint.md)
+- [libtinyd.so 伴随守护深挖](tinyd-companion-daemon.md)
 - [算法深挖](algorithm.md)
 - [深挖证据索引](evidence.md)
 - [需求对照审计](audit.md)
