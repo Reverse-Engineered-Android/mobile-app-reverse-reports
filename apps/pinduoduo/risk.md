@@ -332,3 +332,78 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 | 模拟器判定 | §7 加权打分 | 独立实现（`AD27`/`AD28`/`AD42`） |
 
 两套指纹体系相互独立，采集内容互补，均在单机内完成采集后各报各的服务端。
+
+## 14. `libdyncommon.so`：native 侧环境探测与 AB 开关
+
+§6–§11 列的是 DEX 侧的风控判定。本版新增的 §9.4 解出了
+`libdyncommon.so` 的异或字符串池（129 条，**已验证**），池中内容是一条完整的
+**native 侧反 root / 反 hook / 反模拟器环境探测链**，其判定结果供 DEX 侧
+（`com.xunmeng.pinduoduo.secure` 与 `apm/risk/lock` 的 JNI 桥）取用。
+该库混淆最重（19,801 个间接派发块、330 处 ADR+RET 返回地址间接化），
+但字符串池解开后其用途可完整定性，**不含自解密或虚拟机**。
+
+### 14.1 采集面（按池内明文归组）
+
+| 类别 | 池内明文 | 判定含义 |
+| --- | --- | --- |
+| Root 二进制/路径 | `/sbin/magiskinit`、`/debug_ramdisk/magisk64`、`/system/xbin/magisk`、`/system/usr/we-need-root/magisk`、`/dev/magisk`、`/data/adb/magisk.img`、`/data/adb/magisk_simple`、`/dev/.magisk.unblock`、`/cache/magisk.log`、`/system/bin/sutemp`、`/data/local/bin/su`、`/vendor/bin/su`、`/data/local/xbin/susu`、`/system/app/Supersupro/Supersupro.apk` | Magisk / SuperSU / su 二进制与安装痕迹 |
+| Root 进程名正则 | `^(su\|ku\.sud\|busybox\|daemonsu\|99SuperSUDaemon)$` | 按进程名匹配提权守护进程 |
+| Hook / 注入 | `libriru_edxp.so`、`libsandhook.edxp.so`、`libSignatureKiller`、`android_server`、`lsphooker`、`EdHooker_`、`com.virjar.`、`com.sekiro.`、`LppiHelpers`、`/libc.so`、`/libandroid_runtime.so`、`sigaction`、`faccessat`、`__system_property_get` | Riru/EdXposed、SandHook、注入框架与 libc 层 hook 痕迹 |
+| Xposed / ART | `_ZN3art9ArtMethod16EnableXposedHook…`、`_ZN3art30InvokeXposedHandleHookedMethod…`（§6.1 明文串） | ART 方法 hook 入口枚举（链接器内部符号表遍历） |
+| 模拟器/虚拟机 | `/sys/module/vboxsf`、`/system/bin/mount.vboxsf`、`/sys/module/nemusf`、`/system/bin/mount.nemusf`、`/system/bin/nemuinit`、`/system/bin/ttVM-prop`、`/system/bin/bstshutdown_core`、`/system/lib/libandroidemu.so`、`/system/lib/hw/audio.primary.x86.so`、`/system/lib/hw/gralloc.ranchu.so`、`init.svc.ldinit` | VirtualBox / 网易 MuMu / 夜神 / BlueStacks / QEMU-ranchu 特征 |
+| SELinux / 完整性 | `/system/etc/selinux/plat_property_contexts`、`/system/etc/selinux/plat_sepolicy_and_mapping.sha256`、`sepolicy_hash`、`hal_lineage`、`overlay`、`sdcardfs`、`NoNewPrivs:` | SEPolicy 版本与挂载层完整性、沙箱限制位 |
+| Verified boot / 调试 | `ro.boot.verifiedbootstate`、`verified_boot_state`、`ro.build.fingerprint`、`ro.debuggable`、`ro.bootmode`、`sys.usb.config`、`adb_status`、`versionCode`、`properties_serial` | 系统完整性状态、调试/ADB/可刷机信号 |
+| 进程自省 | `/proc/self/maps`、`/proc/self/mounts`、`/proc/self/mountinfo`、`/proc/self/fd`、`/proc/modules`、`/proc/%d/task/%d`、`/dev/pts/%d` | 自身内存布局与挂载视图（反 hook 核验） |
+| JIT / DEX 内存 | `/memfd:jit-zygote-cache`、`/dev/ashmem/jit-cache`、`/memfd:/jit-cache`、`/memfd:dexfile`、`dalvik-classes.dex`、`[anon:dalvik-DEX data]` | 内存中 DEX / JIT 形态识别（动态加载检测） |
+| 设备指纹 | `/sys/devices/system/cpu/cpu0/regs/identification/midr_el1`、`/apex/com.android.art`、`getifaddrs`、`neighInfo` | CPU 实现寄存器、ART apex、网卡与邻居表 |
+| 无障碍/自动点击 | `ACCESSIBILITY_SERVICE`、`simplehat.clicker`、`autotool` | 无障碍服务滥用与自动点击外挂判定 |
+| 反射自省 | `currentActivityThread`、`mInitialApplication`、`getApplicationInfo`、`getAbsolutePath`、`getStackTrace`、`java/lang/reflect/Method`、`java/lang/reflect/Field`、`java/security/cert.Certificate`、`java/util/Iterator`、`java/lang/Class`、`java/lang/ClassLoader`、`android/content/Context` | 通过反射拿 Application/Context、调用栈、类加载器、签名证书 |
+| 宿主类名 | `com.xunmeng.pinduoduo.app.PDDApplicationLike` | 定位宿主 Application（反注入时的锚点） |
+
+### 14.2 `ab_secure_*` 开关（风控总闸）
+
+池中解出 11 个 `ab_secure_*` 键，**是本 app 风控能力的运行时总开关**：
+
+| 键 | 关联能力 |
+| --- | --- |
+| `ab_secure_hook_detect_7020` | hook 检测总开关（§11） |
+| `ab_secure_sys_clc_7310` | 系统级采集（`sys.*`） |
+| `ab_secure_smla_7230` | 小型/轻量采集 |
+| `ab_secure_repu_7760`、`ab_secure_repu_8180_001`、`ab_secure_repu_8180_002` | 上报（report/upload）分组 |
+| `ab_secure_emcd_7430` | EMC 采集 |
+| `ab_secure_dede_7700`、`ab_secure_dede_7970_001`、`ab_secure_dede_7970_002`、`ab_secure_dede_8170_002` | 去重/脱敏（de-dup）分组，带双版本号 |
+
+DEX 侧另有 **39 个** `ab_secure_*` 键控制**逐项**采集，全部 **已验证**存在于
+`classes*.dex` 的常量池（下表为完整清单，非抽样）：
+
+| 组 | 键 | 作用 |
+| --- | --- | --- |
+| 跳采集族（`_7630`） | `ab_secure_skip_acclist_7630`、`skip_celllist_7630`、`skip_connectwifi_7630`、`skip_iplist_7630`、`skip_location_7630`、`skip_ringrone_7630`、`skip_runproc_7630`、`skip_wallpaper_7630`、`skip_wificonfig_7630`、`skip_wifilist_7630`、`skip_eue20_7630` | **逐项剥离**：加速度、基站、已连 WiFi、IP 列表、定位、铃声、运行进程、壁纸、WiFi 配置、WiFi 列表、EUE2.0 |
+| 截屏/录屏 | `ab_secure_capture_7700`、`ab_secure_capture_timer_7730` | 截屏监听与其轮询周期 |
+| 上报分组 | `ab_secure_report_5660`、`ab_secure_report_extra_info_5660`、`ab_secure_report_meta_info_5660`、`ab_secure_appinfosize_5650` | 上报开关与包体裁剪 |
+| so 注入/加载 | `ab_secure_check_and_load_so_70200`、`ab_secure_cmd_so_6810` | 是否校验并加载动态 so |
+| Rubik 逻辑 | `ab_secure_do_rubik_logic_81700`、`ab_secure_rubik_81000`、`ab_secure_phantom_all` | Rubik/Phantom 风控逻辑总开关 |
+| 记录/广播 | `ab_secure_record_7440`、`ab_secure_broadcast_74800` | 本地记录与广播采集 |
+| 加解密/签名 | `ab_secure_logic_disable_pac2_6710`、`ab_secure_sign_openlog_6910`、`ab_secure_init_sotd_7170`、`ab_secure_gas_6840`、`ab_secure_srt_6840` | PAC2 逻辑关闭、签名日志、SOTD 初始化、GAS/SRT 子模块 |
+| 标识/环境 | `ab_secure_cia_pddid_6790`、`ab_secure_app_label_6920`、`ab_secure_t_20_7240`、`ab_secure_type12_config_7500`、`ab_secure_set_getapp_7560`、`ab_secure_logic_dm_6750`、`ab_secure_extdata_nonnull_6390`、`ab_secure_dot_7_7830` | PDDID 采集、应用标签、类型 12 配置、getApp 名单、设备管理、外置数据判空、dot7 |
+
+合计 **50 个** `ab_secure_*` 键（native 11 + DEX 39），构成一套完整的风控能力开关面。
+
+要点：**这套开关让 PDD 可以在服务端逐项关闭采集而不换包**——
+`ab_secure_skip_*_7630` 一族尤其说明 `7630` 版之后对"位置、基站、WiFi、
+应用清单、进程、铃声、壁纸"这些敏感项做了可灰度开关的剥离设计。
+
+### 14.3 与 DEX 侧的衔接
+
+`libdyncommon.so` 的 `.dynsym` 中 `Java_*` 导出数为 **0**，其 `JNI_OnLoad`
+导入 `dlsym`/`dlopen`/`dl_iterate_phdr` 并用间接派发注册方法
+（`#1720`/`#1728` 位移在全库出现 5 次，**全部是打包偏移派发器**，
+见 [obfuscation.md](obfuscation.md) §9.1.1）。池中还解出
+`Java_com_xunmeng_pinduoduo_secure_SecureNative_aesDecryptWithKey` 与
+`..._encodeBase64` 两条 JNI 名——这两条在全部 6 个 DEX 中**零命中**，
+`SecureNative.java` 也无此声明，且没有任何库导出它们，故**不能**判为"第二套
+`SecureNative` 实现"，只能是该库自身动态解析的目标名（详见
+[obfuscation.md](obfuscation.md) §9.4.4）。
+
+该库的加载点、清单归属与在机情况见 [evidence.md](evidence.md) §3，
+在 26 个 `files/dynamic_so` 中随业务按需下载。
