@@ -84,7 +84,7 @@ userInfo.setIdToken(str3);
 | `shield` | `libxyass.so` | Java 侧 **0 命中**，仅在 native 装配 |
 | `xy-platform-info` | `libxyass.so` | 同上 |
 | `x-legacy-did` / `x-legacy-sid` | `libtiny.so`（`jt6.a` 调用） | 写入点在 Java 可见 |
-| `x-n0` `x-o9` `x-p0` `x-r4` `x-r4o` | `libtiny.so` opcode 引擎 | 头部名在 dex，取值来自 native 返回 Map |
+| `x-n0` `x-o9` `x-p0` `x-r4` `x-r4o` | `libtiny.so` opcode 引擎 | 头部名在 dex；**生成操作码 `0x96f7fcac` 已定名**（`nlb.p` → `yya.f.e`），取值来自 native 返回 Map |
 
 `libtiny.so` 的调用形状（`jt6.a`）：
 
@@ -117,5 +117,5 @@ Tiny 拦截器（`jt6.a`）附加在 hera 链上。这意味着 Shield/Tiny 是*
 | 核心 API 不用 `Authorization: Bearer` | 已验证（主链路 0 命中；仅在 COS/BCIM/三方 SDK 出现） |
 | Shield 接入点只有 2 处 | 已验证（`newInstance` 调用点枚举） |
 | `shield` / `xy-platform-info` 头部名 | 结构已证实（Java 0 命中 + native 装配入口；不还原取值） |
-| `x-n0`…`x-r4o` 语义 | 结构已证实（写入点确定，语义未从 native 反推） |
+| `x-n0`…`x-r4o` 语义 | **生成链路已闭式**（`nlb.p` → `yya.f.e` → `u2.b(0x96f7fcac, method/host/path/query/body)`）；具体取值属运行期产物 |
 | Cookie/session 不参与 API 鉴权 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`，OkHttp 默认 `NO_COOKIES`；全部 `cookie` 字样归属 WebView/RN/第三方，`web_session` 全样本 0 命中 |

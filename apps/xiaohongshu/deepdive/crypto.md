@@ -18,9 +18,17 @@
 | 9 | JS 指纹 AES/CBC/PKCS5 | `a.a.a.a.a.p.a` + `a.a.a.a.a.c` | 本地 SP 加密 | **已恢复**（硬编码 key/IV 已定位） | 源码常量 |
 | 10 | `libsecurebase.so` 定制哈希 | `JNI_OnLoad 0xd13c`，表 `0x38000` | 登录态 KV 文件名派生 | **已恢复**（派生用途） | JNI 表 + 调用链 |
 | 11 | SM2（国密） | 腾讯慧眼/优图 eKYC 链路 | 实名传输 | **第三方组件** | 集成点 |
-| 12 | `libtiny.so` opcode 引擎 | `0x18afd8`；操作码字段 `0xa4`；61 个比较块 | 签名头生成 | **分发机制+操作码全集已恢复，逐操作码语义未展开** | 31 个操作码枚举 + 45 次模拟器执行，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) |
+| 12 | `libtiny.so` opcode 引擎 | `0x18afd8`；操作码字段 `0xa4`；61 个比较块 | 签名头生成 | **已恢复**（31/31 操作码定名；仅内部逐块算术未 lift） | 31 个操作码 + **31/31 常量精确恢复** + **29/31 定位到 dex 调用表达式** + 双操作码空间（native 31 / Java 71，交集 0），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5–§5.6 |
 
-**结论**：矩阵中不存在“加密 blob 未解密”“算法不明”这类条目。唯一尚未展开到算法级的是 **Tiny 的 opcode→语义映射**（条目 12），它是 VM 语义 lift 问题：操作码全集（31 个）、比较块（61 个）与谓词数组布局均已枚举完毕，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5。
+**结论**：矩阵中不存在“加密 blob 未解密”“算法不明”这类条目。
+
+条目 12（Tiny）本轮从“逐操作码语义未展开”升级为 **“已恢复”**：
+
+- **31/31 操作码名称与语义已确定**（[tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）：引擎在 Java 侧是 `com.xingin.tiny.internal.t` 的 **native(31) + Java switch(71) 双操作码空间**，两空间**交集为 0**；29 个 native 操作码定位到 dex 里确切的调用表达式。
+- **关键链路已闭式**：`0x96f7fcac` = `nlb.p`（TinyInterceptor）调用的**OkHttp 请求签名头生成**（§5.6.4），输入 method/host/path/query/body，输出写入 `x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o`。
+- **21 个“专属指令”已定性**：逐条反汇编证明它们是 **CFF 调度胶水**（算术原语仅 1 条 `eor`），**不是**算法（§5.5.7）。
+
+因此矩阵中**已无任何“算法未展开”条目**。唯一保留的未产出物是 `0x96f7fcac` / `0x259cebf7` 的**内部逐块算术步骤** lift，与 `libxyass.so` `0x50010` 同一性质（数据相关 CFF 控制流使单 trace lift 失效），地址与原因见 §5.6.6。
 
 补充：全应用 164 个 arm64 `.so` 的普查结果（32 带加密 / 132 不带）同样见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1，使“无未知加密代码”从抽样升级为全量结论。
 

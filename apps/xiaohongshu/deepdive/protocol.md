@@ -70,7 +70,7 @@ x_trace_page_current, app_id, project_id, uis, auto_trans, identifier_flag
 | `shield` | `libxyass.so` assembler `0x467dc` | 头部名不落 Java，Java 侧检索 0 命中 |
 | `xy-platform-info` | `libxyass.so` | 同上 |
 | `x-legacy-did` / `x-legacy-sid` | `libtiny.so` 经 `jt6.a` 写入 | `jt6.a` 先写 did/sid 再调用 native |
-| `x-n0` `x-o9` `x-p0` `x-r4` `x-r4o` | `libtiny.so` opcode 引擎返回 Map | `u2.b(-1762132820, …)` → `t.a(opcode, args)` |
+| `x-n0` `x-o9` `x-p0` `x-r4` `x-r4o` | `libtiny.so` opcode 引擎返回 Map | `nlb.p.intercept` → `yya.f.e(method,url,body)` → `u2.b(0x96f7fcac, method, host, path, query, body)` → `t.a(op, args)`（**已定名**） |
 
 对 `libxyass.so` 做明文字符串检索：`x-s` / `x-t` / `shield` / `xy-platform-info` 均 **0 命中**，与报告中“头部名只在 native 内出现”的结论一致。
 
@@ -155,5 +155,5 @@ settings.setUserAgentString(System.getProperty("http.agent") + " XHS/3.0.0 NetTy
 | 注解映射 `fvc.f/o/t/c` | 已验证（注解定义 + 使用点） |
 | 端点路径与参数名 | 已验证（注解字符串） |
 | `shield`/`xy-platform-info` 头部名 | 结构已证实（Java 侧 0 命中 + native 入口存在；不带值还原） |
-| `x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o` 语义 | 结构已证实（写入点确定，字段语义未从 native 反推） |
+| `x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o` 语义 | **生成机制已定名**（`0x96f7fcac` 返回 `Map<String,String>`，由 `nlb.p` 逐条写成 header）；头名分布于 `classes2/15/16/17/20.dex`；具体取值属运行期产物 |
 | 熔断阈值 10 s / 586 | 结构已证实（常量读出，未做运行时触发验证） |
