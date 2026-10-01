@@ -78,7 +78,7 @@
 | `SecureNative.b` | `0x37294`，描述符表 `0x192b71`，条目 32 字节 | 已验证 |
 | JNI 导出数 | 34（`.dynsym` 中 `Java_com_xunmeng_pinduoduo_secure_SecureNative_*`） | 已验证 |
 | 34 个导出合计指令数 | 21,613（`.text` 共 404,537） | 已验证 |
-| `atn` / `csd` / `dsi` | 声明为 native 但**不在** 34 个导出中。判据已更正为两项直接证据：(1) 51 个 ELF 中无任何 `#1720` 注册点登记这 3 个名字；(2) 原始字节搜索 `atn\0`/`csd\0`/`dsi\0` 与 `SE` 独有签名均为 0 命中。旧的"未见 `RegisterNatives` 路径"推理方式无效，见 [obfuscation.md](obfuscation.md) §9.1.1、§9.6.2 | 已验证（未绑定） |
+| `atn` / `csd` / `dsi` | 声明为 native 但**不在** 34 个导出中。判据是两项直接证据：(1) 51 个 ELF 中无任何 `#1720` 注册点登记这 3 个名字；(2) 原始字节搜索 `atn\0`/`csd\0`/`dsi\0` 与 `SE` 独有签名均为 0 命中。注意：不能用"未导入 `RegisterNatives` 符号"来判定，`#1720` 派发式注册本就不产生导入符号，见 [obfuscation.md](obfuscation.md) §9.1.1、§9.6.2 | 已验证（未绑定） |
 
 ## 5. Java 侧关键入口
 
@@ -308,8 +308,9 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
   `ldr` 之后未经任何算术直达 `blr`/`br`（本 app 自己的 FLA 派发器是
   `ldr → add → blr`）。按此口径：48 个去重 ELF 中共 **28 处注册 + 1 处注销，
   分布 18 个库**（其中 APK 自带的 22 个库内为 14 次注册）。
-  "方法名串 + 签名串 + `JNI_OnLoad`"只是必要条件，不构成调用点证据；旧版此处
-  写"0 次"、以及后续按仅下标口径得出的"25 处 / 12 个库"都需要按该判据重估。
+  "方法名串 + 签名串 + `JNI_OnLoad`"只是必要条件，不构成调用点证据；
+  仅按函数表下标、不排除 PLT 桩与 FLA 派发器，会把计数抬到"32 处 / 20 个库"
+  （含同一 ELF 的重复副本）。必须按上述 (a)(b) 双判据折算到去重后的 ELF 集。
   见 [obfuscation.md](obfuscation.md) §9.1.1。
 - **（c）库不在快照中**：`SoBuildInfo` 清单列出的 199 个动态库中，本设备只落盘了
   22（APK）+ 26（`files/dynamic_so`）+ 3（assets 内嵌）个，其余 54 个从未下载

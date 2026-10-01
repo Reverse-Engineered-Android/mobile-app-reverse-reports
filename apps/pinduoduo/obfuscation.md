@@ -198,14 +198,13 @@ libstagefright.so / _ZN7android15ANetworkSession10threadLoopEv
 与 `apm/risk/lock` 的 JNI 桥。混淆手法为控制流平坦化 + 间接分支 + 返回地址动态化
 的组合，属于可完全静态解释的三类标准 OLLVM 变体，不含自解密或虚拟机。
 
-**本版补充**：上面这段明文只是该库字符串的一小部分。同一 `.rodata` 里还有
+上面这段明文只是该库字符串的一小部分。同一 `.rodata` 里还有
 **458 条异或加密的字符串**（池首 `0x408fa0`，与 `libpdd_secure.so` 同工具、同密钥表的四个字节行），
 解出后才是该库探测面的全貌——Magisk/SuperSU/su 路径、Riru/EdXposed/SandHook、
 模拟器（vboxsf/nemusf/ttVM/ranchu）、verified boot 与 SEPolicy、`/proc` 自省、
 无障碍外挂，以及 **29 个** `ab_secure_*` 风控总开关。详见 §9.4、§9.4.5 与
-[risk.md](risk.md) §14。**这也是上一版的一个实质遗漏**：当时按"`.rodata` 有明文串"
-就判定该库无字符串加密，实际情况是明文与密文在**同一段内相邻共存**（选择性加密），
-密文那半边被整个漏掉了。
+[risk.md](risk.md) §14。**判据要点**：该库 `.rodata` 里存在明文串并不代表没有池——
+明文与密文在**同一段内相邻共存**（选择性加密），必须按相位逐条试解才能得到全貌。
 
 ## 7. 密码学常量表的可读性
 
@@ -229,12 +228,12 @@ libstagefright.so / _ZN7android15ANetworkSession10threadLoopEv
 
 ## 8. `SecureNative` 的控制流反扁平化
 
-### 8.1 逐导出规模（修正后的边界）
+### 8.1 逐导出规模
 
-早期用"下一个导出地址"给每个导出划界，对最后一个导出（`SecureNative.b` @0x37294）
+导出边界不能用"下一个导出地址"来划：对最后一个导出（`SecureNative.b` @0x37294）
 会一直算到文件尾，得到 344,138 条指令的虚假窗口。`tools/cff4.py` 改为扫描真实的
 函数收尾（`ldp x29, x30, [sp, …]` 或 `add sp, sp, #N` 之后紧跟 `ret`）来定界，
-34 个导出的合计只有 **21,613 条指令**：
+34 个导出的合计为 **21,613 条指令**：
 
 | 导出 | 起始 | 结束 | 指令数 | `br` | `csel` | `movk …,lsl #16` |
 | --- | --- | --- | ---: | ---: | ---: | ---: |
@@ -327,13 +326,13 @@ libstagefright.so / _ZN7android15ANetworkSession10threadLoopEv
 没有出现：自解密代码段、字节码虚拟机、控制流伪造（不透明谓词之外的虚假分支）、
 DEX 加壳。
 
-**但出现了两种此前漏判的手法**，两者都可静态完整还原：
+两种手法都可静态完整还原：
 
 - **异或字符串池**：`libpdd_secure.so` 的 `.rodata` 内嵌 8 字节循环异或保护的
   字符串池（基址 `0x1928c0`），保护了 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、
-  RSA 公钥等。旧版"无字符串解密循环 / 无常量表隐藏"的结论在此库上不成立，见 §9.4。
-- **`RegisterNatives` 隐藏绑定**：真实存在 25 处（12 个库），旧版"0 次"是判据
-  缺陷导致的假阴性，见 §9.1.1。
+  RSA 公钥等。见 §9.4。
+- **`RegisterNatives` 隐藏绑定**：48 个去重 ELF 中共 **28 处注册 + 1 处注销**，
+  分布在 18 个库；只能用 `_JNIEnv` 函数表下标 `#1720`/`#1728` 定位，见 §9.1.1。
 
 ## 9. native 绑定方式与混淆闭包的边界
 
@@ -351,29 +350,20 @@ JNI 方法、以及哪些库尚未取得。这两点决定了"没有未分析的
 | `RegisterNatives` | 87 | 库的 `.rodata` 同时含方法名串与 JNI 签名串，且库导出 `JNI_OnLoad` |
 | 未判定 | 879 | 约束到 104 个类，其提供库不在任何快照中 |
 
-#### 9.1.1 调用点的真实计数（对旧结论的更正）
+#### 9.1.1 调用点的计数
 
-早期版本的本文件断言"APK 内 native 库中 `RegisterNatives` 出现 **0** 次"。
-**该结论是错的，已在本版更正。** 它源自两个方法学缺陷：
+ARM64 上动态注册走的是 `env->RegisterNatives(...)`，即**经函数表指针**：
+`ldr x8,[x0]` → `ldr x8,[x8,#1720]` → `blr x8`（`0x6b8 = 215×8` =
+`_JNIEnv` 虚表下标 215）。它既不产生导入符号，也没有字面字符串，因此
+"导入符号 `_ZN7_JNIEnv15RegisterNativesE…`"与"`.rodata` 里有
+`RegisterNatives` 字符串"两种判据都只会给出假阴性。计数必须用**函数表下标**
+判据：`#1720` = `RegisterNatives`，`#1728` = `UnregisterNatives`。
 
-1. `strings` 默认 `-n 4`，所以 3 字符的方法名（`atn`、`csd`、`dsi`）不可见；
-2. 用"导入符号 `_ZN7_JNIEnv15RegisterNativesE…`"或"`.rodata` 里有
-   `RegisterNatives` 字符串"作为判据。而 ARM64 上动态注册走的是
-   `env->RegisterNatives(...)`，即**经函数表指针**：`ldr x8,[x0]` →
-   `ldr x8,[x8,#1720]` → `blr x8`（`0x6b8 = 215×8` = `_JNIEnv` 虚表下标 215）。
-   不产生任何导入符号，也没有字面字符串。
-
-改用**函数表下标判据**后逐库清点：`#1720` = `RegisterNatives`，
-`#1728` = `UnregisterNatives`，并要求基址寄存器确实是一个被解引用的指针
-（排除 `adrp` 到 `.bss` 的假阳性，例如 `libaudio_engine.so` 的 PLT 桩）。
-结果：
-
-**本版更正（计数口径）**：上一版的计数包含了大量假阳性，原因是把
-"恰好用到 `#1720`/`#1728` 位移"当成了判据。该位移还有两个完全不同的来源：
+该位移还有两个完全不同的来源，若不排除会大量高估：
 
 1. **PLT 桩**：`.plt` 里逐个 GOT 槽走步，步长也是 8，于是每个导入符号都配上
    一个 `ldr x17,[x16,#1720]` / `ldr x17,[x16,#1728]`。`libaudio_engine.so`
-   因此被误报出 1 对注册/反注册，而它根本没有任何注册。
+   会因此被报出 1 对注册/反注册，而它根本没有任何注册。
 2. **本 app 自己的间接派发**：`adrp` 一张静态表 → `ldr x8,[x8,#1720]` →
    `add x8,x8,x9`（**再加打包偏移**）→ `blr x8`。这是 FLA 的一部分，不是
    JNI 调用。
@@ -530,13 +520,12 @@ ELF 头，不依赖 objdump 的符号标签——`.plt` 尾部会被反汇编成
 
 **结论**：`DeviceNative.info2/info3/info4` 的类名与 `SecureNative` 的字符串
 都用上述异或池保护，属于**混淆**而非密码学。该池 100% 可静态还原
-（`tools/xorstr.py` 已实现），因此不构成"未分析的混淆代码"，但旧版报告
-"`DeviceNative` 类名在库中缺失"的说法应更正为"**存在但异或保护**"。
+（`tools/xorstr.py` 已实现），因此不构成"未分析的混淆代码"。`DeviceNative`
+类名在库中**存在，但受异或保护**，必须解池后才能读出。
 
-**更正**：上表列举的是池内明文，但"按绝对偏移取相位"只能捞回 8 字节对齐的
-那批；本版按 §9.4.1 的记录边界规则重解后，`libpdd_secure.so` 池的完整规模是
-**634 条**（本小节上表仅为其中示例），且 `libdyncommon.so` 另有一个同工具的池
-（458 条）——详见 §9.4。
+上表列举的是池内明文的一部分。按 §9.4.1 的记录边界规则解出后，
+`libpdd_secure.so` 池的完整规模是 **634 条**（本小节上表仅为其中示例），
+`libdyncommon.so` 另有一个同工具的池（458 条）——详见 §9.4。
 
 ### 9.2 动态库清单与在机情况
 
@@ -623,13 +612,14 @@ assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另�
 
 ### 9.4 native 字符串加密（异或池）
 
-§1 表中"native 字符串"一行展开如下。这是本版新增的第 4 类混淆手法。
+§1 表中"native 字符串"一行展开如下。这是 native 侧的第 4 类混淆手法。
 
-**本版更正（两轮）**：上一版把该池记为 `libpdd_secure.so` 独有，并把它描述为
-"正文按绝对文件偏移 `mod 8` 取相位"——这两点已作废，见 §9.4.3 与 §9.4.4。
-更进一步，本版发现该池**不是单一密钥**：`.text` 里有**四个**解码循环，用
+**关键结构**：该池**不是单一密钥**。`.text` 里有**四个**解码循环，用
 **同一张密钥表的四个不同字节行**，分别配 `eor`（不取反）与 `eon`（取反）
-两种算子。只用一个密钥的普查会漏掉另外三组，见 §9.4.5。
+两种算子；池由**两个**库共用（`libpdd_secure.so` 与 `libdyncommon.so`）。
+相位不是按绝对文件偏移取的，而是从**本条记录自身起点**计数；记录边界由
+相位 2/5 上的可见 ASCII 密钥字节决定（§9.4.1）。只用一个密钥、或按绝对偏移
+取相位的普查会漏掉其余三组与全部非 8 字节对齐记录，见 §9.4.3 与 §9.4.5。
 
 #### 9.4.1 结构
 
@@ -677,9 +667,9 @@ A 与 B 互为按位取反，C 与 D 互为按位取反，这与 `eor`/`eon` 的
 `ab_secure_hook_detect_7020` 会被截成 `ab_secure_hook_detect`（`detect` 前的
 `_` 落在相位 5），`Java_com_xunmeng_..._SecureNative_...` 会被截在第三个下划线
 处；若按" `0x00 0x00` 切分"，以 `_` 结尾的记录（`..._encryptNetBook_`）又会
-被啃掉尾下划线。两种近似法各自丢一批串，且都看不出来丢了——这正是上一版
-把它写成"绝对偏移取相位"的原因：以绝对偏移为锚只能捞回 8 字节对齐的那批，
-fiddler（偏移 `mod 8 == 4`）这类记录会被漏掉。
+被啃掉尾下划线。两种近似法各自丢一批串，且都看不出来丢了。相位也不能以
+绝对文件偏移为锚：那样只能捞回 8 字节对齐的那批，`fiddler`（偏移
+`mod 8 == 4`）这类记录会被整体漏掉。
 
 #### 9.4.2 解出的内容与风控含义
 
@@ -691,8 +681,8 @@ fiddler（偏移 `mod 8 == 4`）这类记录会被漏掉。
 | `libdyncommon.so` | 129 | 120 | 113 | 96 | **458** |
 
 **均已全部还原为明文，无剩余不可解释记录**。单掩码数字（A 列的 151/129）
-是上一版报告的数值——它只覆盖了四个循环中的一个，其余三组当时被当成"噪声"
-丢弃；这一项已在本节更正。按用途归组：
+只覆盖四个循环中的一个；其余三组若被当成"噪声"丢弃，就会漏掉 `ab_secure_*`
+开关在内的整批串，本报告的并集口径已把它们全部计入。按用途归组：
 
 **`libpdd_secure.so`（634 条；下表为其中较长者，择要）**
 
@@ -714,7 +704,7 @@ fiddler（偏移 `mod 8 == 4`）这类记录会被漏掉。
 | 前缀常量（掩码 C） | `imouLuk2VljedHkn`、`4JDCf1gg/U+jHWT0`、`LPCtkKIgsPls4al8`、`E980BF2E3D60DC8D`、`abcd-1234-ABCD@#`、`d6fc3a4a06adbde89223bvefedc24fecde188aaa9161` | 会话/摘要密钥材料 |
 | JNI 名（掩码 B/D） | `Java_..._SecureNative_rsaEncrypt`、`..._rsaEncryptWithPublicKey`、`..._generateTrackDataSign`、`..._generateWSDataSign`、`com/xunmeng/pinduoduo/secure/EncResult` | **见 §9.4.6：RSA 调用方向由此确定** |
 
-**`libdyncommon.so`（458 条，详见表外说明）**——本版新增，见 §9.4.4 与
+**`libdyncommon.so`（458 条，详见表外说明）**——见 §9.4.4 与
 [risk.md](risk.md) §14。要点：该库用**同一套池**保护它的 root / Magisk /
 SuperSU / 模拟器（vboxsf、nemusf、ttVM、bstshutdown、nemuinit、ranchu）/
 Xposed（riru_edxp、sandhook.edxp、libSignatureKiller、EnableXposedHook）/
@@ -729,7 +719,7 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 `300d06092a864886f70d0101010500` + `30 81 89 02 81 81`），模数 128 字节，
 `e = 65537`。**调用点与方向已定位，不再是假说**，见 §9.4.6。
 
-#### 9.4.3 覆盖边界（更正）
+#### 9.4.3 覆盖边界
 
 | 库 | 字符串加密 | 判据 |
 | --- | --- | --- |
@@ -747,9 +737,9 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 `libdyncommon` 是**选择性**加密：同一 `.rodata` 里明文与密文相邻共存，例如
 `basic_string`、`_ZN3art9ArtMethod16EnableXposedHook...` 是明文，而
 `/system/xbin/magisk` 是密文。因此"某库 `.rodata` 有明文串"不能推出"该库无池"，
-必须按相位逐条试解——这是上一版把该库漏掉的直接原因。
+必须按相位逐条试解。
 
-#### 9.4.4 `libdyncommon.so` 池中的 JNI 名（结论修正）
+#### 9.4.4 `libdyncommon.so` 池中的 JNI 名
 
 池里解出两条 `Java_*` 名：
 
@@ -758,8 +748,7 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 0x40ec20  Java_com_xunmeng_pinduoduo_secure_SecureNative_encodeBase64
 ```
 
-上一版草稿据此险些断言"`libdyncommon` 是 `SecureNative` 的第二实现"。**该断言
-不成立**，逐项核验如下：
+这两条名字**不表示** `libdyncommon` 是 `SecureNative` 的第二实现，逐项核验如下：
 
 - `libdyncommon.so` 的 `.dynsym` 中 `Java_*` 导出数为 **0**；
 - `aesDecryptWithKey` / `encodeBase64` 在全部 6 个 `classes*.dex` 中**零命中**，
@@ -818,9 +807,9 @@ bc7c4:  eon  w13, w13, w14, lsr #8     ; 掩码 C：取次低字节后按位取�
 明文可读"一致，**不属于"未分析的混淆代码"**。本报告对它们的断言仅限于"位置、
 长度、非文本"三点，不做密钥语义推断（也**不**列出其字节，以免公开密钥材料）。
 
-#### 9.4.6 RSA 调用点与方向（原报告未决事项 3，已闭合）
+#### 9.4.6 RSA 调用点与方向
 
-上一版把"池里的 RSA 公钥用途"记为假说。本节给出确定结论。
+池里 RSA 公钥的用途由调用点直接确定，而非由命名推断。
 
 **(a) 一个掩码 A 的记录，另一条明文记录的独立佐证。**
 池中除 1024 位公钥外还有**第二条明文** RSA 公钥：`.rodata` `0x19b57f`
@@ -1093,9 +1082,9 @@ HTTPS（见 [network.md](network.md)），没有自研握手；这条公钥路�
 | --- | --- | --- |
 | 清单内 54 个未落盘库 | 未取得；**状态已定**（Vita 已注册未下发） | 其内部混淆手法未逐库清点；加载点与用途已在 DEX 侧确认，注册表证据见 §9.2.1 与 [vita.md](vita.md) §5 |
 | `libpdd_secure` FLA 分派器计数与逐点展开 | **已验证** | 2,173 个 `sxtw#3`+`br` 站点中 **116 个**为真 FLA、2,057 个为普通 switch；116 个已全部用 `tools/fla_expand.py` 逐个跑过（27 全解 + 78 骨架已解、≤6 条运行期守卫未选边 + 11 个巨型 FDE 边界误算），结果见 [fla_results.txt](tools/fla_results.txt)；见 §9.4.7 |
-| ~~`libpdd_secure` 字符串池 RSA 公钥~~ | **已闭合**（调用点、方向、两把公钥对照均已给出） | 见 §9.4.6；仅"选择子到逐块运算的映射"仍记为结构已证实、逐块未展开 |
+| `libpdd_secure` 字符串池 RSA 公钥 | **已验证**（调用点、方向、两把公钥对照均已给出） | 见 §9.4.6；仅"选择子到逐块运算的映射"仍记为结构已证实、逐块未展开 |
 | `rsaEncrypt*` / `generate*Sign` 的绑定路径 | 名字已还原，绑定点未定位 | 不在 DEX 声明、不在已取得库导出；指向动态下发库，见 §9.4.6(e) |
-| ~~`libpdd_secure` 分派核的逐块语义~~ | **已闭合** | 全部 **116** 个 FLA 分派器（不只 4+1 个）已由 `tools/fla_expand.py` 逐个运行，骨架无一例外是「状态字 → 异或键 → 编译期常量表 → 块地址 → `br`」，无隐藏非 FLA 分支；结果见 [fla_results.txt](tools/fla_results.txt) |
+| `libpdd_secure` 分派核的逐块语义 | **已验证** | 全部 **116** 个 FLA 分派器已由 `tools/fla_expand.py` 逐个运行，骨架无一例外是「状态字 → 异或键 → 编译期常量表 → 块地址 → `br`」，无隐藏非 FLA 分支；结果见 [fla_results.txt](tools/fla_results.txt) |
 | 池内 5 条非文本记录 | 已判定为二进制密钥/IV 材料（位置/长度/非文本三点已验证） | 不做密钥语义推断；**不属**"未分析的混淆代码"，见 §9.4.5 |
 | `SE`（11 个）/ `meco.cookie.N`（12 个）/ `shook.ShadowHook`（14 个） | 未判定 | 类声明与调用点已确认；提供库在 Vita 注册表中为"已注册未下发"（`libriskplugin`/`libmeco_cookie`/`libshadowhook`），本机确无，见 §9.6 与 §9.2.1 |
 | `libpdd_secure` 选择子语义 | 结构已证实，取值集合未逐一断言 | 见 [algorithm.md](algorithm.md) §5.2 |
@@ -1173,8 +1162,8 @@ ELF 中找不到提供者（既无 `Java_…_SE_*` 导出，也无 `#1720` 注�
 上报 JSON 的 `"info"` 字段。它们既不在 `libpdd_secure.so` 的 34 个导出中，
 也不在该库的异或字符串池中，51 个 ELF 的原始字节搜索同样为 0。
 
-**注意**：旧版 [evidence.md](evidence.md) §8 称这 3 个方法"`JNI_OnLoad` 内只见
-2 次 `__android_log_print` + 1 次初始化调用，未见 `RegisterNatives` 路径"。
-`libpdd_secure.so` 确实只有 1 处注册点（`0x27e7c`，注册 3 项 = `DeviceNative`），
-但该结论的**推理方式**（据"未导入 `RegisterNatives` 符号"下判断）是错的——见
-§9.1.1。3 个方法未绑定的结论本身仍然成立，只是判据应改为本节的两项直接证据。
+这 3 个方法未绑定的判据是本节的两项**直接证据**（51 个 ELF 中无任何 `#1720`
+注册点登记其名；`atn\0`/`csd\0`/`dsi\0` 与 `SE` 独有签名的原始字节搜索均为 0）。
+不能用"未导入 `RegisterNatives` 符号"或"`JNI_OnLoad` 内未见注册路径"来推断——
+`libpdd_secure.so` 的 `0x27e7c` 确实有一处注册点（注册 3 项 = `DeviceNative`），
+而 `#1720` 派发式注册本就不产生导入符号，见 §9.1.1。

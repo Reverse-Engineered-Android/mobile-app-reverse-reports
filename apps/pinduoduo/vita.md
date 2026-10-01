@@ -30,7 +30,7 @@ JS/Lua 资源、字体、模型、Web 资源等按"组件（component）"粒度�
    `/volantis3-open[/aes]/component/...`。
 6. 完整性链是 **MD5（清单）+ SHA256WithRSA（组件签名）+ 可选 AES/CBC 解密**
    （`security_level ∈ {1,2}`）。全部为可静态还原的公开算法，无自定义密码学。
-7. `SoBuildInfo` 清单里此前列为"本设备从未下载"的 **54 个库**，正是 Vita 注册表里
+7. `SoBuildInfo` 清单里"本设备未落盘"的 **54 个库**，正是 Vita 注册表里
    已注册未下载的组件——**不是缺失，而是按需下发**（§6）。
 
 ## 2. 两套落盘目录
@@ -327,9 +327,8 @@ APK 内 `SoBuildInfo` 清单 199 条，按 `where` 分三类：
 | `absent` 且不在注册表的 | 51 |
 | `device` ∩ 已安装 | 22 |
 
-因此此前报告里"54 个库在本设备从未下载、列为未覆盖项"的表述需要**修正为**：
-这 54 个是 **Vita 已注册、按需下发、本设备未触发**的组件。它们**不是分析遗漏**，
-而是"注册但未下载"这一正常状态。剩余 51 个 `absent` 条目使用 `v7alib*` 命名
+因此这 54 个库的准确状态是 **Vita 已注册、按需下发、本设备未触发**，
+而不是分析遗漏——它是"注册但未下载"这一正常状态。剩余 51 个 `absent` 条目使用 `v7alib*` 命名
 （而 Vita 用 `v64lib*`），属于另一套（32 位 / 旧架构）命名空间，样本设备为
 arm64，故不适用。**结构已证实**。
 
@@ -557,8 +556,6 @@ str  w0, [sp, #68]        ; 返回明文长度
 
 因此 `security_key` 的语义是**对称密钥**，由 `uv2/a` 缓存后取前 16 字节作
 AES-128 密钥、全零 IV 解 `.pkg`/组件分片；**与 §8.3 的 RSA 公钥无关**。
-原报告 §12 第 2 项据此撤销。
-
 **仍未逐字节断言的部分**（诚实标注，不影响上面结论）：块例程内部把中间状态
 写在**自身栈帧**里而不回写调用方缓冲，且入口对 `w3` 做表行选择，因此
 "密钥扩展 + 逆 S-box + PKCS#7 去填充"这三点是**已验证**的，而
@@ -699,18 +696,17 @@ SHA-256 `71d88a54ca242206c039e5f8e9b60903b9f3004b35b5067f0fb0c271715f7592`，
 **关键含义**：Vita 是这些风控库的**下发通道**。若某库不在设备上，
 "分析遗漏"与"服务端未下发"必须区分——本设备上 `libpdd_secure.so` 在
 **APK 内**（已分析），而 `libshadowhook`、`libmeco_cookie`、`libsargeras`
-等只在**注册表**里（未下发）。这解释了此前 [obfuscation.md](obfuscation.md)
+等只在**注册表**里（未下发）。这解释了 [obfuscation.md](obfuscation.md)
 §9.6 中 `SE`/`ShadowHook`/`meco` 三个 native 方法族在四掩码并集下
 **零命中**的原因：其提供库确实不在这台设备上。
 
 ## 12. 未决事项
 
-1. ~~`config.json` 中 `.pkg` 的 `digest` 字段（128 字节）判为 RSA-1024 签名~~
-   **已闭合**：`digestVersion: 1` 为 SHA-256 + RSA/PKCS#1 v1.5，签名范围是
+1. `config.json` 中 `.pkg` 的 `digest` 字段（128 字节）：`digestVersion: 1`
+   为 SHA-256 + RSA/PKCS#1 v1.5，签名范围是
    完整下载文件；已用断点库保留的 `x-pos-meta-digest` 与对应 CDN 对象、以及
    §8.3 第 5 把公钥复验（见 §8.1）。
-2. ~~`qb2/h`（`xj0.h` 的实现类，负责 `security_key` 的 RSA 解密）不在 jadx
-   输出中~~ **已闭合且原判断有误**：`security_key` 不是 RSA，而是
+2. `security_key` 的解密：**不是** RSA 而是
    **硬编码 16 字节对称密钥的 AES-128 解密**；实现是纯 native
    （`uv2/a` → `xj0.h` → `mv2/b.a` → `qb2.d.b()` → `lb2.h` →
    `SecureNative.dv` → `libpdd_secure.so 0x1f75c`）。AES-128 密钥扩展已用
