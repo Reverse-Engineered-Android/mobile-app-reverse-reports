@@ -37,13 +37,13 @@
 - 调用链：`yya.f.e(method, url, bodyBytes)` → `u2.b(-1762132820, method, host, path, query, body)` → `t.a(opcode, args)` → `Map<String,String>` → 逐条写 header。
 - 签名覆盖：method + host + path + query + body。
 - dex 中可见混淆头名：`x-n0`、`x-o9`、`x-p0`、`x-r4`、`x-r4o`、`x-legacy-did/sid/fid/smid`。
-- `JNI_OnLoad` @ `0x18afd8`；操作码字段 `[x19,#0xa4]`（写入点 `0x15ea20`），分发为 **61 个操作码比较块 + 61 字节谓词数组**，非二叉比较。`0x16b08c` / `0x17cdb0` 是同一操作码 `0x96f7fcac` 的两个 CFF 重复块，详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §3–§5。
+- `JNI_OnLoad` @ `0x18afd8`；操作码字段 `[x19,#0xa4]`（写入点 `0x15ea20`），分发为 **61 个操作码比较块 + 61 字节谓词数组**，非二叉比较。`0x16b08c` / `0x17cdb0` 是同一操作码 `0x96f7fcac` 的两个 CFF 重复块，详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §3–§5。**分发结构已完全闭环**：61 分派块 ↔ 61 个互不相同的谓词槽（`0x1253`–`0x128f`，零冲突）↔ 31 个操作码常量，且 61 个分派块的编译期跳转位移全部复现（§5.6.6–§5.6.7）。
 
 **已闭环（本轮）**：31 个 native 操作码**全部定名**。引擎是 **native(31) / Java(71) 双操作码空间、交集为 0** 的 VM；29 个 native 操作码在 dex 里定位到**确切的调用表达式**。其中签名主操作码为 **`0x96f7fcac`**（`yya.f.e` → `u2.b(op, method, host, path, query, body)`），另有 `0x96d0a479`（重算）、`0x259cebf7`/`0xcd554fab`（字节数组变换）、`0xd40131d5`（Base64 载荷校验）与之配套。
 
 同一引擎还承担 **TLS 证书链上报**（`0xae8750a7` ← `nlb.q.intercept` 取 `handshake().peerCertificates()`）、**HTTP/2 peer principal 上报**（`0x9701e74c` ← `i4c.a.invoke`）、**长连接下行消息处理**（`0xb20a0be3` ← `nlb.g.onMessage`）、**定位上报**（`0x2f036831` ← `com.xingin.xhs.net.t1.i`，3×double + 2×float）、**传感器注册**（`0xcf7db9ff` ← `j6`）、**前台状态**（`0xc23a168e` ← `r`）、**动态代理转发**（`0x2ad1c199` ← `f6.invoke`）。
 
-完整 31 项对照表见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.3。**仅剩**内部逐块算术步骤未 lift（§5.6.6）。
+完整 31 项对照表见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.3。**仅剩**内部逐块算术步骤未 lift（§5.6.8）；分发层结构量已闭环（§5.6.6–§5.6.7）。
 
 ## 3. 设备指纹：`libxyasf.so` 与 Java 调度层
 
@@ -166,7 +166,7 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 
 | 项 | 未闭环的具体环节 | 原因 |
 | --- | --- | --- |
-| Tiny opcode 内部算术 | `0x96f7fcac`/`0x259cebf7` 等操作码**内部逐块**算术步骤 | **调用语义已全部定名**（31/31，见 §2 与 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）；剩余为 CFF 逐块机械 lift，与 `0x50010` 同性质 |
+| Tiny opcode 内部算术 | `0x96f7fcac`/`0x259cebf7` 等操作码**内部逐块**算术步骤 | **调用语义已全部定名**（31/31，见 §2 与 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6）；**分发层结构已闭环**（31 操作码 / 61 分派块 / 61 谓词槽 / 61 跳转位移，§5.6.6–§5.6.7）；剩余为块内 CFF 逐块机械 lift，与 `0x50010` 同性质但**结论等级更低**（Tiny 侧无动态饱和实测） |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | `libtinyd.so` 的 `JNINativeMethod` 表 | 类名/方法名/签名三元组 | 表在 `JNI_OnLoad`（CFF，`0xa630`）内运行时构造，静态数据中不存在；需带真实 `JNIEnv` 的进程内插桩 |
