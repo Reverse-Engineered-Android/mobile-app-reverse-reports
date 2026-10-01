@@ -137,5 +137,5 @@ fork / syslog / abort-message 特征支持“独立守护进程”判断：主�
 | `libtinyd.so` IPC | 与主进程的通道协议 | 未做动态跟踪 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
 | `x-n0`…`x-r4o` 语义 | 头部名已知，取值语义未反推 | 需 Tiny opcode 逐块 lift（操作码全集已枚举） |
-| Cookie/session 作用 | 静态检索 0 命中，未运行时验证 | 需真实环境抓包 |
+| Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 无需运行时验证 |
 | 服务端风控阈值 | ares 判定阈值 | 服务端逻辑，客户端不可见 |

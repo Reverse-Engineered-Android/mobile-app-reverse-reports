@@ -30,7 +30,7 @@
 
 已确认：`id_token` 从 `userExtraInfo["id_token"]` 到 `UserInfo.idToken` 的赋值；`sid` 的字段位置与掉线端点；`did`/`fid`/`gid`/`uis`/`smid` 的作用位；Shield/Tiny 的签名字段与接入点；「核心 API 不用 Bearer」的枚举结论。
 
-缺口：**Cookie/session 的作用未闭环**——只能证明静态检索（主链路无 `CookieJar`、`web_session` 0 命中）未发现，不能证明不存在。已按此措辞写入，未拔高为结论。
+**Cookie/session 的作用已闭环（原为缺口）**：API 客户端构建方法 `yta.g.c()` 逐行核对，**无 `cookieJar(...)` 调用**，OkHttp 因此使用默认 `CookieJar.NO_COOKIES`（不读 `Set-Cookie`、不发 `Cookie`），API 主链路在结构上不参与 Cookie 会话。全部 `cookie` 字样归属 WebView（`android.webkit.CookieManager`、`com.xiaohongshu.web.sdk.webkit.CookieManager`、`RnCookieManagerFixImpl`）、React Native（`ForwardingCookieHandler`、`ReactCookieJarContainer`）与第三方（支付宝、GMS、nanohttpd）；`web_session` 在全样本 0 命中。详见 [auth.md](auth.md) §3。
 
 ### 4. 上传数据范围
 
@@ -70,13 +70,15 @@
 
 ## 结论
 
-7 项要求全部达成。显式缺口共 4 处，均已声明且给出推进条件，未以结论口吻覆盖：
+7 项要求全部达成。显式缺口共 3 处，均已声明且给出推进条件，未以结论口吻覆盖：
 
-1. Cookie/session 实际作用（需运行时抓包）；
-2. 服务端 `http_range_size` 取值与 CDN `Accept-Ranges` 行为（需运行时抓包）；
-3. `0x50010` 覆盖全部 CFF 路径的统一逻辑门级闭式（需逐块/逐路径 lift）；
-4. Tiny 逐操作码语义 lift（操作码全集 31 个已枚举，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)）。
+1. 服务端 `http_range_size` 取值与 CDN `Accept-Ranges` 行为（需运行时抓包）；
+2. `0x50010` 覆盖全部 CFF 路径的统一逻辑门级闭式（需逐块/逐路径 lift）；
+3. Tiny 逐操作码语义 lift（操作码全集 31 个已枚举，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)）。
 
-已关闭的原缺口：`uploader_breakpoint_and_resume` 埋点调用方——经 dex 全量校验确定为**零引用**（`re/dex_ref4.py`），不再作为缺口。
+已关闭的原缺口 2 处：
+
+- `uploader_breakpoint_and_resume` 埋点调用方——经 dex 全量校验确定为**零引用**（`re/dex_ref4.py`）；
+- Cookie/session 作用——API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方（见 [auth.md](auth.md) §3）。
 
 本轮修正记录：撤回了 [crypto.md](crypto.md) §4.2 中“rodata 常量表引用 0 处”的错误结论（源于有缺陷的操作数匹配器），并连带修正 [report.md](report.md)、[algorithm.md](algorithm.md)、[evidence.md](evidence.md) 中同一表述；同时修正了 `re/xyass_type6_ref.py` 的对比宽度缺陷，并据此得出“单 trace lift 不具泛化性”的结论。
