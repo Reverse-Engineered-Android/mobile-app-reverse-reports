@@ -14,7 +14,7 @@
 | 风控代码 | Shield/Tiny、设备指纹、环境完整性、JS 指纹、验证码/核身、账号处置、推送/策略 SDK | [risk.md](risk.md) | 组件、JNI/Java 入口、采集类别、上报边界和处置链已覆盖 |
 | 加密/签名 | Shield 外层、HMAC 外壳、Tiny 边界、长连接 ECDH/AES/gzip、WCDB/Keystore、联系人 AES | [algorithm.md](algorithm.md)、[storage.md](storage.md) | 只发布已验证的结构和依赖；秘密、白盒表、私钥和可重放实现不进入仓库 |
 
-> **深挖批次补充（[deepdive/](deepdive/README.md)）**：上表是上层批次的边界。深挖批次另做了三件本表未覆盖的事——**全应用 164 个 arm64 `.so` 的加密普查**（32 带 / 132 不带）与**混淆形态普查**（重度 CFF 仅 3 个库）、**`libtiny.so` 内联 X25519 域运算**的定名（`0x525000`–`0x531bc4`）、以及 **`libtiny.so` 字符串加密的闭式还原**（320 调用点解出 312 条明文，闭环率 100%）。口径与证据见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.5、§2.2.1、§2.4。
+> **深挖批次补充（[deepdive/](deepdive/README.md)）**：上表是上层批次的边界。深挖批次另做了三件本表未覆盖的事——**全应用 164 个 arm64 `.so` 的加密普查**（32 带 / 132 不带）与**混淆形态普查**（重度 CFF 仅 3 个库）、**`libtiny.so` 内联 X25519 域运算**的定名（`0x525000`–`0x531e4c`）、以及 **`libtiny.so` 字符串加密的闭式还原**（320 调用点解出 312 条明文，闭环率 100%）。口径与证据见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.5、§2.2.1、§2.4。**最新一轮另做两件**：**`libtiny.so` 域区逐块算术 lift 完成**（435 distinct run 全判读、154 域原语 + 伪代码、九项密码学指纹守恒逐项 EXACT、188 未执行槽位逐段定性且 0 个含密码学指纹，§5.6.9）；以及 **Java/dex 侧混淆审计**（`@u5/@v5` 加密字段名 519/519 闭式还原；Java 侧字符串解密器 **822 调用点按字节码精确计数，811 个内联 (cipher,key) 对全部映射到明文，0 未映射**；11 个反射包装器枚举；**daemon dex 三层混淆完整审计**——字符串 141 调用点、`@x0` 116/116、`@w0` 77 站点、`v.<clinit>` 74 条明文、IPC 12 个命令，§9.2b/§9.7），并**纠正旧稿把插件化框架代号 `Petal` 误记为混淆器**的归因错误。
 
 ## 2. 风控组件清单
 

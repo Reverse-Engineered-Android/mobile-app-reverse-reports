@@ -52,7 +52,7 @@
 | `0x15e9f4` | 模拟器捕获的 native handler | 已验证 |
 | `0x16b08c` / `0x17cdb0` | opcode `0x96f7fcac` 的**两个 CFF 重复比较块**（非二叉比较） | 已验证（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §4）|
 | `.data 0x754AC0`-`0x7701C0` | 112 384 字节高熵区，熵 7.9982945 | 已验证（见下） |
-| `0x525024` | **内联 Curve25519/X25519 域运算入口**（由 `0x524f58` 的 `blr x8` 进入）；域区 `0x525000`–`0x531bc4` | 已验证（四条结构证据，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.2.1） |
+| `0x525024` | **内联 Curve25519/X25519 域运算入口**（由 `0x524f58` 的 `blr x8` 进入）；域区 `0x525000`–`0x531e4c` | 已验证（四条结构证据，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §2.2.1） |
 | `0x527db0` | `a24 = 121666`（`mov w9,#0xdb42` + `movk w9,#1,lsl#16`）——曲线身份的判定性常量 | 已验证 |
 | `0x527fb0` / `0x527fc4` | X25519 标量钳位（`k[0]&=248`；`k[31]=(k[31]&0x3f)\|0x40`），与 RFC 7748 逐位吻合 | 已验证 |
 | `0x18c940` / `0x18d5e4` | **字符串解码器 A / B**（20 项调度表的逐字节双射，无扩散） | 已验证（闭式还原，见 §2.4） |
@@ -153,6 +153,20 @@ fork / syslog / abort-message 特征支持独立守护进程判断（`assets/fd2
 | `xyass_sel_write.py` | 分派选择子来源定位 | `ldrb w9,[x20]` / `and #3` |
 | `xyass_sel_dep.py` | 单字节扰动下的选择子变化 | 选择子可达 {0,1,3}，与路径无关 |
 | `tiny_blobref3.py` | 高熵区引用三路扫描 | `total: 0` |
+| `tiny_field_trace.py` | 域区逐指令执行序记录（unicorn） | 3 045 452 条执行 / 13 124 distinct；**95.7% 为 `addr+4` 连续步**；435 个 distinct run |
+| `tiny_field_blocks.py` | 按执行序切分 basic block 并粗分类 | 435 块 → 180 算术 / 255 胶水 |
+| `tiny_field_class.py` | 逐指令角色普查 + 全域区静态指纹计数 | `adds`/`adcs` 各 364、`mul` 514、`umulh` 390、`madd` 252、掩码 178、`extr #51` 130、`lsr #51` 63、×19 58 |
+| `tiny_field_lift.py` | 六段例程级 lift + 守恒校验 | 逐例程指纹之和 = 全域区精确计数；**九项指纹差值全 0（EXACT）** |
+| `tiny_field_prims.py` | 域原语定名（可复算规则） | **154 个域原语**：`fe_add/carryfold` 48、`fe_reduce19` 47、`fe_sq` 20、`fe_mul` 14 等 |
+| `tiny_field_account3.py` | 两层拆分（CFF 调度尾 vs 域运算层） | 执行地址 **CFF 1 347 / 域运算层 11 777 = 13 124** |
+| `tiny_field_dump.py` | 指定区间反汇编（逐原语判读用） | 支持任意 `lo hi` 区间 |
+| `u5_decode.py` | `@u5/@v5` 加密字段名闭式还原 | **519/519 站点解出，100% 合法 Java 标识符**；371 个互异名 |
+| `dex_strdec_census.py` | 解密器调用点计数（按 proto，不依赖 jadx 重命名） | **822 调用点**，6 个目标方法、4 个 dex |
+| `dex_strdec_literals.py` | 从 invoke 的参数寄存器反解 (cipher,key) | **811 个内联字面量对**；另 11 个是转发蹦床 |
+| `java_obf_composite.py` | 复合口径：调用点 → 字面量对 → 明文 | **811/811 全映射，0 未映射，0 矛盾**；578 个互异明文 |
+| `daemon_va.py` | 守护 dex `v.a` 的 4 条明文（按字节码地址定位） | `cache` / `c4d121c215evx1s51d.dex` / `a` / `b` |
+| `dex_classfind.py` | dex 内 class_defs 归属定位 | 定位 `fvc` 定义在 `classes20.dex`、`PetalConfig` 在 `classes.dex` |
+| `dex_strfind.py` | dex 字符串表命中定位 | `PETAL_MODE` 仅 `classes.dex` |
 
 ## 证据等级定义
 
