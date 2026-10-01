@@ -147,7 +147,7 @@
 | `files/.vita` 组件目录 | 46 | 170 个文件全量 MD5 实测 |
 | `.md5checker` 声明记录 | 146 | **134 通过**；12 条不匹配**全为** `extra_info.json`（可变元数据） |
 | So 载荷 | 23 | **23/23 全部通过**（`.vita` 10 + `dynamic_so` 13） |
-| `files/.newLocker` | 183 | 反解出 126 个组件 ID；4 个版本锁；2 个未解析 |
+| `files/.newLocker` | 183 | 反解出 128 个组件主锁 ID + 46 个补丁锁 + 4 个版本锁；0 未解析 |
 | `vita_local_comp_v2`（MMKV） | 46 条 | 与 `.vita` 目录数一致 |
 
 样本 `libtronavx.so`（4,000,176 字节）：

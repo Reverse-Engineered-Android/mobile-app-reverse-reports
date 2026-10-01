@@ -20,8 +20,8 @@ JS/Lua 资源、字体、模型、Web 资源等按"组件（component）"粒度�
 2. 组件清单是**三个文件**：`PDD_MANIFEST`（保留清单）、`<组件>.md5checker`
    （JSON `{length, md5}` 全文件表）、`extra_info.json`（`{uuid, md5, virtualVersion}`）。
 3. `files/.newLocker/*.vlock` 的文件名是 **`MD5(组件ID)`**，可选 `-patch` 后缀与
-   版本后缀。这给出**完整组件注册表 126 个**，其中**只有 46 个已安装**，
-   **80 个已注册但从未下载**。
+   版本后缀。这给出**完整组件注册表 128 个**，其中**只有 46 个已安装**，
+   **82 个已注册但从未下载**。
 4. 本地"已安装组件"登记表**不在 SQLite 里**，而在 MMKV 存储
    `files/mmkv/vita_local_comp_v2`（46 条 `LocalComponentInfo` JSON）。SQLite
    `vita-database` 只存 Uri 映射、访问统计与版本流水（§9）。
@@ -260,9 +260,12 @@ MD5(组件ID) <版本>       .vlock          # 版本锁
 | 类别 | 数量 |
 | --- | ---: |
 | 框架自身锁（`mmkv` / `gc` / `vita_database` / `comp_meta_info_v3` / `installed_comp_record`） | 5 |
-| 组件主锁 + 补丁锁（成对） | 126 × 2 |
-| 版本锁（`-patch` 之外的版本后缀形式） | 4 |
-| 未解析 | 2 |
+| 组件主锁（`.vlock`） | 128 |
+| 组件补丁锁（`-patch.vlock`） | 46 |
+| 版本锁（`MD5(组件ID)<版本>.vlock`） | 4 |
+| 未解析 | **0** |
+
+即 183 = 5（框架）+ 128（主锁）+ 46（补丁锁）+ 4（版本锁），**全部反解到具体组件 ID**。
 
 4 个版本锁与其组件：
 
@@ -273,9 +276,14 @@ MD5(组件ID) <版本>       .vlock          # 版本锁
 | `A10750CF…0.4.0.vlock` | `com.xunmeng.pinduoduo.push_main_dex` |
 | `D77A3883…1.33.5.vlock` | `com.xunmeng.pinduoduo.PushComp` |
 
-2 个未解析项（`650C169F…`、`6B20DF37…`）的 MD5 反查遍及 APK 的 6 个 DEX、
-`assets-so`、`SoBuildInfo` 清单与设备端组件记录（约 44.5 万条候选串）均无命中，
-判为**服务端已注册但本版本 APK 与本地均无对应声明**的组件。**假说**。
+反解覆盖范围：APK 的 6 个 DEX 全部可打印串、`assets-so` 内嵌库、`lib/arm64-v8a`
+随包库、`SoBuildInfo` 清单、设备端 `vita-database` 的 `VitaAccessInfo` /
+`VitaVersionInfo` 两表全部文本列，以及 `vita_local_comp_v2` 登记表——合计约
+**122.5 万条候选串**。在此范围内 183 个文件名**全部命中**，无剩余未解析项。
+
+补丁锁只有 46 个，恰好等于**已安装组件数**——补丁锁只在组件真正落盘后才创建，
+因此补丁锁集合可以作为"哪些组件到过本设备"的第二重独立佐证（与
+`vita_local_comp_v2` 的 46 条登记完全一致）。
 
 > 注：另有 1 个组件 `com.xunmeng.pinduoduo.emoji` 仅出现在 APK 的 DEX 字符串里
 > （不在 `SoBuildInfo` 清单内），其 vlock 存在但无载荷，说明注册表来自
@@ -285,11 +293,11 @@ MD5(组件ID) <版本>       .vlock          # 版本锁
 
 | 集合 | 数量 | 来源 |
 | --- | ---: | --- |
-| 已安装 | 46 | `vita_local_comp_v2` / `.vita` 目录 |
-| 已注册 | 126 | `.newLocker` 反解 |
-| **已注册但未下载** | **80** | 差集 |
+| 已安装 | 46 | `vita_local_comp_v2` / `.vita` 目录（补丁锁 46 个独立佐证） |
+| 已注册 | **128** | `.newLocker` 反解（183 文件名全解，0 未解析） |
+| **已注册但未下载** | **82** | 差集 |
 
-已注册未下载的 80 个包含大量**风控与加固组件**，即"注册了但本设备没触发下载"：
+已注册未下载的 82 个包含大量**风控与加固组件**，即"注册了但本设备没触发下载"：
 
 ```
 com.xunmeng.pinduoduo.v64libBigAllocMonitor   com.xunmeng.pinduoduo.v64libmeco_cookie
@@ -306,7 +314,7 @@ com.xunmeng.pinduoduo.v64libchat_msg          com.xunmeng.pinduoduo.v64libwallet
 com.xunmeng.pinduoduo.v64libfastdump          com.xunmeng.pinduoduo.v64libxdl
 com.xunmeng.pinduoduo.v64libmdumper           com.xunmeng.pinduoduo.v64libxunwind
 com.xunmeng.pinduoduo.v64libpapmLeak          com.xunmeng.pinduoduo.v64libyuv
-com.xunmeng.pinduoduo.v64libpapm_trace        …（共 80 个）
+com.xunmeng.pinduoduo.v64libpapm_trace        …（共 82 个）
 ```
 
 ## 6. 与 `SoBuildInfo` 的关系
@@ -689,7 +697,7 @@ SHA-256 `71d88a54ca242206c039e5f8e9b60903b9f3004b35b5067f0fb0c271715f7592`，
 | 证书固定 | **仅**对 3 个 Vita 接口强制（§7.4） |
 | 组件签名 | SHA256WithRSA，公钥硬编码在 DEX（§8.1、§8.3） |
 | 载荷加密 | `security_level ∈ {1,2}` → AES-128-CBC，密钥由 `security_key` 经 RSA 链解出（§8.2） |
-| 反分析组件 | 注册表中 80 个未下载项含 `libpdd_secure`、`libmeco_cookie`、`libsargeras`、`libshadowhook`、`libxunwind`、`libriskplugin`、`libpdd_sa_hook`、`libbytehook`、`libCSoLoader` 等（§5.2） |
+| 反分析组件 | 注册表中 82 个未下载项含 `libpdd_secure`、`libmeco_cookie`、`libsargeras`、`libshadowhook`、`libxunwind`、`libriskplugin`、`libpdd_sa_hook`、`libbytehook`、`libCSoLoader` 等（§5.2） |
 | 行为画像 | `comp_resource_visit*`、`comp_daily_usage_statistics` 聚合后上报（§7.2） |
 | 调试器开关 | `vita-debugger` / `scan-status-vita-debugger` MMKV 存储 |
 
@@ -713,8 +721,13 @@ SHA-256 `71d88a54ca242206c039e5f8e9b60903b9f3004b35b5067f0fb0c271715f7592`，
    指令级模拟与 FIPS-197 逐字节对齐，见 §8.4。
 3. `.vita` 与 `dynamic_so` 中同一 So 的 10 份副本**内容相同**（MD5 相等）
    但 inode 不同；谁先写入、谁复制谁未从日志断言，判为**同一次安装的两次落盘**。
-4. 2 个未解析 vlock（`650C169F…`、`6B20DF37…`）的组件 ID 未知，
-   反查范围已覆盖 APK 全部 DEX 字符串与 `SoBuildInfo` 清单。
+4. 183 个 vlock 文件名**全部反解到具体组件 ID**（§5.1）。其中最后闭合的
+   9 个：`650C169F…` = `com.xunmeng.pinduoduo.chatLegoTemplate`、
+   `6B20DF37…` = `com.xunmeng.pinduoduo.chatBuiltInTemplateV2`、
+   `CCFF5BC0…` = `com.xunmeng.pinduoduo.almighty.two`、
+   `6DD8FC3B…` = `com.xunmeng.pinduoduo.almighty.three`，以及
+   `2BF247F8…`/`2E530514…`/`6740DE98…`/`8D3631E9…`/`93A63923…` 五个。
+   该集合无剩余未决项。
 5. `vita_version_block_info` / `_fake_info` / `vita_comp_offline_index` 在本
    样本中为空，其非空形态未取得样本。
 

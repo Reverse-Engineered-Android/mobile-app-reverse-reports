@@ -127,8 +127,8 @@ Vita 是全 App 唯一按"组件"粒度批量下载代码/资源/So 的通道，
   `is_support_zip_patch`、`is_zip_diff_package`，以及 23 个下载/补丁/解密
   事件码（`download_start`…`ipc_download_fail`）。
 - **实际落地量**（本设备只读快照）：`files/.vita` 46 个组件目录约 34.6 MB；
-  `files/dynamic_so` 26 个目录约 74 MB；组件注册表 126 个，已安装 46 个，
-  **80 个已注册但从未下载**。
+  `files/dynamic_so` 26 个目录约 74 MB；组件注册表 128 个，已安装 46 个，
+  **82 个已注册但从未下载**。
 
 ### 3.3 上传/下载共用的头部
 
