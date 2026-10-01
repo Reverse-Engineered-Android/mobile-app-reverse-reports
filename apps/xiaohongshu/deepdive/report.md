@@ -72,6 +72,6 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出，主要四类：Tiny opcode→语义映射（操作码全集 31 个已枚举，仍需逐块 lift）、`libxyasf.so` 70+ 采集点逐条清单、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、以及一切需要运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`、Cookie 的实际作用）。
+未闭环项已在各文档显式列出，主要四类：Tiny opcode→语义映射（操作码全集 31 个已枚举，仍需逐块 lift）、`libxyasf.so` 70+ 采集点逐条清单、`0x50010` 覆盖全部 CFF 路径的统一闭式（数据相关控制流使单 trace lift 失效，需逐块/逐路径 lift）、以及运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
 
 另：全应用 164 个 arm64 `.so` 的 native 加密普查已完成（32 带加密 / 132 不带），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)。

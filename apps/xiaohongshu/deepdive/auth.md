@@ -38,7 +38,32 @@ userInfo.setIdToken(str3);
 - 掉线原因走独立端点 `api/sns/v1/user/login/sid_reason`（`IDeviceService`，`@o` + `@d Map<String,String>` 表单体）。
 - 设备管理走 `api/sns/v1/user/login/devices/history` 与 `api/sns/v1/user/login/devices/remove/history`（同服务）。
 
-**关于 Cookie 的边界**：本次静态检索未在主链路发现 `CookieJar` 实现，也未在 DEX 中检索到 `web_session` 字面量。这**不足以**得出“不使用 Cookie”的结论——只能说明静态证据未闭环 Cookie/session 的作用位置。WebView 类场景（验证页、H5 活动）仍可能由 WebView 自身维护 cookie 存储，本次未做运行时抓取验证。
+**关于 Cookie：API 主链路不使用 Cookie（已证，非“未闭环”）**
+
+此前只写了“静态检索 0 命中”，那不足以成为结论。本节补齐到可复核的结构性证据：
+
+| 证据 | 结果 |
+| --- | --- |
+| API 客户端的 OkHttp 构建方法 `yta.g.c()` | 逐行核对 23 处 `addInterceptor` / `addNetworkInterceptor`、`dispatcher`、`dns`、`eventListener`、`cloudBursting`，**没有任何 `cookieJar(...)` 调用** |
+| `yta` 包（API 客户端所在包）全文检索 `cookie` | **0 命中**（大小写不敏感） |
+| 整个反编译源码中 `cookie` 字样 | 仅出现在下述第三方/WebView 位置，**无一处在本应用 API 栈** |
+| `web_session` 字面量 | 全样本（源码 + 19 个 dex + assets + native libs）**0 命中** |
+
+**OkHttp 的默认行为**：未显式设置时使用 `CookieJar.NO_COOKIES`，即不读 `Set-Cookie`、也不发 `Cookie` 头。因此 API 主链路在**结构上不可能**参与 Cookie 会话。
+
+**`cookie` 字样的实际归属**（逐个已确认，均非本应用 API 栈）：
+
+| 归属 | 说明 |
+| --- | --- |
+| `okhttp3.CookieJar` / `JavaNetCookieJar` / `Cookie$Builder` | 库自身的类定义，非调用方 |
+| `com.facebook.react.modules.network.*`（`ForwardingCookieHandler`、`ReactCookieJarContainer`） | React Native 框架自带，供 RN 模块使用 |
+| `OkHttpClientProvider` | 仅由 RN 使用（全样本**无任何类**引用它） |
+| `android.webkit.CookieManager` / `android.xingin.com.spi.rn.RNCookieManagerProxy` | WebView 的 cookie 存储，由 HS WebView / RN 桥接使用 |
+| `com.xiaohongshu.web.sdk.webkit.CookieManager`、`com.xingin.xywebview.spi.RnCookieManagerFixImpl` | 小红书自有 **WebView SDK**（H5 容器）的 cookie 管理 |
+| `com.hpplay.nanohttpd...Cookie`、`okhttp3.CookieJar`（`classes19`）、`io.ktor.http` | 投屏 HTTP 服务端 / 其他库 |
+| `com.alipay`、`com.google.android.gms.auth.CookieUtil` | 支付宝、GMS 第三方 |
+
+**结论修正**：Cookie 的作用域是 **WebView/H5 与第三方 SDK**，**不参与 API 请求签名或鉴权**。这意味着“需要运行时抓包才能确定 Cookie 作用”这一条**可以从缺口清单移除**；剩余运行时未知项只有服务端 `http_range_size` 取值与 CDN `Accept-Ranges`。
 
 ## 4. 设备层：`deviceId` / `fid` / `smid`
 
@@ -93,4 +118,4 @@ Tiny 拦截器（`jt6.a`）附加在 hera 链上。这意味着 Shield/Tiny 是*
 | Shield 接入点只有 2 处 | 已验证（`newInstance` 调用点枚举） |
 | `shield` / `xy-platform-info` 头部名 | 结构已证实（Java 0 命中 + native 装配入口；不还原取值） |
 | `x-n0`…`x-r4o` 语义 | 结构已证实（写入点确定，语义未从 native 反推） |
-| Cookie/session 不参与核心鉴权 | **未闭环**：仅证明静态检索 0 命中，未做运行时验证 |
+| Cookie/session 不参与 API 鉴权 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`，OkHttp 默认 `NO_COOKIES`；全部 `cookie` 字样归属 WebView/RN/第三方，`web_session` 全样本 0 命中 |
