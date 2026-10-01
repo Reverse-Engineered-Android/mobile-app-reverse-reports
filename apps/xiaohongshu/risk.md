@@ -101,7 +101,8 @@ protobuf schema 字符串按以下命名空间出现：
 - 结果使用 AES-CBC 加密写入本地 JS 指纹缓存，任务结束后清理。
 - WebView monitor context 的 Java 模型可携带用户 ID/token、hash 过期信息、用户/track session、设备、屏幕、网络和 App build 字段。
 - `libtinyd.so` 和 `com.xingin.tiny.daemon` 具备伴随/守护特征。
-- Petal 混淆通过加密注解字节、运行时解密包装器和 opcode 分发隐藏调用名。
+- Java 侧方法名加密通过 `@u5`/`@v5` 注解内的加密字节数组实现：`o5.a()` 解出方法名、`o5.b()` 解出参数类型名，`n5<T>` 再反射调用。**519 个站点已闭式还原（100% 合法 Java 标识符）**；类名/常量名解密：**822 个调用点（字节码精确）中 811 个带内联 (cipher,key) 对，全部映射到明文，0 未映射**。详见 [tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §9.2、§9.2b。
+- **修正**：旧稿把上述机制称为「Petal 混淆」。`PetalConfig` 实为**插件化框架配置**（`PETAL_MODE = false`，用于 RN/Weex 注解默认值），不是混淆器；该归因已作废。
 
 ## 5. 完整性与环境对抗
 

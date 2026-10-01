@@ -11,7 +11,10 @@
 | 图片、视频、静态资源 | `cdn.xiaohongshu.com` 与 `*.xhscdn.com` |
 | 风控接收 | `https://as.xiaohongshu.com/api/v1/d/upload`，由 `libxyasf.so` 直接通过 native OkHttp 上传 |
 
-Java 网络层是 Retrofit 注解模型包装 OkHttp。核心注解被混淆为 `fvc/*`：
+Java 网络层是 Retrofit 注解模型包装 OkHttp。核心注解位于短包名 `fvc/*`：
+
+> **口径说明**：`fvc` 的短包名来自 R8 的标识符压缩，**不是名字加密**——`fvc` 包的 25 个注解全部定义在 `classes20.dex` 且成员是明文 `String`（如 `fvc.h` 的 `method()`/`path()`/`hasBody()`），可用 `jadx -d` 直接读出。真正的名字加密是 `@u5`/`@v5`（携带加密字节数组，见 [tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §9.2–§9.3）。
+
 
 | 注解 | Retrofit 语义 | 证据 |
 | --- | --- | --- |

@@ -173,7 +173,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 设备指纹 | `pt.a`、Java collectors、`libxyasf.so` |
 | 环境检测 | native strings/imports：root、ptrace、maps、Xposed、VirtualApp、Widevine |
 | JS 指纹 | `XhsJsService`、`fpjs2.min.js`、AES-CBC 缓存 |
-| 守护/混淆 | `libtinyd.so`、`com.xingin.tiny.daemon`、Petal 注解/opcode |
+| 守护/混淆 | `libtinyd.so`、`com.xingin.tiny.daemon`、`@u5`/`@v5` 加密字段名（519 站点已解）、字符串解密 811/811 调用点已解（daemon dex 三层混淆另见 §9.7）、Tiny opcode 分发 |
 | 账号风险 | `IRiskService`、登录风险状态、self-resolve |
 | 验证码 | Walify、ValidateActivity |
 | 人脸核身 | turingcam、TuringV2、WBCF、活体、SM2 |

@@ -511,12 +511,86 @@ libc++abi
 
 | 项 | 具体环节 | 地址 | 原因 |
 | --- | --- | --- | --- |
-| `JNI_OnLoad` 注册的 `JNINativeMethod` 表 | 类名 + 方法名 + 签名三元组 | `0xa630` 起，表实体在 `.bss` `0x24180`+ | 三元组在 `JNI_OnLoad`（CFF）内**运行时构造**；静态数据中不存在。需带真实 `JNIEnv` 的进程内插桩才能取表内容，静态侧不可达 |
+| ~~`JNI_OnLoad` 注册的 `JNINativeMethod` 表~~ | **已闭环（本轮）** | — | 三元组由**注册目标的可执行侧**唯一确定：全样本只有**一个** `native` 方法——`Lcom/xingin/tiny/daemon/d;.a(I[Ljava/lang/Object;)Ljava/lang/Object;`。`JNI_OnLoad`（CFF）构造的表**只能**绑定它，因此类名/方法名/签名三项均已确定（见 §10.3）。旧理由「静态侧不可达」作废：不必读 CFF 建表过程，读**被注册者**即可 |
 | 4 字节载荷的**取值语义** | `+0x494` 具体字段含义（pid？退出码？状态枚举？） | 写点 `0x9e6c`、`0x12390`、`0x11124`、`0x137ac` | 协议**形状**已确定（定长 4 字节、写后关），但"哪个值代表哪种状态"需要 Java 侧调用方或运行时观测。**协议本身不再是"未知"** |
 | `.data` 381 槽分发池的**逐槽→块映射** | 各槽配对的 w 寄存器常量 | `.data` `0x23150`–`0x23de0` | 需要逐块符号求值 32 位不透明链；**平坦化已被证明不隐藏语义**（§7.3），此项只影响反编译可读性，不影响任何算法结论 |
-| 父进程侧的接收者 | 谁读这 4 字节 | 本库外部（Java 侧或 `libtiny.so`） | `libtinyd.so` 只实现一端；对端不在本样本边界内 |
+| ~~父进程侧的接收者~~ | **已闭环（本轮）** | — | 对端已找到：`dex/assets/fd2x1e4e2x3f1v2b1s.dex` 的 `com.xingin.tiny.daemon.e.main` → `l.a()`，见下方 §10.3。**旧结论「对端不在本样本边界内」作废** |
 
 **没有"未知加密"**：本库唯一的加密（字符串的旋转+模加/XOR 双射）已闭式（§2），其余全部为明文表或 C++ ABI 常量。
+
+### 10.3 对端已定位：`libtinyd.so` 与 daemon dex 是**同一协议的两端**（本轮新增）
+
+旧稿 §10.2 写「对端不在本样本边界内」。**该结论作废**：对端就在本样本里，是一个
+**Java 侧守护进程**——`dex/assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B，63 个
+`com.xingin.tiny.daemon.*` 类）。完整审计见
+[tiny-and-app-sweep.md](tiny-and-app-sweep.md) §9.7。
+
+对接点（Java 侧入口，`e.java`）：
+
+```java
+com.xingin.tiny.daemon.v.b(null,
+    new DataInputStream(new FileInputStream(FileDescriptor.in)).readUTF());  // ① 读一条 UTF 自述
+new com.xingin.tiny.daemon.e.a(
+    com.xingin.tiny.daemon.e.a.a(FileDescriptor.in)).a();                    // ② 进命令循环
+```
+
+② 进入 `l.a()`：先 `readInt()` 取命令字，再 `switch`，共 **12 个 case**（-1..10）。
+命令表（由各 case 注入的 Android API 判定，逐条见 §9.7.1）：
+
+| case | 语义 |
+| ---: | --- |
+| 0 | 包信息：`Parcel.unmarshall` → `ApplicationInfo` → `PackageInfo`（`firstInstallTime`/`lastUpdateTime`）+ `SigningInfo` |
+| 4 / 10 | `android.intent.action.MAIN` + `ResolveInfo`（主 Activity / 完整性自检） |
+| 8 | 系统属性（解出 `http.agent`） |
+| 9 | `android.view.InputDevice` 枚举 |
+| 1 / 2 / 3 / 5 / 6 / 7 | 反射调用、`PackageInfo`、`Process`、数组/编号查询 |
+
+**I/O 通道**：`com.xingin.tiny.daemon.h`（注入 `java.io.DataInput`）与
+`i`（注入 `java.io.DataOutput`），成员名被 `@x0` 注解隐藏，解出
+`readLong`/`readBoolean`/`readFully`/`readUTF`/`readInt` 与
+`writeLong`/`writeUTF`/`writeBoolean`/`writeInt`/`writeShort`/`write`。
+协议形态 = **`DataInput`/`DataOutput` 之上的长度前缀帧**
+（命令帧 `readInt`、字符串帧 `readUTF`）。
+
+**两侧物资对照**：
+
+| 侧 | 证据 |
+| --- | --- |
+| 本库 `libtinyd.so` | 字符串表仅 `JNI_OnLoad` / `fork` / `libtinyd.so`；类名与方法名靠 Java 侧自述传入 |
+| `libtiny.so`（父进程侧） | `CLASSPATH=`、`{"PACKAGE_NAME":"com.xingin.xhs",…}`、`/data/dalvik-cache/arm64/`、`dalvik.system.DexPathList`、`get_global_daemon failed!`、`/boot.vdex`、`/system/bin/linker64` |
+| daemon dex（Java 侧） | `d` 类解出 **`tinyd`** 与 **`libtinyd.so`**；`h`/`i` 的 `@x0` 解出上表的 I/O 成员名 |
+
+#### 10.3.1 `JNI_OnLoad` 的注册目标（旧未闭环项，本轮闭环）
+
+旧稿把「`JNI_OnLoad` 注册的 `JNINativeMethod` 表」列为未闭环，理由是三元组在 CFF 内
+**运行时构造**、静态侧不可达。**这个理由不成立**：不必读建表过程，读**被注册者**即可——
+全 22 个 dex 的 `native` 方法扫描结果：
+
+| dex | `native` 方法数 | 与本库相关的 |
+| --- | ---: | --- |
+| `classes17.dex` | 12 | **`Lcom/xingin/tiny/internal/t;.a(I,[Ljava/lang/Object;)Ljava/lang/Object;`** ← 这是 `libtiny.so` 的绑定 |
+| `dex/assets/fd2x1e4e2x3f1v2b1s.dex` | **1** | **`Lcom/xingin/tiny/daemon/d;.a(I,[Ljava/lang/Object;)Ljava/lang/Object;`** ← 这是 `libtinyd.so` 的绑定 |
+| `dex/assets/c4d121c215evx1s51d.dex` | 0 | 纯 Java 反射蹦床 |
+| 其余 19 个 dex | 4957 | 与本库无关（视频/渲染/网络/AI 等） |
+| **合计** | **4970** | |
+
+daemon dex 只声明**一个** `native` 方法，所以 `JNI_OnLoad` 构造的那张表**只能**绑定它：
+
+```
+类名    Lcom/xingin/tiny/daemon/d;
+方法名  a
+签名    (I[Ljava/lang/Object;)Ljava/lang/Object;
+```
+
+**签名语义也自洽**：`(int 命令字, Object[] 参数) → Object`，
+正是 `l.a()` 各 case 调用的同一形态（`d.a(0, …)`、`d.a(2, str)`、`d.a(3, …)`），
+而 case 号（0/1/2/3…）就是那个 `int`。即
+**`d.a` 是 Java 守护进程调用 native 的入口**，与本库「被父进程拉起后按命令服务」的角色一致
+（`d.a(1, …)` 出现在 `a.java:99`，是类加载路径）。
+
+**因此**：本库负责 `fork` + 与父进程握手并把 Java 侧拉起来，daemon dex 负责命令循环，
+两者是**同一协议的两端**；`libtinyd.so` 自己不含类名/方法名，是因为这些名字由
+Java 侧用字符串解密与 `@x0` 注解在运行期还原。
 
 ---
 

@@ -122,7 +122,7 @@
 | 库 | 混淆机制 | 状态 |
 | --- | --- | --- |
 | `libxyass.so` | CFF（`0x50010`，504 处间接跳转）+ 字符串加密 | **已闭环**：转移图饱和枚举（412 site / 767 边 / 417 目标）+ 选择层分类（262 FIXED / 69 BASE / 18 DATA）+ 字符串加密机制已恢复 |
-| `libtiny.so` | CFF（61 分派块）+ 字符串加密 + 内联 X25519 | CFF 结构**已完全枚举**（三向双射 + 61 位移全复现）；逐块 lift 的方案与校验量见 §5.6.9；字符串加密见 §2.4 |
+| `libtiny.so` | CFF（61 分派块）+ 字符串加密 + 内联 X25519 | CFF 结构**已完全枚举**（三向双射 + 61 位移全复现）；**逐块算术 lift 已完成**（154 原语 + 九项指纹守恒 EXACT，§5.6.9）；字符串加密见 §2.4 |
 | `libtinyd.so` | CFF（381 槽分发池）+ 字符串加密 | **已闭环**：4 解码器 × `i%20` 调度表闭式（7/7 明文）+ 14/14 动态跳转验证 |
 
 > **口径说明**：本节的"无 CFF 指纹"是**基于可复算指标的否定**（`br_pct` < 0.9、`movz/1k` 无同步抬升），与 §1.2 用指令族+常量做的密码学否定**相互独立**。两者都不依赖人工抽样，任意库可单独复核：`python3 re/obf_census.py` 重建全表。
@@ -163,7 +163,7 @@
 
 > **⚠ 重要修正**：本节初稿的"明确不存在"表把结论写成"它能做的标准密码学只有 MD5 骨架 / Base64 / CRC32"。**该表述不完整**：`libtiny.so` 里存在一套**内联的 Curve25519 域运算**，不是查表实现，因此既不触发加密指令扫描、也不触发已知算法常量扫描——两项扫描都测不到它。本轮以四条独立的结构证据把它定位出来。
 
-**位置**：`0x525000` – `0x531bc4`。该区间共 **13 312** 条指令；域运算函数的入口为 `0x525024`，由 `0x524f58` 处的 `blr x8` 调用。区内另有 6 个 `ret` 边界（`0x5262e8`、`0x52882c`、`0x52e9fc`、`0x5316b8`、`0x531e4c`，以及 `0x52501c`——后者实为**前一个函数的收尾** `mov w0,wzr; add sp,sp,#0x50; ret`），因此这是一个由 5 个内联域例程拼成的代码块，而非单一函数。
+**位置**：`0x525000` – `0x531e4c`（窗口上界取 `0x532000` 时为 **13 312** 个指令槽）。域运算函数的入口为 `0x525024`，由 `0x524f58` 处的 `blr x8` 调用。区内有 6 个 `ret` 边界（`0x52501c`、`0x5262e8`、`0x52882c`、`0x52e9fc`、`0x5316b8`、`0x531e4c`；末两者属 R5），其中 `0x52501c` 是**前一个函数的收尾**（`ldp` 恢复被调用者寄存器 + `add sp,sp,#0x50` + `ret`）。因此这是一个由 **5 个内联域例程（R1–R5）** 拼成的代码块，而非单一函数；`0x531e50` 之后另有独立辅助段 R6（两个操作码均不执行）。逐例程地址、槽位数与密码学指纹见 §5.6.9(b)。
 
 | 证据 | 观测 | 说明 |
 | --- | --- | --- |
@@ -177,10 +177,11 @@
 
 | 项 | 值 |
 | --- | ---: |
-| 域区内的 `adds`/`adcs` 进位链 | 各 **364** 条 |
-| 域区内的乘法类指令 | `mul` 514 / `umulh` 390 / `madd` 252 |
+| 域区内的 `adds`/`adcs` 进位链 | 各 **364** 条（**364/364 全部被执行集覆盖**） |
+| 域区内的乘法类指令 | `mul` 514 / `umulh` 390 / `madd` 252（**均 100% 覆盖**） |
 | 区内 `ret` 点（内联例程边界） | **6** 处（`0x52501c`、`0x5262e8`、`0x52882c`、`0x52e9fc`、`0x5316b8`、`0x531e4c`） |
-| 区内指令总数 / 被覆盖数 | **13 312** / **13 124**（两个操作码的覆盖在本区内**完全相同**，并集 = 交集 = 13 124） |
+| 区内指令总数 / 被覆盖数 | **13 312** / **13 124**；未执行 **188** 个槽位已逐段定性（§5.6.9(g)），其中 **0 个**含密码学指纹 |
+| 逐块语义 lift | **已完成**：435 个 distinct run 全判读、154 个域原语定名、九项指纹守恒逐项 EXACT（§5.6.9） |
 | 执行该区的操作码 | **仅 2 个**：`0x3c6d0ac1`、`0xae821439`；其余 29 个操作码在本区覆盖 **0** 条 |
 | 全部 178 个掩码位点与 130 个进位提取位点的执行覆盖 | **178/178、130/130 全部被执行集覆盖** |
 | 确定性复核 | 同输入两次执行，覆盖集合 **逐字节相同**（35 577 条，对称差 0） |
@@ -1184,7 +1185,7 @@ br    xB
 | 分派块的跳转位移 | **61/61 编译期常量已复现**（`0xfc006d80`–`0xfcfeadd8`，58 个互异） | §5.6.6(e) |
 | 每个操作码的调用方语义 | **29/31 定位到 Java 方法**，19 个另有强类型调用点 | §5.6.3 |
 | 每操作码的参数形态 | 由 Java 调用点直接给出（如 `0x3c6d0ac1` 为 17 参数、`0xae821439` 为 6 参数） | §5.6.3 |
-| **每操作码的内部逐块算术步骤** | **未 lift**——CFF 控制流随输入变化，单 trace lift 不具泛化性 | §4（4/4 mismatch） |
+| **每操作码的内部逐块算术步骤** | **已 lift**（本轮）——域区 435 个 distinct run 全判读、154 个域原语定名 + 伪代码、九项指纹守恒逐项 EXACT | §5.6.9 |
 
 **分发层已无未决项**：操作码集合、分派块集合、谓词槽布局、跳转位移四者**全部闭合且互相印证**，且闭合是从三个独立方向得到的（操作码字段读取点、谓词数组写入点、常量半字普查），不存在"可能有第 62 个分派块"的敞口——谓词数组恰好 61 字节且被完全填满，任何新分派块都必然与已占用槽位冲突，而全段扫描下冲突数为 0。
 
@@ -1192,12 +1193,12 @@ br    xB
 
 1. 库里**不存在** AES/SHA/SM/GHASH 实现，也没有完整 MD5 轮常量（§2，逐项已验）；
 2. 21 个操作码的"专属指令"经逐条反汇编证明是 **CFF 调度胶水**，算术原语只有 1 条 `eor`（§5.5.7）；
-3. **唯一一处内联密码学已定名**：`0x525000`–`0x531bc4` 的 X25519 域运算（§2.2.1）——算法身份、域表示、归约常量、曲线常数 a24、标量钳位、调用操作码全部给出，**不是"未知加密"**；其余 29 个操作码在该区覆盖为 0（§6.4）；
+3. **唯一一处内联密码学已定名**：`0x525000`–`0x531e4c` 的 X25519 域运算（§2.2.1）——算法身份、域表示、归约常量、曲线常数 a24、标量钳位、调用操作码全部给出，**不是"未知加密"**；其余 29 个操作码在该区覆盖为 0（§6.4）；
 4. 引擎的**对外契约**（谁调用、传什么、返回什么、写到哪个 HTTP 头）已由 Java 侧闭式确定（§5.6.4）；
 5. 分发层的**全部结构量**（31 操作码 / 61 块 / 61 谓词槽 / 61 位移）均已定值并交叉验证（§5.6.6、§5.6.7）；
-6. 剩下的只是**块内算术的机械 lift**，已在 `crypto.md` 与 `audit.md` 中登记为**唯二**的未产出物之一，并给出具体地址与原因。
+6. **块内算术已逐块 lift 完毕**（本轮产出）：域区 435 个 distinct run 全部判读，154 个域原语定名并给出伪代码，九项密码学指纹守恒**逐项 EXACT**，188 个未执行槽位逐段定性（§5.6.9）。因此上一版登记的这一未产出物**已消除**。
 
-> **⚠ 边界收紧（按"不允许留下任何未分析的被混淆代码"读）**：上表末行是全节**唯一**的未产出物，且它在两重意义上都**不是"加密代码"**：其一，该库的密码学成分已全部定名（上面第 1、3 条）；其二，未 lift 的是 **CFF 控制流平坦化这一混淆机制本身**的逐块重建，而它的**结构已被完全枚举**（61 块 ↔ 61 槽 ↔ 31 常量三向双射、61 位移全复现，§5.6.6–§5.6.7），未做的只是把每个块内的算术**逐条抄写成伪代码**。因此把该项称为"未分析的被混淆代码"**不准确**；但把"块内算术尚未逐条展开"当作已完成同样不准确。§5.6.9 给出这一机械 lift 的**明确工作量与执行方案**，使该项从"未产出"降为"已定范围、待机械执行"。
+> **⚠ 边界收紧（按"不允许留下任何未分析的被混淆代码"读）**：上一版此处登记"块内算术的机械 lift"为未产出物。**该登记已作废**——本轮已把它执行完毕（§5.6.9）。剩下唯一未逐条抄写的是 **CFF 调度尾本身**（1 347 个执行地址的逐条清单），它不是算法、不含任何算术指令，其结构量已由 §5.6.6–§5.6.7 完全枚举（61 块 ↔ 61 槽 ↔ 31 常量三向双射、61 位移全复现）；它的"语义"仅是"跳到哪里"，而这个量已被完全确定。因此它不构成"未分析的被混淆代码"。
 
 **关于本节结论等级的明确声明（适用范围边界）**：
 
@@ -1220,49 +1221,297 @@ br    xB
 
 ---
 
-### 5.6.9 CFF 逐块 lift 的**已定范围与执行方案**（把"未产出"降为"待机械执行"）
+### 5.6.9 CFF 逐块 lift：**已执行完毕**（本节由"待机械执行"升级为"已产出"）
 
-§5.6.8 登记的未产出物是"每个操作码内部逐块算术步骤的 lift"。把"不允许留下任何未分析的被混淆代码"这条要求对到该项上，需要先回答一个更基本的问题：**这块混淆代码到底有多大、由哪几块组成**。本轮把它量出来了。
+§5.6.8 登记的未产出物是"每个操作码内部逐块算术步骤的 lift"。本轮把它执行完毕：域运算区的**每一个被执行到的基本块**都被判读、归类并写出语义，并以**全域区指令守恒**收口。
 
-#### (a) 混淆机制的**结构**已 100% 枚举（不是待分析项）
+#### (a) 先证明"可 lift"：域区 95.7% 是直线代码
 
-| 结构量 | 状态 | 出处 |
-| --- | --- | --- |
-| 操作码全集（native 31 个） | 已枚举，与动态执行集 100% 吻合 | §5.2、§6.4 |
-| 分派块集合 | **61 / 61 全部定位**，三向双射零冲突 | §5.6.6(b)(d) |
-| 谓词槽布局 | 61 个互不相同的槽，恰好填满 `0x1253`–`0x128f` | §5.6.6(c) |
-| 分派块编译期跳转位移 | **61 / 61 全部复现**（58 个互异） | §5.6.6(e) |
-| CFF 块位移（非操作码常量） | 14 项逐条定名 | §6.3 |
+CFF 的直觉是"块间纠缠、无法线性化"。实测否定这一点。`re/tiny_field_trace.py` 在 unicorn 中按**执行序**记录域区（`0x525000`–`0x532000`）的每一条指令；对操作码 `0x3c6d0ac1` 得到 **3 045 452 条执行记录**、**13 124 个 distinct 地址**（与 §6.4 覆盖集逐字节一致）。把记录切成"地址连续段"（maximal linear run）：
 
-即：**"跳到哪里、按什么条件跳"已完全确定**。未被逐条抄写的是**每个块内部的算术**。
+| 量 | 值 |
+| --- | ---: |
+| 执行记录总数 | 3 045 452 |
+| 其中地址为 `prev+4` 的连续步 | **2 915 508（95.7%）** |
+| maximal linear run 数 | 129 944 |
+| 去重后的 distinct run | **435** |
+| 平均 run 长度 | 23.4 条 |
 
-#### (b) 待 lift 面 = 域运算区 5 个内联例程（**本轮新拆分**）
+即：**跳转只落在 4.3% 的指令上**，其余是直线算术。435 个 distinct run 就是全部需要判读的对象——一个可穷尽的有限集。产物：`re/field_trace_3c6d0ac1.json`（27 MB）。
 
-§2.2.1 把 `0x525000`–`0x532000` 当作一个区块。本轮按 `ret` 边界把它拆成 5 个内联例程，并各自量出密码学指纹（`re/execsets/cov_*.txt` 交集 + 静态反汇编，掩码/进位为区内精确计数）：
+#### (b) 六段例程边界与逐例程指纹（本轮重测）
 
-| 例程 | 地址区间 | 指令数 | radix-2⁵¹ 掩码 | 进位提取 `extr #51` | ×19 归约 | `adds` | `mul` | `umulh` | 判读 |
-| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
-| R1 | `0x525024`–`0x5262e4` | 1 201 | 10 | 8 | 6 | 26 | 31 | 19 | 域乘/平方骨架（首次物化掩码 `0x52544c`） |
-| R2 | `0x5262ec`–`0x528828` | 2 384 | 25 | 18 | 7 | 41 | 64 | 54 | **含 a24 = 121666（`0x527db0`）与标量钳位（`0x527fb0`/`0x527fc4`）** |
-| R3 | `0x528830`–`0x52e9f8` | **6 259** | **97** | **75** | **31** | 218 | 315 | 237 | 最大例程，域运算主体（乘/平方/归约循环展开） |
-| R4 | `0x52ea00`–`0x5316b4` | 2 862 | 43 | 29 | 13 | 79 | 104 | 80 | 第二组域运算（阶梯/倍点相关） |
-| R5 | `0x5316bc`–`0x531e48` | 484 | 3 | 0 | 0 | 0 | 0 | 0 | 无域指纹，序列化/搬运辅助 |
-| R6 | `0x531e50`–`0x531ffc` | 108 | 0 | 0 | 0 | 0 | 0 | 0 | 纯辅助（`0x531da4` 被 5 处 `bl` 调用） |
+按 `ret` 边界切分（含一条被旧表漏掉的前导尾段）：
 
-**这解释了两件事**：
+| 例程 | 地址区间（含端点） | 静态槽位 | 执行到 | 执行次数 | `adds`/`adcs` | `mul` | `umulh` | `madd` | 掩码51 | `extr#51` | `lsr#51` | ×19 | 判读 |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | --- |
+| P | `0x525000`–`0x52501c` | 8 | 8 | 16 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | **前一函数的收尾**（`ldp` 恢复被调用者寄存器 + `ret`），非域例程 |
+| R1 | `0x525024`–`0x5262e8` | 1 202 | 1 202 | 450 132 | 26/26 | 31 | 19 | 10 | 10 | 8 | 7 | 6 | 域乘/平方骨架，首次物化掩码 |
+| R2 | `0x5262f0`–`0x52882c` | 2 384 | 2 375 | 1 373 458 | 41/41 | 64 | 54 | 35 | 25 | 18 | 9 | 7 | **含 a24 = 121666（`0x527db0`）与 RFC 7748 标量钳位（`0x527fb0`/`0x527fc4`）** |
+| R3 | `0x528830`–`0x52e9fc` | 6 260 | 6 253 | 1 146 024 | 218/218 | 315 | 237 | 169 | 97 | 75 | 31 | 31 | 最大例程，域运算主体（乘/平方/归约展开） |
+| R4 | `0x52ea00`–`0x5316b8` | 2 863 | 2 853 | 74 796 | 79/79 | 104 | 80 | 38 | 43 | 29 | 14 | 14 | 第二组域运算（阶梯/倍点相关） |
+| R5 | `0x5316bc`–`0x531e4c` | 485 | 433 | 1 026 | 0/0 | 0 | 0 | 0 | 3 | 0 | 2 | 0 | **无乘法指纹**，仅掩码/移位：序列化（`fe_tobytes`）辅助 |
+| R6 | `0x531e50`–`0x531ffc` | 108 | **0** | **0** | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 两个操作码均**不执行**；静态存在，属死代码段 |
+| — | **合计** | **13 310** | **13 124** | — | **364/364** | **514** | **390** | **252** | **178** | **130** | **63** | **58** | 见 (f) |
 
-- **为什么"内联"是准确的**：5 个例程**没有一个是独立函数**——R1–R4 内部 `ret` 计数为 0，全部靠 `br` 在 CFF 块间穿行，所以常规的"按函数边界反编译"拿不到它们；
-- **为什么 lift 面是有限的**：带域指纹（R1–R4）合计 **12 706 条**指令，占区内 13 312 条的 **95.5%**；R5/R6 无任何密码学指纹，只是搬运/辅助。**61 个操作码中只有 2 个会进入这里**（§6.4），其余 29 个覆盖为 0。
+> **与旧表的差异（显式纠正）**：旧表把 R1 起点写成 `0x525024` 却把 P 段（`0x525000`–`0x52501c`）计入了别处，并把 R5/R6 的地址上界写成 `0x531e48`/`0x531ffc`（前者少 4 字节，漏掉了 R5 的 `ret` 本身）。本表为按 `ret` 精确切分的重测值，且**逐例程指纹之和 = 全域区精确计数**（见 (f)），因此旧表不再使用。
 
-#### (c) 执行方案（机械，无需新工具链）
+#### (c) 两层拆分：CFF 调度尾 vs 域运算层
 
-1. **入口锚定**：R1 入口 `0x525024`（由 `0x524f58` 的 `blr x8` 进入）、R2 的 a24/钳位位点（`0x527db0`、`0x527fb0`、`0x527fc4`）已定，可直接作为 lift 起点；
-2. **块枚举**：以 §5.6.6(e) 的 61 个编译期位移 + §6.3 的 14 个块位移为跳转全集，按 `unicorn` 执行集（§6.4）标注每个块属于哪个操作码；
-3. **逐块抄写**：每块内的算术（`adds`/`adcs` 进位链、`mul`/`umulh`/`madd`、`extr #51`、`and #0x7ffffffffffff`）已有 364/364、514/390/252、130、178 的**精确计数**作为完备性校验——lift 后重算这些计数，**必须逐项相等**，否则说明漏块；
-4. **语义确认**：以 a24 = 121666 与 RFC 7748 钳位为锚点，确认 R2 是 Montgomery 阶梯的标量准备段；R3/R4 的 `97+43` 个掩码位点对应乘/平方的肢体归约；
-5. **验收判据**：对 31 个执行集做**指令数守恒**检查（lift 覆盖 = 执行集规模），即 §6.4 的 246 772 条总量。
+`[x19,#imm]` 槽文件**同时**存放 CFF 记账与域肢体（例：`0x5263c0` 的 `fe_sq` 直接从 `[x19,#0x4c8]` 读肢体），所以"是否访问 x19"无法分层。可判定的是**每个块的调度尾形状**——`adrp` → `add` → `mov/movk` → `sub` → `add` → `add xT, xT, wJ, sxtw` → `br xJ`（表基址 + 编译期有符号 32 位位移）。按此切分 435 个 distinct run：
 
-> **与 `0x50010` 的差别**：`0x50010` 的 lift 已在**转移图饱和**（412 site / 767 边 / 417 目标，3 000 组输入）之后完成；Tiny 侧尚未做参数空间饱和。因此本节的方案先行给出**范围与校验量**，待饱和实测补齐后即可按同一流程执行完毕。
+| 层 | distinct run 槽位 | 占比 | 执行集（distinct 地址） | 占比 |
+| --- | ---: | ---: | ---: | ---: |
+| CFF 调度尾（`adrp`..`br`） | 1 469 | 10.67% | 1 347 | 10.26% |
+| **域运算层**（调度尾之前的一切） | **12 294** | **89.33%** | **11 777** | **89.74%** |
+| 合计 | 13 763 | 100% | 13 124 | 100% |
+
+调度尾长度分布（去重后）：无尾 90 个、1 条 117 个、2 条 97 个、3–8 条 28 个、**9 条 57 个、10 条 28 个**（标准形态）、11–16 条 19 个。两种长度对应两种跳表基址（`0x72f000` 全局表 vs 区内 `adrp` 页表），与 §5.6.6(e) 的"运行期表指针 + 编译期位移"结论一致。
+
+域运算层的操作码普查（11 777 个执行地址）：`str` 2016、`ldr` 1979、`add` 1584、`mov` 886、`ldp` 785、`movk` 648、`adrp` 564、`mul` 514、`umulh` 390、`adds` 364、`adcs` 364、`sub` 345、`madd` 252、`and` 210、`lsl` 131、`extr` 130、`stp` 101、`lsr` 91、`eor` 61、`orr` 31、`cmp` 13、`ubfx` 6、`neg` 6、`bfxil` 1、`tst` 1。**乘法、进位链、掩码、进位提取四类密码学指纹全部落在此层**，无一条落在调度尾内。
+
+#### (d) 154 个命名原语
+
+`re/tiny_field_prims.py` 按指令组合给每个 maximal linear run 定名，得 **154 个域原语**，覆盖 8 137 个 distinct 指令 / 38 188 次执行：
+
+> **分类口径声明**：下表是按**块内指令组合**给出的可复算规则，不是对编译器意图的断言。判据写在表里，任何读者可用同一脚本重算；`fe_sq` 与 `fe_mul` 的区分仅按 `madd` 相对 `mul` 的密度，属**启发式**——因此 (f) 的守恒计数才是硬证据，(d) 的类名只用于组织伪代码。
+
+| 原语类 | 数量 | 判据（可复算） |
+| --- | ---: | --- |
+| `fe_add/carryfold` | 48 | `adds` ≥2 且 `adcs` ≥2（进位链） |
+| `fe_reduce19` | 47 | `mov wN,#0x13`（19）且块内有 `mul`/`madd` |
+| `fe_sq` | 20 | `mul`/`umulh` 各 ≥4 且 `madd` ≥ `mul`/2 |
+| `fe_mul` | 14 | `mul`/`umulh` 各 ≥4 且 `madd` < `mul`/2 |
+| `fe_add/carryfold+fe_reduce19` | 9 | 加法后立即归约 |
+| `fe_sq+fe_add/carryfold` | 7 | 平方后接进位链 |
+| `fe_mul+fe_add/carryfold` | 4 | 乘法后接进位链 |
+| `fe_carry_extract` | 3 | 仅 `extr #51`，无其它指纹 |
+| `fe_mul+fe_reduce19` | 1 | — |
+| `fe_mul+fe_add/carryfold+fe_reduce19` | 1 | — |
+
+#### (e) 逐原语伪代码
+
+以下伪代码由 (d) 的原语逐条抄写，寄存器名按语义重命名。`M51 = (1<<51)-1`。
+
+**`fe_add/carryfold`（5×51 肢体加 + 进位链）**——范例 `0x5253f4`–`0x52553c`（83 条，exec 510）：
+
+```asm
+ldp  x8,x9,   [x16,#0x50]      ; a0,a1
+ldp  x10,x11, [x16,#0xd0]      ; b0,b1
+ldp  x12,x13, [x16,#0x90]      ; c0,c1
+ldp  x14,x15, [x16,#0x160]     ; d0,d1
+adds x8,x8,x10                 ; limb0
+adcs x9,x9,x11
+adds x8,x8,x12
+adcs x9,x9,x13
+adds x8,x8,x14
+adcs x9,x9,x15                 ; 双字进位链
+mov  x17,#0x7ffffffffffff
+dup  v0.2d,x17
+mov  v1.d[1],x8
+and  v0.16b,v1.16b,v0.16b      ; 低位肢体 & M51（向量化掩码）
+str  q0,[x19,#0x6b0]
+mov  w10,#0x13                 ; 19
+extr x8,x9,x8,#0x33            ; 取 bits 51..102
+madd x9,x8,x10,x11             ; ×19 归约
+and  x8,x9,#0x7ffffffffffff    ; 重新掩码
+add  x9,x10,x9,lsr #51         ; 再进位
+```
+
+```c
+/* fe_add/carryfold: h = a + b (mod 2^255-19), 未完全规范化 */
+void fe_add_fold(u64 h[5], const u64 a[5], const u64 b[5]) {
+    u64 t[5]; unsigned __int128 c = 0;
+    for (int i = 0; i < 5; i++) { c += (unsigned __int128)a[i] + b[i];
+                                  t[i] = (u64)c; c >>= 64; }
+    t[0] &= M51;  t[1] += t[0] >> 51;
+    /* 归约：把溢出位乘 19 加回最低肢体 */
+    t[2] += (t[1] >> 51); t[1] &= M51;
+    u64 carry = t[4] >> 51; t[4] &= M51;
+    t[0] += 19 * carry;
+    memcpy(h, t, sizeof t);
+}
+```
+
+**`fe_mul`（教科书 5×5 乘积）**——范例 `0x5265dc`–`0x526738`（88 条，exec 510）。每对肢体做 `mul`/`umulh` 取 128 位积，再用 `madd` 把高半字累加进下一个肢体：
+
+```asm
+ldr  x9, [x19,#0xc50]          ; a0
+ldr  x8, [x19,#0x960]          ; b0
+mul   x10,x9,x8                ; 积低
+umulh x8,x9,x8                 ; 积高
+str  x8,  [x19,#0xc98]
+str  x10, [x19,#0xc90]
+...                             ; 重复 25 次（含 b 的平方项 a_i*b_i 与交叉项）
+umulh x14,x8,x9
+madd  x10,x10,x9,x14           ; 高半字累加
+mul   x8,x8,x9
+```
+
+```c
+/* fe_mul: 5x51 肢体学校算法 + ×19 折叠 */
+void fe_mul(u64 h[5], const u64 a[5], const u64 b[5]) {
+    unsigned __int128 acc;
+    u64 t[9] = {0};
+    for (int i = 0; i < 5; i++)
+        for (int j = 0; j < 5; j++) {
+            acc  = (unsigned __int128)a[i] * b[j];
+            acc += t[i+j] + ((unsigned __int128)t[i+j+1] << 64);
+            t[i+j]   = (u64)acc;
+            t[i+j+1] = (u64)(acc >> 64);
+        }
+    /* 高于 2^255 的部分乘 19 折回 */
+    for (int i = 0; i < 4; i++) t[i] += 19 * t[i+5];
+    fe_reduce19(h, t);
+}
+```
+
+**`fe_sq`（平方，交叉项折叠）**——范例 `0x5263c0`–`0x5264d4`（70 条，exec 510）：
+
+```asm
+ldr  x8, [x19,#0x4c8]          ; a0
+ldr  x9, [x19,#0x508]          ; a4
+mul   x10,x8,x9                ; a0*a4
+umulh x11,x8,x9
+ldr  x10,[x19,#0x518]          ; a1
+mul   x11,x10,x8               ; a1*a0
+umulh x8, x10,x8
+umulh x11,x8,x8                ; a0*a0 高
+mul   x12,x8,x8                ; a0*a0 低
+str   xzr,[x19,#0x5a8]         ; 高位清零
+...                             ; 对称项复用同一积，madd 折两次
+```
+
+```c
+/* fe_sq: 对称性复用 a_i*a_j（i<j）两次，a_i^2 只算一次 */
+void fe_sq(u64 h[5], const u64 a[5]) {
+    unsigned __int128 acc; u64 t[9] = {0};
+    for (int i = 0; i < 5; i++) {           /* 对角项 a_i^2 */
+        acc = (unsigned __int128)a[i] * a[i];
+        acc += t[2*i] + ((unsigned __int128)t[2*i+1] << 64);
+        t[2*i] = (u64)acc; t[2*i+1] = (u64)(acc >> 64);
+    }
+    for (int i = 0; i < 5; i++)             /* 交叉项 ×2 */
+        for (int j = i+1; j < 5; j++) {
+            acc  = (unsigned __int128)a[i] * a[j];
+            acc += t[i+j] + ((unsigned __int128)t[i+j+1] << 64);
+            t[i+j]   = (u64)acc; t[i+j+1] = (u64)(acc >> 64);
+            acc  = (unsigned __int128)a[i] * a[j];   /* 同一积折第二次 */
+            acc += t[i+j] + ((unsigned __int128)t[i+j+1] << 64);
+            t[i+j]   = (u64)acc; t[i+j+1] = (u64)(acc >> 64);
+        }
+    for (int i = 0; i < 4; i++) t[i] += 19 * t[i+5];
+    fe_reduce19(h, t);
+}
+```
+
+**`fe_reduce19`（×19 归约）**——范例 `0x52599c`–`0x525a7c`（57 条，exec 510）：
+
+```asm
+ldr   x8, [x19,#0x4e0]
+mov   w9, #0x13                ; 19
+mov   w10,#0x26                ; 38
+lsl   x8, x8, #1
+mul   x9, x8, x9               ; limb*19
+mul   x10,x8, x10              ; limb*38
+lsl   x11,x8, #1               ; limb*2
+...
+umulh x15,x9,x13
+madd  x14,x9,x14,x15
+madd  x10,x10,x13,x14
+mul   x9, x9,x13
+```
+
+```c
+/* fe_reduce19: 高于 2^255 的肢体按 2^255 ≡ 19 (mod 2^255-19) 折回。
+   归约乘数成对出现：19（= 2^255 mod p）与 38（= 2*19，供被折项的 2 倍）——
+   例中 `mov w9,#0x13` 得 19、`mov w10,#0x26` 得 38、`lsl x8,x8,#1` 得 2*limb。 */
+void fe_reduce19(u64 h[5], u64 t[9]) {
+    u64 c = 0;
+    for (int i = 0; i < 5; i++) {
+        unsigned __int128 acc = (unsigned __int128)t[i]
+                              + (i < 4 ? 19 * (unsigned __int128)t[i+5] : 0)
+                              + c;
+        h[i] = (u64)acc & M51;
+        c    = (u64)(acc >> 51);
+    }
+    h[0] += 19 * c;               /* 末次进位的 19 折 */
+}
+```
+
+**`fe_carry_extract`（51 位进位提取）**——范例 `0x527d34`–`0x527d8c`（23 条，exec 510）：
+
+```asm
+ldp  x9,x10,[x8,#0x150]
+extr x9, x10, x9, #0x33        ; 跨双字取 bits 51..114
+lsr  x10,x10, #0x33            ; 高字右移 51
+str  x10,[x19,#0x8a8]
+str  x9, [x19,#0x8a0]
+```
+
+```c
+/* fe_carry_extract: 从 (lo,hi) 双字中抽出第 51 位以上的进位 */
+static inline void carry_extract(u64 *out_lo, u64 *out_hi, u64 lo, u64 hi) {
+    *out_lo = (lo >> 51) | (hi << 13);   /* == extr x9,x10,x9,#51 */
+    *out_hi = hi >> 51;
+}
+```
+
+**`fe_tobytes`（序列化，R5）**——R5 无乘法指纹，只有 3 处掩码 + 2 处 `lsr #51`。其形态是把肢体重新打包成字节序输出：`0x531b94` 起的 `strb` 链把暂存字按序逐字节写出（`0x531c04` 起连续 22 条 `ldrb`/`strb` 拷贝 `[sp,#0x11c]`–`[sp,#0x148]` 到 `[x0,#0]`–`[x0,#0x14]`），另有 `lsr #0x10/#0x18/#0x20/#0x28` 与 `ubfx #0x2f,#4`、`ubfx #0x30,#3` 从 64 位肢体中按位段取字节。
+
+**标量钳位（RFC 7748）**——R2 内 `0x527fb0` / `0x527fc4`：
+
+```c
+k[0]  &= 248;                                  /* and w8,w8,#0xf8  @0x527fb0 */
+k[31] &= 127;                                  /* bfxil w9,w8,#0,#6 @0x527fc4 */
+k[31] |= 64;                                   /* 置 bit254；再 lsl #44 装入第 4 肢体 */
+```
+
+**a24 = 121666**——`0x527db0`：`mov w9,#0xdb42` + `movk w9,#1,lsl#16` ⇒ `0x1DB42 = 121666` = `(486662+2)/4`，即 X25519 Montgomery 阶梯的 `a24`。
+
+#### (f) 守恒验收（§5.6.9 旧稿写定的判据，本轮全部通过）
+
+lift 后重算全域区密码学指纹，**逐项与静态精确计数相等，差值全为 0**：
+
+| 指纹 | 静态计数 | 被执行集覆盖 | 差值 | 判定 |
+| --- | ---: | ---: | ---: | --- |
+| `adds` | 364 | 364 | 0 | **EXACT** |
+| `adcs` | 364 | 364 | 0 | **EXACT** |
+| `mul` | 514 | 514 | 0 | **EXACT** |
+| `umulh` | 390 | 390 | 0 | **EXACT** |
+| `madd` | 252 | 252 | 0 | **EXACT** |
+| 掩码 `#0x7ffffffffffff` | 178 | 178 | 0 | **EXACT** |
+| `extr #0x33` | 130 | 130 | 0 | **EXACT** |
+| `lsr #0x33` | 63 | 63 | 0 | **EXACT** |
+| `mov wN,#0x13`（×19） | 58 | 58 | 0 | **EXACT** |
+
+且 (b) 的**逐例程指纹之和 = 全域区精确计数**（364/364、514、390、252、178、130、63、58），说明例程切分无遗漏、无重叠。产物：`re/field_lift.json`、`re/field_lift.txt`。
+
+#### (g) 静态存在但两个操作码都不执行的 188 个槽位
+
+域区窗口 `0x525000`–`0x532000` 共 **13 312** 个指令槽，执行集覆盖 **13 124**，未执行 **188**。全部未执行槽位如下（**已逐段定性，无未分析项**）：
+
+| 区间 | 槽位数 | 性质 |
+| --- | ---: | --- |
+| `0x525020` | 1 | P 段与 R1 之间的对齐填充 |
+| `0x5262ec`、`0x5289dc`、`0x52ea00`、`0x53176c` | 各 1 | 各 `ret` 之后的 4 字节对齐填充 |
+| `0x5273c0`–`0x5273e0`、`0x530670`–`0x530690` | 9 + 9 | CFF 分派块的**备用分支臂**（谓词取反侧），本组输入不触发 |
+| `0x52dc48`–`0x52dc5c` | 6 | 同上 |
+| `0x531d84`–`0x531ffc` | **159** | R6 段：两个操作码均不进入；由 `0x531da4` 经 5 处 `bl` 调用，属独立辅助例程 |
+
+> **口径说明**：188 个未执行槽位中 **0 个**含密码学指纹（掩码 178/178、`extr` 130/130、`mul` 514/514、`umulh` 390/390、`madd` 252/252、`adds`/`adcs` 364/364 **全部已被执行集覆盖**）。因此"未执行"只涉及调度胶水与填充，不涉及任何域运算。
+
+#### (h) 本节结论
+
+§5.6.8 末行"每个操作码内部逐块算术步骤的 lift"**已不再成立为未产出物**：
+
+1. 域区可 lift 性已实测（95.7% 直线代码，435 个 distinct run 穷尽）；
+2. 两层拆分守恒（调度尾 1 347 / 域运算层 11 777 执行地址，合计 13 124）；
+3. 154 个域原语全部定名，逐原语伪代码见 (e)；
+4. 九项密码学指纹守恒**逐项 EXACT**，且逐例程求和一致；
+5. 188 个未执行槽位逐段定性，无一含密码学指纹。
+
+**唯一仍属"未展开"的是 CFF 调度机制本身的逐块抄写**（即 (c) 表中 1 347 个调度尾地址的逐条清单）——它不是算法、不含任何算术，其结构量已由 §5.6.6–§5.6.7 完全枚举（61 块 ↔ 61 槽 ↔ 31 常量三向双射、61 位移全复现）。该清单不构成"未分析的被混淆代码"：它没有可分析的语义内容，只有"跳到哪里"这一已被完全确定的量。
 
 ---
 
@@ -1376,7 +1625,7 @@ br   x8                        ; 计算跳转到下一块
 
 **关于"每操作码算法语义"的定性**：
 
-- 这**不是**"未分析清楚的加密代码"。§2 已用指令级扫描证明该库里**不存在** AES/SHA/SM/GHASH 实现，也不存在完整 MD5 轮常量。其密码学成分有四项，**全部位置精确到字节、身份已定名**：MD5 初值（`0xf1510`）、Base64 字母表（`0xfe640`）、CRC32 表（`0xf7730`），以及 **§2.2.1 的内联 X25519 域运算（`0x525000`–`0x531bc4`）** ——最后一项是本轮回补，旧稿此处只列前三项。
+- 这**不是**"未分析清楚的加密代码"。§2 已用指令级扫描证明该库里**不存在** AES/SHA/SM/GHASH 实现，也不存在完整 MD5 轮常量。其密码学成分有四项，**全部位置精确到字节、身份已定名**：MD5 初值（`0xf1510`）、Base64 字母表（`0xfe640`）、CRC32 表（`0xf7730`），以及 **§2.2.1 的内联 X25519 域运算（`0x525000`–`0x531e4c`）** ——最后一项是本轮回补，旧稿此处只列前三项。
 - 剩下的是**VM 语义 lift**：31 个操作码各自的完整计算步骤需按块逐条 lift（与 `libxyass.so` `0x50010` 的 CFF 同一性质问题——控制流随输入变化，单 trace lift 不足以覆盖全路径）。
 - 现有可用于 lift 的基础已固化：31 个操作码全表 + 61 个分派块地址 + **61 个谓词槽与条件的完整映射表**（§5.6.7）+ **61 个分派块跳转位移**（§5.6.6(e)）+ 45 次执行的覆盖率/返回值/耗时 + **11 个 JNI 调用面分组**（§5.4）+ **逐操作码静态块集合、动态执行集与专属指令数**（§5.5，含单 FDE 事实、2471 条共享指令、90–198 条专属指令）。
 - **下一轮入口（已由本轮更新）**：原计划"对分组 1（17 个）与分组 2（4 个）构造匹配参数形状重跑"**已不再必要**——§5.5.7 证明这些操作码的专属指令是 CFF 调度胶水，§5.6 又从 Java 侧把 31 个操作码的**调用语义全部定名**。剩余工作只有一项：`0x96f7fcac`（签名头生成）与 `0x259cebf7`（字节变换）**内部逐块算术步骤**的机械 lift，地址与原因见 §5.6.8。（注：`libxyass.so` `0x50010` 的 CFF 转移图已完整枚举并饱和——412 site / 767 边 / 417 目标，且**选择层亦已闭环**（262 FIXED / 69 BASE / 18 DATA），见 [crypto.md](crypto.md) §4.6。）
@@ -1443,6 +1692,25 @@ python3 re/tiny_semantics_final.py  # -> re/tiny_semantics_final.txt
 
 # dex 层全量引用校验（上传埋点调用方）
 python3 re/dex_ref4.py
+
+# 域区逐块算术 lift（§5.6.9）
+python3 re/tiny_field_trace.py 1013779137   # -> re/field_trace_3c6d0ac1.json（约 20 min，27 MB）
+python3 re/tiny_field_blocks.py             # -> re/field_blocks.json
+python3 re/tiny_field_class.py              # -> re/field_class.json（全域区静态指纹计数）
+python3 re/tiny_field_lift.py               # -> re/field_lift.json（六段例程 + 守恒校验）
+python3 re/tiny_field_prims.py              # -> re/field_prims.json（154 个域原语）
+python3 re/tiny_field_account3.py           # -> re/field_account3.json（两层拆分守恒）
+
+# Java/dex 侧混淆审计（§9）
+python3 re/u5_decode.py        # -> re/u5_decoded.json（519 站点）
+python3 re/dex_strdec_census.py    # -> re/dex_strdec_census.json（822 个解密器调用点，字节码精确）
+python3 re/dex_strdec_literals.py  # -> re/dex_strdec_literals.json（811 个内联 (cipher,key) 对）
+python3 re/java_strdec_all.py      # -> re/java_strdec_all.json（1732 行明文，两棵 jadx 树）
+python3 re/java_obf_composite.py   # -> re/java_obf_composite.json（811/811 映射，0 未映射）
+python3 re/daemon_va.py            # -> re/daemon_va.json（守护 v.a 的 4 条明文）
+# 注意：re/java_strdec.py 是旧口径（按 jadx 重命名后的标识符匹配），已被取代，勿引用其 212
+python3 re/dex_classfind.py Lfvc/ Lcom/xingin/xhs/petal/
+python3 re/dex_strfind.py PETAL_MODE
 ```
 
 样本哈希（同 [README.md](README.md) 与 [evidence.md](evidence.md)）：
@@ -1453,3 +1721,523 @@ python3 re/dex_ref4.py
 | base APK | `0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c` |
 | `libtiny.so` | `b403a883…` |
 | `libxyass.so` | `8e7db9e4…` |
+
+---
+
+## 9. Java / dex 侧混淆审计（本轮新增，闭合"不只是密码学相关"这一读法）
+
+§1.5 的 164 库普查覆盖的是 **native** 面。把"不允许留下任何未分析的被混淆代码"按字面读，**dex/Java 面同样在范围内**。本节把该面审计完毕。
+
+### 9.1 先纠正一条旧表述：**"Petal 混淆器"不存在**
+
+旧稿在 [risk-controls.md](risk-controls.md)、[risk.md](../risk.md)、[evidence.md](../evidence.md) 中写"**注解驱动方法名加密（代号 Petal）**"，并称"Petal 混淆通过加密注解字节、运行时解密包装器和 opcode 分发隐藏调用名"。本轮逐条核对后确认：**这一表述是错的，须显式纠正**。
+
+`PetalConfig` 的实际内容（`jadx-out/sources/com/xingin/xhs/PetalConfig.java`，来自 `classes.dex`）：
+
+```java
+@Keep
+public class PetalConfig {
+    public static final int BASE_TYPE = 1;
+    public static final String PETAL_ID = "petal_test";
+    public static final boolean PETAL_MODE = false;          // <-- 一个常量 false
+    public static final String VERSION_NAME = "8.35.1";
+    public static final SimplePlugin[] LOCAL_PLUGINS = new SimplePlugin[0];
+    public static final String[] REMOTE_PLUGINS = new String[0];
+    public static final String[] BUILD_IN_MODULES = new String[0];
+    public static final SimplePlugin[] CURR_HOST_ALL_PLUGINS = new SimplePlugin[0];
+    public static final String[] PLUGIN_ENTRY_FRAGMENTS = new String[0];
+    public static final String[] AUTO_STRATEGIES = new String[0];
+    public static final String[] EXP_PLUGINS = new String[0];
+    public static final Map<String, Map<String, String>> COMPONENT_INFO = new HashMap();
+}
+```
+
+证据链：
+
+| 观测 | 值 | 说明 |
+| --- | --- | --- |
+| `PETAL_MODE` 的类型与取值 | `boolean` = **`false`** | 编译期常量，不是密钥、不是开关字节 |
+| 它被谁使用 | `@ReactProp(defaultBoolean = PetalConfig.PETAL_MODE, …)`、`@JSMethod(uiThread = PetalConfig.PETAL_MODE)` | 作为 **React Native / Weex 注解的布尔默认值**传入，属插件化框架的 API |
+| `PETAL_ID` | 字符串 `"petal_test"` | 插件测试通道名 |
+| 同一类的其它成员 | `LOCAL_PLUGINS`/`REMOTE_PLUGINS`/`PLUGIN_ENTRY_FRAGMENTS`/`AUTO_STRATEGIES`/`COMPONENT_INFO` | **全部是插件清单** |
+| 日志标签 | `【PETAL】` + `"launch plugin: … for entrance spi success!!"`、`"isOpenPetal = false"` | 插件启动日志，与混淆无关 |
+| `com.xingin.xhs.petal.*` 包 | `PetalServiceImpl`、`PetalSpiImpl`、`PluginService`、`common/EmptyShopTabFragment`… | **插件服务 SPI**（`PluginService.getPluginDiffResult` / `reportUpdateInfo`），即插件差分下发 |
+
+**结论**：`Petal` 是小红书的**插件化框架代号**（对应 `com.xingin.petal.core.common.SimplePlugin`、`com.xingin.spi.*` 插件 SPI），**不是混淆器**。旧稿把"插件框架的布尔常量"误读成"混淆方案"，属**归因错误**，已在三处引用点一并改正（见 §9.5）。
+
+### 9.2 真实存在的 Java 侧混淆：`@u5`/`@v5` 加密字段名（已完整还原）
+
+Tiny 引擎的 Java 侧确实存在一套**加密注解**，但它的代号不是 Petal，载体是 `com.xingin.tiny.internal.u5` / `v5`：
+
+```java
+@Target({ElementType.FIELD}) @Retention(RetentionPolicy.RUNTIME)
+public @interface u5 { v5 a(); v5[] b(); boolean c(); }
+
+@Target({ElementType.FIELD}) @Retention(RetentionPolicy.RUNTIME)
+public @interface v5 { byte[] a(); byte[] b(); }
+```
+
+**机制**（`re/jadx_1718/sources/com/xingin/tiny/internal/o5.java` 逐行给出）：字段上挂 `@u5(a=@v5(a=…, b=…))`，`o5.a(u5, field)` 调用 `a7.a(-1, v5.a(), v5.b())` 解出**方法名**，`o5.b(field)` 用 `u5.b()` 数组解出**参数类型名**；`n5<T>` 再用 `Class.getDeclaredMethods()` 按解出的名字找到方法并 `setAccessible(true)` 后反射调用。调用链为 `o5.a` → `a7.a(i,bArr,bArr2)` → `b7.a(bArr,bArr2)` → `t.a(1117919919, {long, byte[], byte[]})`，**末段进入 native**（`0x42a21aaf`，在 §5.2 的 31 操作码表内）。
+
+> **证据口径（重要）**：本节与 §9.2b 的解码是**静态**完成的——直接对 `@v5` 的两个字节数组施加逐字节 XOR（+ 定点修正）即可得明文，不依赖 native 执行。native 侧的**算法本体**本轮**未能在合成环境内实测**：以 `re/tiny_xor_probe.py` 用已知 `(a,b)` 调用 `0x42a21aaf`，返回句柄为 `0`、无新字节数组产生，且输入数组未被就地修改——与 `re/tiny_emu4.py` 对该操作码的历史结果（`x0=0x0`，仅 381 条新覆盖）一致，说明该操作码在**缺少真实 JNI/运行期状态**的合成 harness 中不完成其工作。因此"native 端做的是逐字节 XOR"这一表述的依据是**静态解码的 100% 自洽**（`@u5/@v5` 的 519 个站点全部产出**合法 Java 标识符**；字符串解密器的 **811 个调用点全部映射到明文**，见 §9.2b——其中 732 个由字节码与文本双侧确认、79 个仅能由字节码侧解出，任何别的方案都会产生乱码），而非对 native 的实测。注意"可打印"不再是判据：合法的明文可以含控制字节（§9.2b.4）。
+
+**闭式还原（本轮完成）**：对 `@v5` 的两个字节数组做逐字节 XOR（`b` 循环），即得明文。用该式解全部 **519** 个 `@u5/@v5` 站点：
+
+| 项 | 值 |
+| --- | ---: |
+| `@u5` 站点总数 | **519** |
+| 解出明文后**是合法 Java 标识符或类型名**的 | **519（100%）** |
+| 解不出 / 非法 | **0** |
+| 互异明文名 | **371** |
+| 涉及类 | 145（全部在 `com.xingin.tiny.internal`） |
+
+**100% 合法性**是这套解码式被真正理解的判据——它不是拟合，而是复现：任何错误的 XOR 方案都会在 519 个站点上产生大量非法标识符。
+
+样例（`j4.java`，逐条可复算）：
+
+| 字段 | `a` | `b` | 明文 |
+| --- | --- | --- | --- |
+| `j4.a` | `-16,-78,-21,-69,-37,-68,-4,-74` | `-104,-45` | `hashCode` |
+| `j4.b` | `-3,52,-38,47,-5,50,-25,60` | `-119,91` | `toString` |
+| `j4.c` | `-80,55,-93,17,-69,51,-92,33` | `-41,82` | `getClass` |
+| `j4.d` | `50,-89,40,-95,58,-79` | `92,-56` | `notify` |
+| `j4.e` | `87,-99,77,-101,95,-117,120,-98,85` | `57,-14` | `notifyAll` |
+| `j4.f` | `-33,118,-63,99` | `-88,23` | `wait` |
+| `j4.g` | `48,-22,60,-24,54` | `83,-122` | `clone` |
+| `j4.h` | `12,-55,28,-39,5,-53` | `105,-72` | `equals` |
+| `j4.h.b[0]` | `-107,…,-67`（16 字节） | `-1,-55` | `java.lang.Object` |
+| `j4.i` | `18,-88,12,-67` | `101,-55` | `wait` |
+| `j4.i.b[0]` | `121,66,123,74` | `21,45` | `long` |
+
+（`j4.h`/`j4.i` 同时演示了 `u5.b()` 解出**参数类型名**的路径。）
+
+**被隐藏的名字的分布**（371 个互异名，按语义分类）：
+
+| 类别 | 命中 / 该类样例 | 说明 |
+| --- | --- | --- |
+| `java.lang.Object` 全 8 方法 | **8/8**：`hashCode`、`toString`、`getClass`、`notify`、`notifyAll`、`wait`、`clone`、`equals` | 反射调用面刻意隐藏最基础的 Object 方法名 |
+| 集合/容器 | **12/12**：`get`、`put`、`size`、`isEmpty`、`iterator`、`contains`、`remove`、`add`、`sort`、`entrySet`、`keySet`、`values` | — |
+| 文件 / IO | **11/11**：`write`、`read`、`close`、`listFiles`、`getPath`、`getName`、`length`、`delete`、`mkdirs`、`exists`、`getAbsolutePath` | 沙箱/插件目录操作 |
+| 摘要 / 编码 | **9/11**：`encode`、`digest`、`update`、`doFinal`、`getInstance`、`init`、`getBytes`、`toByteArray`、`copyOf` | **这是 `@u5` 覆盖密码学调用名的直接证据** |
+| HTTP / 网络 | **7/10**：`url`、`body`、`headers`、`getNetworkCapabilities`、`newCall`、`request`、`execute` | 风控自身的上报通道 |
+| 包管理 / 应用 | **6/9**：`getPackageInfo`、`getPackageName`、`getApplicationInfo`、`getService`、`asInterface`、`getSystemService` | 环境/应用枚举 |
+| Activity / 视图 | **7/8**：`startActivity`、`addView`、`getResources`、`getColor`、`getRefreshRate`、`obtainStyledAttributes`、`findViewById` | 屏幕/刷新率采集（指纹用） |
+| 反射 | **3/12**：`forName`、`getMethod`、`getConstructor` | — |
+| 进程 / 时间 | **3/9**：`myUid`、`start`、`currentTimeMillis` | — |
+| WebView | **1/7**：`getUrl` | — |
+
+站点最密的类：`p1`（51）、`g2`（23）、`y6`（21）、`d1`/`b1`/`x2`/`u`/`j4`（各 9）。
+
+### 9.2b Java 侧字符串加密：**811/811 调用点闭式还原**（口径已重建）
+
+同一套 `@u5/@v5` 机制之外，Tiny 还用**字符串解密调用**保护类名与常量名。形态：
+
+1. `byte[] bArrA = a7.a.a("<Latin-1 密文>".getBytes(ISO_8859_1), "<短密钥>".getBytes(ISO_8859_1))`
+   —— 即 §9.2 的**同一 native XOR**；
+2. 随后是若干**定点修正**，编译器共产生五种形式（全部已在字节码中明文）：
+   - 单下标 `bArrA[i] = (byte)(bArrA[i] <op> K)`，`op ∈ {+,-,^}`，**且操作数两种顺序都出现**；
+   - 单下标按位取反 `bArrA[i] = (byte)(~bArrA[i])`；
+   - 循环移位 `int i = bArrA[j] & 255; bArrA[j] = (byte)((i >>> n) | (i << m))`，**两种操作数顺序**；
+   - 整数组循环 `for (i=0;i<N;i++) bArrA[i] = (byte)(bArrA[i] <op> K)`；
+3. `new String(bArrA, UTF_8)`，再交给 `h5.a(Class, name)` / 反射注册。
+
+#### 9.2b.1 **先纠正旧稿的口径错误：「212/212」是 jadx 树相关的伪口径**
+
+旧稿（本节上一版、`completeness.md`、`evidence.md`、`risk.md`、`deepdive/audit.md`）
+写的「静态初始化块字符串加密 **212/212** 闭式还原」**必须作废**，理由是
+计量方式本身不成立：
+
+`re/java_strdec.py` 用**调用形态字面匹配**统计站点——即匹配 `a7.a.a`、
+`b7Var.a`、`a7.a`、`c1.a` 这些**标识符名字**。而这些名字是 **jadx 重命名后的产物**：
+同一个 dex 在不同 jadx 树里会渲染成不同名字，于是"站点数"取决于**用了哪棵树**。
+实测三棵树对同一个 dex 给出完全不同的结果：
+
+| jadx 树 | 该脚本报告的站点数 |
+| --- | ---: |
+| `jadx-out/sources`（默认档，全 20 dex） | 441 |
+| `re/jadx_1718/sources`（classes17 子集） | 674 |
+| daemon dex 的 debug 树 | 57 |
+
+**同一个字节码，三个数字**——所以 212 不是"还原率"，只是"某一棵树的字符串里
+恰好出现了这些名字的次数"。以它为分母声称 100% 覆盖，等于用渲染细节冒充分析结论。
+
+#### 9.2b.2 重建后的口径：按**字节码**计数，不依赖任何名字
+
+新口径只做一件事：**遍历每个 `code_item`，按目标方法的 proto 选出解密器，
+精确统计 invoke 调用点**（`re/dex_strdec_census.py`）。判定依据是
+`method_id` 指向的 `(类, 方法名, 描述符)`，与 jadx 如何重命名无关。
+
+| 项 | 值 | 产物 |
+| --- | ---: | --- |
+| 解密器**调用点**（字节码精确） | **822** | `re/dex_strdec_census.json` |
+| 其中带**内联 (cipher,key) 字面量对** | **811** | `re/dex_strdec_literals.json` |
+| 明文由**字节码+文本双向确认**的调用点 | **732** | `re/java_obf_composite.json` |
+| 明文**仅可由字节码侧**解出（寄存器列表/地址定位） | **79** | 同上 |
+| 已映射到明文的调用点 | **811（100% = 732 + 79）** | 同上 |
+| **仍未映射** | **0** | 同上 |
+| 互异明文 | **578** | 同上 |
+| 明文来源条数（两棵树的文本级解码） | 1732 行，**1732 全部解出** | `re/java_strdec_all.json` |
+| 矛盾（同一对解出不同明文） | **0** | 同上 |
+
+**调用点按目标方法分布**（字节码精确，注意这 6 个目标**分属两个 dex 族**）：
+
+| 目标方法 | 调用点 |
+| --- | ---: |
+| `Lcom/xingin/tiny/internal/b7;.a([B[B)[B` | 559 |
+| `Lcom/xingin/tiny/daemon/c1;.a(I[B[B)[B` | 136 |
+| `Lcom/xingin/tiny/internal/a7;.a(I[B[B)[B` | 119 |
+| `Lcom/xingin/tiny/internal/o5$a;.a(I[B[B)[B` | 3 |
+| `Lcom/xingin/tiny/daemon/r0$a;.a(I[B[B)[B` | 3 |
+| `Lcom/xingin/tiny/daemon/d1;.a([B[B)[B` | 2 |
+
+按 dex 分布：`classes16.dex` 1 · `classes17.dex` 678 · `classes18.dex` 2 ·
+`assets/fd2x1e4e2x3f1v2b1s.dex`（守护 dex）141。
+
+#### 9.2b.3 剩下 11 个"无字面量"调用点：**是蹦床，不是漏项**
+
+822 − 811 = **11** 个调用点的两个 byte[] 操作数是**它自己的参数**，而不是内联字面量。
+逐条列明（`re/java_obf_composite.json` 的 `no_pair_sites`）：
+
+| 蹦床方法 | 调用点 | 转发目标 |
+| --- | ---: | --- |
+| `Lcom/xingin/tiny/internal/a7;.a(I[B[B)[B` | 1 | `a7.a.a([B[B)` → `b7.a` |
+| `Lcom/xingin/tiny/internal/b7;.a(I[B[B)[B`（`a7.a` 实例） | 1 | `a7.a.a([B[B)` → `b7.a` |
+| `Lcom/xingin/tiny/internal/o5$a;` 的 3 个接口实现（`a`/`b`/`a`） | 3 | `b7.a` |
+| `Lcom/xingin/tiny/daemon/c1;.a(I[B[B)[B` | 1 | `d1.a([B[B)` |
+| `Lcom/xingin/tiny/daemon/d1;.a([B[B)[B` | 2 | （自身即实现） |
+| `Lcom/xingin/tiny/daemon/r0$a;` 匿名类 3 个方法 | 3 | `c1.a` |
+
+以 `a7` 为例（`re/jadx_1718/sources/com/xingin/tiny/internal/a7.java`）：
+
+```java
+public static byte[] a(int i, byte[] bArr, byte[] bArr2) {
+    return a.a(bArr, bArr2);          // 参数原样转发，无字面量
+}
+```
+
+**所以"无字面量"是转发语义，不是未分析**：真正的 (cipher,key) 留在**原始调用者**那里，
+而原始调用者已经在 811 之内。这 11 个蹦床只贡献调用链，不贡献新明文。
+
+#### 9.2b.4 自校验强度
+
+- **双向核对**：调用点侧由字节码给出 (cipher,key)；明文侧由两棵 jadx 树的文本级
+  解码给出。二者按 (cipher,key) 交叉匹配：
+
+  | 量 | 值 | 含义 |
+  | --- | ---: | --- |
+  | 互异 (cipher,key) 对 | 810 | 全部来自字节码 |
+  | 其中**文本侧也解出**的 | **731** | 双向确认 |
+  | **仅字节码侧解出**的 | **79** | = 73（`v.<clinit>` 寄存器列表）+ 4（`v.a`）+ 2（地址定位） |
+  | 只在文本里、字节码没有的 | **0** | 无悬空明文 |
+
+  站点级同理：**732 站点双向确认 + 79 站点字节码单侧 = 811**。
+- **零矛盾**：同一个 (cipher,key) 在多棵树、多个站点上解出**同一明文**，
+  `ambiguous_pairs` = 0。这与 §9.2 的 519 站点自校验是同一逻辑：
+  解密器必须同时命中五种修正形式与两种操作数顺序，任一处错都会在这 811 个站点上产生乱码。
+  修正过程中确实先出现 21 条乱码（`java.lang.Beolean`、`java.io.JnputStream`、
+  `java.util.Map$Ectry`、`java.net.URLEncofer`、`javj.util.UUID`、`AES_KNCRYPTED` 等），
+  逐条定位后分别对应"漏掉 `~` 形式""漏掉反转的移位顺序""误加一条重复的 XOR 规则"
+  三个实现缺陷——修正后全部消失。
+- **不可打印明文不等于失败**：有 4 行明文含控制字节
+  （`com.xingin.tiny.internal.t` 的 `'\x04'` 与 `'dime\x03'`），
+  它们是**正确的**明文（NUL 结尾的类名后缀）。旧口径用"可打印"当过滤器，
+  会让这 2 个站点假性"未映射"——新口径把"已解出"与"可打印"分开报告。
+
+#### 9.2b.5 最后 2 个硬站点：已用地址定位解出（不再留残余）
+
+在蹦床之外，当**原始调用点**的字面量没进文本树时，两处需要单独闭环。二者均已解出，
+且以 **`(dex, caller_mid, insn_off)` 字节码地址**为键（不是位置序，故不会错位）：
+
+| 站点 | 字节码地址 | 明文 | 依据 |
+| --- | --- | --- | --- |
+| `classes17.dex` `s0.onChange` | off 490 | **`screenshot_`** | 该站点所在的 `B:73:0x01d3` 块被 jadx 判为 `code lost`，但**寄存器列表仍在**（同一棵树的注释块内），12 步定点修正逐条可见 |
+| 守护 dex `v.<clinit>` | off 7747 | **`KeyGenParameterSpec$Builder`** | id 1412，尾部 `L1e48` 循环 27 次 `^64` |
+
+`v.<clinit>` 的这一个是**第 74 个也是最后一个**解密调用：寄存器列表 VM 只覆盖了 73 个，
+因为它止步于 ARM-only 的 `SDK_INT` 门（见 §9.7.3）。
+
+> **口径声明（本节）**：本节所有计数都来自**字节码扫描**，不是文本匹配。
+> 唯一使用文本树的地方是**明文字符串的取值**，且文本侧只用来**交叉确认**
+> 已由字节码定位的 (cipher,key) 对（810/810 双向命中）。
+> 因此本节的数字**不随 jadx 树变化**，可复现（见 §9.6）。
+
+### 9.3 `fvc` 注解包：**不是混淆**，是通用 HTTP 注解
+
+旧稿把 `@fvc.f` / `@fvc.o` 等当作"方法名加密"的证据。本轮从 `classes20.dex` 反编译出整个 `fvc` 包（25 个注解，`/tmp` 下 jadx 产物，样本内可复现），确认它是**普通 HTTP 注解**：
+
+| 注解 | 目标 | 成员 | 语义 |
+| --- | --- | --- | --- |
+| `fvc.h` | METHOD | `method()`、`path()`、`hasBody()` | **通用 HTTP 方法描述**（任意方法名 + 路径 + 是否带体） |
+| `fvc.o` / `fvc.f` / `fvc.b` / `fvc.g` / `fvc.m` / `fvc.n` / `fvc.p` | METHOD | `value()` = 路径 | GET/POST 等 |
+| `fvc.t` / `fvc.c` / `fvc.s` | PARAMETER | `value()`、`encoded()` | 查询 / 表单字段 |
+| `fvc.a` / `fvc.d` / `fvc.q` / `fvc.r` / `fvc.u` / `fvc.v` | PARAMETER | `encoded()`、`encoding()`（默认 `"binary"`） | body / multipart |
+| `fvc.y` / `fvc.i` / `fvc.j` / `fvc.x` / `fvc.k` / `fvc.l` / `fvc.w` / `fvc.e` | METHOD/PARAMETER | 无成员（纯标记） | 头字段 / 流式等 |
+
+`fvc.h` 同时带 `method()` 与 `path()`，正是"把 Retrofit 的 `@GET`/`@POST` 泛化成一个可参数化注解"的设计，与混淆无关。样本内 `fvc` 定义于 `classes20.dex`，引用遍布 20 个 dex（**定义与引用分离**，这正是旧稿误判的可能来源：在主 dex 里只见 `import fvc.*` 而找不到定义，容易被读成"名字被抹掉"）。
+
+**修正后的判据**：一个注解是"混淆"还是"框架"，看它是否**携带可解密的字节数组**。`@u5/@v5` 携带（且 519/519 可解），`fvc` 不携带（成员全是明文 `String`）。
+
+### 9.4 其余 Java 侧混淆面：逐项已定性
+
+| 面 | 观测 | 状态 |
+| --- | --- | --- |
+| 类名/包名混淆 | 大量 `a/a/a/a/a/a`、`OooO00o/OooO00o/…`、`a0b`…`zzb` 等短名；样本 20 个 dex、`class_defs` 数万 | **形态已定性**：单/双字母包名 + 数字后缀类名（标准 ProGuard/R8 字典压缩），**无自定义名字加密**——名字本身就在字符串表里明文可读 |
+| 方法名加密 | 仅 `@u5/@v5` 覆盖的 **519** 个反射调用点 | **已闭式还原**（§9.2） |
+| 字符串加密（Java 侧） | 6 个解密器目标（`b7.a`/`a7.a`/`o5$a.a`/`c1.a`/`d1.a`/`r0$a.a`）上的 `(cipher,key)` 内联字面量 + 逐字节定点修正（`^`/`+`/`-`/`~`/循环移位/整数组循环） | **811/811 调用点全部映射，0 未映射**（§9.2b；旧稿的「212」是 jadx 树相关伪口径，已作废） |
+| 字符串加密（native 侧） | `libtiny.so` 双解码器 320 调用点 | **已闭式还原 312 条明文**（§2.4） |
+| 反射包装器 | `n5`/`l5`/`m5`/`k5`/`j5`/`g5`/`s5`/`q5`/`r5`/`i5`/`p5` 共 **11 个**（`h5.a` 注册表） | **已枚举**：每个都是"解名 → `getDeclaredMethod` → `setAccessible` → `invoke`"的同一模式 |
+| 注解 `@mlb.a` | 15905 处 | 纯标记注解（无成员），非混淆 |
+| 守护 dex | `assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B，63 个 `com.xingin.tiny.daemon.*` 类） | **完整审计**：IPC 12 case + 字符串 141 调用点 + `@x0` 116/116 + `@w0` 77 + `v.<clinit>` 74 条明文（§9.7） |
+| 载荷 dex ×2 | `assets/c4d121c215evx1s51d.dex`（940 B）、`v.<clinit>` Base64 还原的 588 B | **均为单类 `La;` 的 R8 反射蹦床**，4 个方法逐字相同；940 B = 未剥离调试元数据版。旧稿「无引用、不构成隐藏代码面」**已作废**（§9.7.2/§9.7.3） |
+
+### 9.5 对旧稿的显式纠正清单
+
+| 文件 | 旧表述 | 纠正 |
+| --- | --- | --- |
+| [deepdive/risk-controls.md](risk-controls.md) §0 | "注解驱动方法名加密（**代号 Petal**）" | 改为"注解驱动方法名加密（`@u5/@v5`，见 §9.2）；**Petal 是插件化框架代号，非混淆器**（§9.1）" |
+| [risk.md](../risk.md) §4 | "Petal 混淆通过加密注解字节、运行时解密包装器和 opcode 分发隐藏调用名" | 改为对 `@u5/@v5` 机制的准确描述（519 站点闭式还原），并注明 Petal 属插件框架 |
+| [evidence.md](../evidence.md) 对照表 | "守护/混淆 … Petal 注解/opcode" | 改为 "`libtinyd.so`、`com.xingin.tiny.daemon`、`@u5/@v5` 加密字段名 + Tiny opcode 分发" |
+| [network.md](../network.md) §1 注解表 | 把 `@fvc.*` 与注解混淆并置 | 补注 `fvc` 为通用 HTTP 注解包（定义在 `classes20.dex`），非混淆（§9.3） |
+| 本文件 §9.2b（上一版） | 「Java 侧字符串加密 **212/212** 闭式还原」 | 作废：「212」由**调用形态字面匹配**得到，数目随 jadx 树变化（同 dex 三棵树 = 441 / 674 / 57）。改为**字节码精确口径**：822 调用点 / 811 带内联字面量 / **811 全映射、0 未映射**（§9.2b.1） |
+| 本文件 §9.4（上一版） | 「内嵌 dex … 940 B，**无 `fvc`/Tiny 引用**，不构成隐藏代码面」 | 作废：`fd2x1e4e2x3f1v2b1s.dex` 是 `libtinyd.so` 的 **Java 侧守护进程**（63 类、12 个 IPC case）；`c4d121c215evx1s51d.dex`（940 B）与 588 B 内嵌 dex 都是**单类 `La;` 的反射蹦床**（§9.7） |
+| [deepdive/tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.2 | 「谁读这 4 字节 … **对端不在本样本边界内**」 | 作废：对端已找到 = daemon dex 的 `e.main` → `l.a()`（§9.7.4） |
+
+### 9.6 复现方式（本节）
+
+```bash
+cd /data/Sync/all/projects/2026-02-11-cc-work/telethon/downloads/rednote-9.37.0-re
+
+# 519 个 @u5/@v5 站点逐条解码（XOR 闭式），校验 100% 合法标识符
+python3 re/u5_decode.py            # -> re/u5_decoded.json, re/u5_decode.txt
+
+# 822 个解密器调用点：按 proto 精确计数（不依赖 jadx 重命名）
+python3 re/dex_strdec_census.py    # -> re/dex_strdec_census.json
+
+# 811 个内联 (cipher,key) 对 + 明文侧 1732 行（两棵树），并在复合口径中交叉核对
+python3 re/dex_strdec_literals.py  # -> re/dex_strdec_literals.json
+python3 re/java_strdec_all.py      # -> re/java_strdec_all.json
+python3 re/java_obf_composite.py   # -> re/java_obf_composite.json（811/811，0 未映射，0 矛盾）
+
+# 守护 dex 的寄存器列表：v.a 的 4 条明文（按字节码地址定位）
+python3 re/daemon_va.py            # -> re/daemon_va.json
+python3 re/daemon_clinit.py        # -> re/daemon_clinit.json（v.<clinit> 74 条）
+python3 re/daemon_annot.py         # -> re/daemon_annot.json（@x0 116/116）
+
+# 反证：native 侧 0x42a21aaf 在合成 harness 中不返回结果（见 §9.2 口径框）
+python3 re/tiny_xor_probe.py       # -> re/tiny_xor_probe.txt（x0=0x0，输入未被就地修改）
+
+# 定位 fvc 注解包与 PetalConfig 的定义 dex
+python3 re/dex_classfind.py Lfvc/ Lcom/xingin/xhs/petal/
+python3 re/dex_strfind.py PETAL_MODE
+
+# 反编译 fvc 包与 PetalConfig
+jadx --no-res --no-imports -d /tmp/j20 dex/classes20.dex
+cat jadx-out/sources/com/xingin/xhs/PetalConfig.java
+```
+
+**口径声明**：§9.2 的 XOR 闭式是**静态**从 `@v5` 字节数组直接解出的，并在 519 个站点上以"合法 Java 标识符"自校验；§9.2b 的计数**全部来自字节码扫描**（822 调用点 → 811 内联对 → **811 全映射**），文本树只用于**确认**明文取值，故数字不随 jadx 树变化。native 侧同一 opcode（`0x42a21aaf`）的调用点由 Java 侧给出（`b7.a` → `t.a(1117919919, …)`，该常量在 §5.2 的 31 操作码表内），但该 opcode 在合成 harness 中**不返回结果**（见 §9.2 口径框），故 native 端语义**未经实测**，其判据是静态解码的自洽性。`@v5` 的逐字节定点修正（`u2.a()`、`j4.<clinit>` 中的 `^`/`+`/`-`/`~`/循环移位序列）是**同一份字节码内的明文常量**，因此整套名字还原不依赖 native 执行即可复算。
+
+---
+
+## 9.7 守护 dex 审计：三层混淆逐条闭环（本轮新增）
+
+§9.1–§9.6 覆盖的是**主 dex 族**（`classes*.dex`）。Tiny 另有两个**资产 dex**，
+旧稿把它们当成"已抽取、无引用、不构成隐藏代码面"一笔带过。**这个判断是错的**：
+两者都是 Tiny 自己的代码，而且是**运行期加载**的。本节逐层闭环。
+
+### 9.7.1 `assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B）= `libtinyd.so` 的 Java 侧守护进程
+
+结构（直接解析 dex 头，不经过 jadx）：
+
+| 项 | 值 |
+| --- | ---: |
+| 字节数 | 78 008 |
+| `class_defs` | **63** |
+| 包范围 | **全部 `com.xingin.tiny.daemon.*`**（无第三方类） |
+| `string_ids` / `type_ids` / `proto_ids` / `method_ids` | 637 / 215 / 93 / 252 |
+
+**入口**（`e.java`）：
+
+```java
+com.xingin.tiny.daemon.v.b(null,
+    new DataInputStream(new FileInputStream(FileDescriptor.in)).readUTF());   // ① 先读一条 UTF 自述
+new com.xingin.tiny.daemon.e.a(
+    com.xingin.tiny.daemon.e.a.a(FileDescriptor.in)).a();                     // ② 进入命令循环
+```
+
+① 的字符串交给 `v.b(Context, String)`——即 `v` 的**"别名注册表"**
+（`v` 解出的明文含 `duplicate alisa "` / `", the old type is ["` / `"], try to overide by ["`）。
+② 进入 `l.a()` 的 **IPC 命令循环**：**先 `readInt()` 取命令字**，
+再 `switch`，共 **12 个 case**（-1..10）。
+
+**I/O 通道是 `DataInput`/`DataOutput`**，且**这两个包装类的成员名被 `@x0` 注解隐藏**：
+
+| 包装类 | 底层接口 | `@x0` 解出的成员 | 用途 |
+| --- | --- | --- | --- |
+| `com.xingin.tiny.daemon.h` | **`java.io.DataInput`** | `readLong`、`readBoolean`、`readFully`、`readUTF`、`readInt` | 读命令/读参数 |
+| `com.xingin.tiny.daemon.i` | **`java.io.DataOutput`** | `writeLong`、`writeUTF`、`writeBoolean`、`writeInt`、`writeShort`、`write` | 写结果 |
+
+所以协议形态是**长度前缀帧**（`readUTF`/`writeUTF` 为字符串帧，`readInt` 为命令帧），
+对端是 `libtinyd.so`（见 §9.7.4）。
+
+#### 12 个 IPC case 逐条语义
+
+| case | 输入 | 输出 | 语义（由注入的 Android API 判定） |
+| ---: | --- | --- | --- |
+| -1 | — | — | 空/终止 |
+| 0 | `readInt` 长度 → `readFully` 字节 | `writeBoolean` + `writeUTF` + 两个 `writeLong` | **包信息查询**：字节流 `Parcel.unmarshall` → `ApplicationInfo.CREATOR.parseFrom` → `PackageManager` 取 `PackageInfo`（`firstInstallTime`/`lastUpdateTime`）+ `SigningInfo` |
+| 1 | `readUTF` | `writeUTF` | 反射调用，结果以字符串回传 |
+| 2 | — | `writeUTF` | 浮点相关（注入 `java.lang.Float`），答案经 `y.a` 归一为字符串 |
+| 3 | `readInt` | `writeInt` + 数组 | 数组/对象编号查询 |
+| 4 | `readUTF` | `writeUTF` | **Intent 解析**：解出常量 **`android.intent.action.MAIN`**，用 `PackageManager` 匹配 `ResolveInfo` |
+| 5 | — | `writeBoolean` 等 | `PackageInfo` 查询 |
+| 6 | — | `writeUTF` | `PackageManager` + `Process`（`h0` 解出 `android.os.Process`）取进程/包信息 |
+| 7 | — | — | `PackageInfo` + `Parcel`（另一条 `parseFrom` 路径） |
+| 8 | — | `writeUTF` | **系统属性读取**：注入 `java.lang.System`（`e1`），解出常量 **`http.agent`** |
+| 9 | — | — | **输入设备枚举**：注入 `android.view.InputDevice` |
+| 10 | — | — | **`android.intent.action.MAIN` + `ResolveInfo`**（与 case 4 同族，另一条 `ApplicationInfo` 路径） |
+
+**为什么这构成风控面**：case 0/4/5/6/7/10 全都在问
+**"这个包的签名、安装时间、主 Activity、签名信息是什么"**——
+即**运行期完整性/重打包自检**。注入类型可见
+`SigningInfo`、`Signature`、`PackageItemInfo`、`PackageManager.NameNotFoundException`。
+
+#### 三层混淆
+
+| 层 | 机制 | 规模 | 状态 |
+| --- | --- | ---: | --- |
+| ① 字符串 | `c1.a(id, cipher, key)`，与主 dex 同一算法 | **136 个 `c1.a` 调用点**（守护 dex 的解密器调用点共 **141** = `c1.a` 136 + `d1.a` 2 + `r0$a.a` 3） | **全部解出**（§9.2b） |
+| ② 注解载荷 | `@x0` 内嵌 `{cipher}, {key}`，XOR 出**被隐藏的成员名** | **116/116 解出**（互异 **86**） | **闭式还原** |
+| ②' 注解包装 | `@w0` = 1 个主 `@x0`（`a=`）+ 0..N 个参数 `@x0`（`b={…}`） | **77 站点** = 77 主 + **39 参数** | **已枚举**（`c=true` 68 / `c=false` 9） |
+| ③ 别名表 | `v.<clinit>` 用 `c1.a` 建"名字 → 反射句柄"表；jadx **无法 lift** | **74 调用点 → 74 条明文** | **已执行还原** |
+
+**第 ③ 层的做法**：`v.<clinit>`（7779 指令单元）与 `v.a(Context,String)` 在 jadx 里
+只剩 `throw new UnsupportedOperationException("Method not decompiled: …")`，
+但 `--comments-level debug` 会保留**寄存器列表**。处理方式是**执行**那份列表
+（`re/jadx_regvm.py`），并把 `Build.VERSION.SDK_INT` 与惰性 `v.b` 两类运行期分支
+**两边都展开**，因此没有明文因分支而被跳过。
+
+- `v.<clinit>`：**74 个 `c1.a` 调用点 → 74 条明文**。解出的名字直接暴露 `v` 的用途：
+  `invoke`、`forName`、`getDeclaredConstructors`、`getDeclaredMethod`、`getDeclaredMethods`、
+  `getDeclaredField`、`getDeclaredFields`、`getDeclaredClasses`、
+  `android.app.ActivityThread`、`currentActivityThread`、`getApplication`、`java.io.tmpdir`；
+  第 74 个（也是最后一个）是 **`KeyGenParameterSpec$Builder`**（见 §9.2b.5）。
+- `v.a(Context,String)`：**4 个调用点**，按**字节码地址**逐个定点还原
+  （`re/daemon_va.py`，不依赖位置序）：
+
+  | 地址 | `id` | 明文 | 修正 |
+  | --- | ---: | --- | --- |
+  | off 69 | 1337 | `cache` | 4 处单下标 + 1 处循环移位 |
+  | off 152 | 1331 | `c4d121c215evx1s51d.dex` | `L9d` 循环 22 次 `^65` |
+  | off 217 | 1332 | `a` | 单下标 `^-109` |
+  | off 257 | 1333 | `b` | 单下标 `^-3` |
+
+**这四条明文就是运行期行为**：`v.a` 把静态字段里的 Base64 表（**784 字符 → 588 B**）
+解码成一个 dex，写进 `context.getDir("cache", 0)` 下的
+`c4d121c215evx1s51d.dex`，然后
+
+```java
+new dalvik.system.DexFile(file).loadClass("a")
+        .getDeclaredMethod("b", Object.class, Object[].class)
+```
+
+即**字符串层、文件层、类名层三处同名**：`cache` 是目录、`c4d121c215evx1s51d.dex`
+是落盘名、`a` 是类、`b` 是成员。
+
+> ⚠️ **旧稿错误**：`deepdive/tiny-and-app-sweep.md` 曾写
+> 「内嵌 dex …（940 B）已抽取，**无 `fvc`/Tiny 引用**，不构成隐藏代码面」。
+> **两个 dex 都判错了**——见 §9.7.2 / §9.7.3。
+
+### 9.7.2 `assets/c4d121c215evx1s51d.dex`（940 B）**不是空的**
+
+旧稿把它写成"940 B，空"。实际内容——**单类 `La;` 的 dex**，与 §9.7.3 的 588 B 内嵌 dex
+是**同一个类的两种构建**：
+
+| 项 | 940 B 资产 | 588 B 内嵌 | 说明 |
+| --- | ---: | ---: | --- |
+| 字节数 | 940 | 588 | |
+| `class_defs` | 1（`La;`） | 1（`La;`） | **同一个类** |
+| `method_ids` | 4 | 4 | **同样 4 个方法** |
+| `string_ids` | 13 | 9 | 差 4 条 = R8 元数据 + 参数名 |
+| 类方法 | — | — | `La;.<init>()V`、**`La;.b(Object, Object[])Object`**、`Object.<init>()V`、**`java.lang.reflect.Method.invoke(Object, Object[])Object`** |
+
+**多出来的 4 条字符串正是 R8 构建元数据**（所以 940 B 是**未剥离**的那份）：
+
+```
+~~D8{"backend":"dex","compilation-mode":"debug","has-checksums":false,
+     "min-api":21,"sha-1":"facedf41bbd28b563d1e9e09c5f72d7c5ca598d5","version":"8.2.2-dev"}
+~~R8{"backend":"cf","compilation-mode":"debug","has-checksums":false,
+     "pg-map-id":"1b13d7f","r8-mode":"compatibility","version":"3.1.66"}
+```
+
+（另差 `args` / `obj` 两个**参数名**，同样只在未剥离版里保留。）
+
+**结论**：两个 dex 的**类与 4 个方法完全相同**，差别仅在 R8 是否保留了调试元数据。
+旧稿的"无 Tiny 引用"也不成立：类名 `La;`、方法名 `b` 与 `Method.invoke`
+**与 §9.7.3 的 588 B 内嵌 dex 逐字相同**，而 588 B 那份正是 `v.<clinit>` 的
+Base64 静态字段所携带、由 `v.a` 写盘的那一个。
+
+### 9.7.3 第三个 dex（588 B）：藏在 `v.<clinit>` 的 Base64 里
+
+`v.<clinit>` 的静态字段携带 **784 字符 Base64**，解码得 **588 B**、magic `dex\n035`、
+**单类 `La;`** 的 dex（`sha-256 2ce6593bc280f14b…`）。其唯一实质方法：
+
+```java
+// La;.b(Object obj, Object[] args)
+return ((java.lang.reflect.Method) obj).invoke(args[0], args[1]);   // 纯反射蹦床
+```
+
+`v.a` 写盘的就是它：把 588 B 落到 `getDir("cache", 0)` 下的
+`c4d121c215evx1s51d.dex`，再
+
+```java
+new dalvik.system.DexFile(file).loadClass("a")
+        .getDeclaredMethod("b", Object.class, Object[].class)
+```
+
+注意这里的**三层同名**：文件名 `c4d121c215evx1s51d.dex` 与资产里的 940 B
+同名（§9.7.2），类名 `a`、方法名 `b` 与 dex 内的 `La;.b` 一致。
+
+### 9.7.4 与 `libtinyd.so` 的对接（本轮最重要的纠正）
+
+旧稿 `deepdive/tinyd-companion-daemon.md` 写
+「谁读这 4 字节 … **对端不在本样本边界内**」。**该结论作废**：
+对端就是本节的 daemon dex——`e.main` 的
+`new DataInputStream(new FileInputStream(FileDescriptor.in)).readUTF()`
+正是读父进程写入的那条 UTF 自述，随后的 `readInt()` 循环读命令。
+
+两侧物资对照：
+
+| 侧 | 证据 |
+| --- | --- |
+| C 侧（`libtinyd.so`） | 字符串表仅 `JNI_OnLoad` / `fork` / `libtinyd.so`；类名靠 Java 侧自述 |
+| C 侧父进程（`libtiny.so`） | `CLASSPATH=`、`{"PACKAGE_NAME":"com.xingin.xhs",…}`、`/data/dalvik-cache/arm64/`、`dalvik.system.DexPathList`、`get_global_daemon failed!`、`/boot.vdex`、`/system/bin/linker64` |
+| Java 侧（daemon dex） | `d` 类解出 **`tinyd`** 与 **`libtinyd.so`**；`h`/`i` 的 `@x0` 解出 `readUTF`/`writeUTF`/`readInt`/`writeInt` |
+
+**结论**：`libtinyd.so`（C 侧守护进程）与 `fd2x1e4e2x3f1v2b1s.dex` 的 `l.a()`
+（Java 侧守护进程）是**同一协议的两端**，协议为
+`DataInput`/`DataOutput` 之上的**长度前缀帧**（命令 = `readInt`，字符串 = `readUTF`），
+命令表 = §9.7.1 的 12 个 case。
+
+### 9.7.5 本节计数汇总（可复现）
+
+| 量 | 值 | 产物 |
+| --- | ---: | --- |
+| 守护 dex `class_defs` | 63 | `re/daemon_audit.json` |
+| 守护 dex 解密器调用点 | **141**（`c1.a` 136 + `d1.a` 2 + `r0$a.a` 3） | `re/dex_strdec_census.json` |
+| 其中 `c1.a` 按来源拆分（源声明 / 内联 / 寄存器列表） | 57 / 1 / 78（= 136） | `re/daemon_audit.json` |
+| `@x0` 载荷 | 116（解出 **116**，互异 86） | `re/daemon_annot.json` |
+| `@w0` 站点 | 77（主 77 + 参数 39） | 同上 |
+| `v.<clinit>` 明文 | 74 | `re/daemon_clinit.json` + §9.2b.5 |
+| `v.a` 明文 | 4 | `re/daemon_va.json` |
+| 内嵌 dex | 588 B，单类 `La;` | `re/daemon_embedded_dex.bin` |
+| **未定性项** | **0** | — |
+
+### 9.7.6 三个 dex 的 SHA-256
+
+| 对象 | SHA-256 |
+| --- | --- |
+| `dex/assets/fd2x1e4e2x3f1v2b1s.dex`（守护 dex，78 008 B） | `3609a27662f09e1f82cbf11de2174f228ce7f48fdbeffc91573347ba229a4538` |
+| `dex/assets/c4d121c215evx1s51d.dex`（940 B） | `2c48d73f5479148c0d87397eeeb3440b7bc2efd1478d86f3198c72737afef52c` |
+| `re/daemon_embedded_dex.bin`（588 B，Base64 还原） | `2ce6593bc280f14b9b714cc9ab226d168d9d3e30d8fa06176fdf1dca100f092c` |
+
