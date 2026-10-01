@@ -102,7 +102,7 @@ protobuf schema 字符串按以下命名空间出现：
 - WebView monitor context 的 Java 模型可携带用户 ID/token、hash 过期信息、用户/track session、设备、屏幕、网络和 App build 字段。
 - `libtinyd.so` 和 `com.xingin.tiny.daemon` 具备伴随/守护特征。
 - Java 侧方法名加密通过 `@u5`/`@v5` 注解内的加密字节数组实现：`o5.a()` 解出方法名、`o5.b()` 解出参数类型名，`n5<T>` 再反射调用。**519 个站点已闭式还原（100% 合法 Java 标识符）**；类名/常量名解密：**822 个调用点（字节码精确）中 811 个带内联 (cipher,key) 对，全部映射到明文，0 未映射**。详见 [tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §9.2、§9.2b。
-- **修正**：旧稿把上述机制称为「Petal 混淆」。`PetalConfig` 实为**插件化框架配置**（`PETAL_MODE = false`，用于 RN/Weex 注解默认值），不是混淆器；该归因已作废。
+- **归属**：上述机制是 `@u5/@v5` **加密注解**，不是「Petal 混淆」。`PetalConfig` 实为**插件化框架配置**（`PETAL_MODE = false`，用于 RN/Weex 注解默认值），不是混淆器。
 
 ## 5. 完整性与环境对抗
 
@@ -153,7 +153,7 @@ request metrics -> business interceptor -> xy-common-params
 - `ValidateActivity` 加载 H5 验证码或风险说明。
 - 实名场景使用腾讯慧眼 WBCF、turingcam、TuringV2、优图活体。
 - native 工具包含 SM2 加密封装，用于核身数据保护。
-- `libturingmfa` 使用腾讯 WUP/Tars 二进制协议，Java 明文默认上报地址为 `https://tdid.m.qq.com/tmf`，服务返回/协同 DeviceToken。**该库把方法名与采集路径逐字节加密在 `.data` 字符串表里，由加载期构造子 `0x34d74` 原地解密**（密钥调度 `key_index = src_index mod 8`（**旧稿闭式 `key_i=(0x0F+0xA0*i)&0xFF` 已作废，仅 42/348 命中**），348 个非空条目 / 325 条文法明文（源列表 416 项））；解出后可直接看到 **OAID 厂商 AIDL 表（37 条，覆盖华为/荣耀/小米/OPPO/vivo/三星/华硕/联想/魅族/MSA 等）**、**反模拟器与环境完整性路径（57 条：`/proc/self/maps`、`/sys/bus/virtio`、`init.svc.qemud`/`noxd`/`droid4x`/`vbox86-setup`、`microvirt.*` 等）**，以及 **Binder/反射直取（17 条）**。完整清单见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.7(f)。
+- `libturingmfa` 使用腾讯 WUP/Tars 二进制协议，Java 明文默认上报地址为 `https://tdid.m.qq.com/tmf`，服务返回/协同 DeviceToken。**该库把方法名与采集路径逐字节加密在 `.data` 字符串表里，由加载期构造子 `0x34d74` 原地解密**（密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 条文法明文（源列表 416 项））；解出后可直接看到 **OAID 厂商 AIDL 表（37 条，覆盖华为/荣耀/小米/OPPO/vivo/三星/华硕/联想/魅族/MSA 等）**、**反模拟器与环境完整性路径（57 条：`/proc/self/maps`、`/sys/bus/virtio`、`init.svc.qemud`/`noxd`/`droid4x`/`vbox86-setup`、`microvirt.*` 等）**，以及 **Binder/反射直取（17 条）**。完整清单见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.7(f)。
 - 海外支付场景使用 Alipay/Antom 收银台安全组件，包含设备支付 token 与 securityCode。
 
 这些组件面向高风险或高敏场景，不代表所有普通浏览请求都会触发。

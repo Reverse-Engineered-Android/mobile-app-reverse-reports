@@ -179,7 +179,7 @@ return uploadKey + mixedToken.chunkSize + "_._" + reverse(file.getAbsolutePath()
 - 框架级重试：`UploaderFlow` 在 `retryCount > 0` 时 `retryWhen(new r(f0, …))`（`f0(retryCount, delayMs)`）。
 - APM 埋点名 `uploader_breakpoint_and_resume`（`l1.a`/`l1.b`），带 `task_id`/`file_type`/`error_code`。
 
-**注意：`h2b.b` 不是断点登记表**。`c0`（Qiniu 上传器）里紧邻 `FileRecorder` 的这几行容易被误读为断点跟踪：
+**注意：`h2b.b` 不是断点登记表**。`c0`（Qiniu 上传器）里紧邻 `FileRecorder` 的这几行形似断点跟踪，实为：
 
 ```java
 h2b.b.d(this.f153191a, this.f152939j);        // 开始上传
@@ -189,7 +189,7 @@ h2b.b.b(c0Var.f153191a, …);                    // 上传失败
 
 实测 `h2b.b` 面向的是**测速**：`h2b.b.f211170a` 是 `Map<taskId, elapsedRealtime>`，`f211171b` 是 `List<h2b.a>` 监听器表；唯一的注册方是 `j2b.i`（`SpeedTestImpl`，日志串 `"SpeedTestManager"`/`"SpeedTestImpl"`/`"测速"`），其中 `j2b.i$a.b(...)` 的日志是 `"业务文件上传成功，加入到测速数据源…"`，并用 `h2b.b.a()`（"业务文件上传中"）来决定是否跳过测速。因此它是**上传事件到测速子系统的通知通路**，不是断点登记。
 
-**`uploader_breakpoint_and_resume` 的调用方：已用 dex 层证据证明不存在**（此前只写"反编译未见调用方"，现升级为可复核的否定结论）：
+**`uploader_breakpoint_and_resume` 的调用方：dex 层证据证明不存在**（可复核的否定结论）：
 
 | 项 | 值 |
 | --- | --- |
