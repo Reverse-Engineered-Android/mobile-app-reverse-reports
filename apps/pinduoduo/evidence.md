@@ -153,22 +153,28 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
 `mode=ro` 打开并 checkpoint。全程未注入目标进程、未附加调试器、未读取目标内存、
 未重启应用、未修改任何设备文件，因此不产生可被检测的行为。
 
-各工具的判据与输出：
+各工具随报告发布在 [tools/](tools/)，全部只读、只用标准库、不含样本秘密：
 
 | 工具 | 作用 | 产出 |
 | --- | --- | --- |
-| `obfscan.py` | ELF 形态 + 常量表 + 字符串 + JNI 导出 | 逐库密码学命中表 |
-| `obfclass.py` | `indbr`/`adrret`/`cffstate`/`.inst%` 指纹 | 逐库混淆分类 |
-| `unflatten.py` | FLA 状态机 → 基本块图 | `SecureNative.s` 的 67 状态还原 |
-| `cff4.py` | 按真实函数收尾定界的逐导出规模 | 34 个导出共 21,613 条指令 |
-| `native_closure2.py` | DEX 声明 native ↔ 各库导出符号 | 646 已解析 / 966 未解析 |
-| `jnibind.py` | 绑定方式三分（导出 / `RegisterNatives` / 未判定） | 646 / 87 / 879 |
-| `so_manifest2.py` | `SoBuildInfo` 清单 ↔ 设备落盘 ↔ 加载点 | 199 条：22 APK / 26 落盘 / 54 未落盘 |
-| `db_snapshot.py` | 只读 SQLite 快照（含 WAL 重放） | 22 个库的 DDL、行数、列形状 |
+| [obfscan.py](tools/obfscan.py) | ELF 形态 + 常量表 + 字符串 + JNI 导出 | 逐库密码学命中表 |
+| [obfclass.py](tools/obfclass.py) | `indbr`/`adrret`/`cffstate`/`.inst%` 指纹 | 逐库混淆分类 |
+| [unflatten.py](tools/unflatten.py) | FLA 状态机 → 基本块图 | `SecureNative.s` 的 67 状态还原 |
+| [cff4.py](tools/cff4.py) | 按真实函数收尾定界的逐导出规模 | 34 个导出共 21,613 条指令 |
+| [native_closure2.py](tools/native_closure2.py) | DEX 声明 native ↔ 各库导出符号 | 646 已解析 / 966 未解析 |
+| [jnibind.py](tools/jnibind.py) | 绑定方式三分（导出 / `RegisterNatives` / 未判定） | 646 / 87 / 879 |
+| [so_manifest2.py](tools/so_manifest2.py) | `SoBuildInfo` 清单 ↔ 设备落盘 ↔ 加载点 | 199 条：22 APK / 26 落盘 / 54 未落盘 |
+| [db_snapshot.py](tools/db_snapshot.py) | 只读 SQLite 快照（含 WAL 重放），只输出列形状聚合，不输出行值 | 22 个库的 DDL、行数、列形状 |
+
+输入约定：`obfclass.py` 需要反汇编文本（`objdump -d`）与输出 JSON 两个参数；
+`cff4.py` 读取工作目录下的 `libpdd_secure.dis`；`native_closure2.py`、
+`jnibind.py`、`so_manifest2.py` 从 `jadx-out/sources`、`unpack/lib/arm64-v8a`、
+`unpack/assets-so`、`evidence/runtime-so`、`evidence/dynso/dynamic_so` 读取；
+`db_snapshot.py <src-dir> <out.txt>` 直接对目录做只读快照。
 
 ## 9. native 声明与库的归属
 
-`tools/native_closure2.py` 在 187 个类中发现 **1,612** 个原生方法声明，按提供方分类：
+`native_closure2.py` 在 187 个类中发现 **1,612** 个原生方法声明，按提供方分类：
 
 | 提供方 | 解析数 | 主要库 |
 | --- | ---: | --- |
