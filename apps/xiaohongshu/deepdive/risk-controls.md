@@ -37,9 +37,9 @@
 - 调用链：`yya.f.e(method, url, bodyBytes)` → `u2.b(-1762132820, method, host, path, query, body)` → `t.a(opcode, args)` → `Map<String,String>` → 逐条写 header。
 - 签名覆盖：method + host + path + query + body。
 - dex 中可见混淆头名：`x-n0`、`x-o9`、`x-p0`、`x-r4`、`x-r4o`、`x-legacy-did/sid/fid/smid`。
-- `JNI_OnLoad` @ `0x18afd8`；opcode 二叉比较点 @ `0x16b08c` / `0x17cdb0`。
+- `JNI_OnLoad` @ `0x18afd8`；操作码字段 `[x19,#0xa4]`（写入点 `0x15ea20`），分发为 **61 个操作码比较块 + 61 字节谓词数组**，非二叉比较。`0x16b08c` / `0x17cdb0` 是同一操作码 `0x96f7fcac` 的两个 CFF 重复块，详见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §3–§5。
 
-**未闭环**：opcode 编号到算法语义的映射未逐条还原（引擎用 int32 操作码而非方法名）。已确认的是分发机制与覆盖范围。
+**未闭环**：opcode 编号到算法语义的映射未逐条还原（引擎用 int32 操作码而非方法名）。已确认的是分发机制、**31 个操作码全集**（与动态执行集合 100% 吻合）与覆盖范围，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md)。
 
 ## 3. 设备指纹：`libxyasf.so` 与 Java 调度层
 
@@ -131,11 +131,11 @@ fork / syslog / abort-message 特征支持“独立守护进程”判断：主�
 
 | 项 | 未闭环的具体环节 | 原因 |
 | --- | --- | --- |
-| Tiny opcode 语义 | int32 操作码 → 算法映射 | 引擎为独立 VM，需逐 opcode lift |
+| Tiny opcode 语义 | int32 操作码 → 算法映射 | 引擎为独立 VM，需逐 opcode lift；操作码全集已枚举（31 个） |
 | `libxyasf.so` 采集点 | 70+ 采集点的逐条字段与判定 | 需与 xyass 同级别 lift |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | `libtinyd.so` IPC | 与主进程的通道协议 | 未做动态跟踪 |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
-| `x-n0`…`x-r4o` 语义 | 头部名已知，取值语义未反推 | 需 Tiny opcode lift |
+| `x-n0`…`x-r4o` 语义 | 头部名已知，取值语义未反推 | 需 Tiny opcode 逐块 lift（操作码全集已枚举） |
 | Cookie/session 作用 | 静态检索 0 命中，未运行时验证 | 需真实环境抓包 |
 | 服务端风控阈值 | ares 判定阈值 | 服务端逻辑，客户端不可见 |

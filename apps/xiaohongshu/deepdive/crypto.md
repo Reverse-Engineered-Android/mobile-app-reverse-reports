@@ -18,9 +18,11 @@
 | 9 | JS 指纹 AES/CBC/PKCS5 | `a.a.a.a.a.p.a` + `a.a.a.a.a.c` | 本地 SP 加密 | **已恢复**（硬编码 key/IV 已定位） | 源码常量 |
 | 10 | `libsecurebase.so` 定制哈希 | `JNI_OnLoad 0xd13c`，表 `0x38000` | 登录态 KV 文件名派生 | **已恢复**（派生用途） | JNI 表 + 调用链 |
 | 11 | SM2（国密） | 腾讯慧眼/优图 eKYC 链路 | 实名传输 | **第三方组件** | 集成点 |
-| 12 | `libtiny.so` opcode 引擎 | `0x18afd8`/`0x16b08c`/`0x17cdb0` | 签名头生成 | **分发机制已恢复，语义未展开** | opcode 比较点 + 调用链 |
+| 12 | `libtiny.so` opcode 引擎 | `0x18afd8`；操作码字段 `0xa4`；61 个比较块 | 签名头生成 | **分发机制+操作码全集已恢复，逐操作码语义未展开** | 31 个操作码枚举 + 45 次模拟器执行，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) |
 
-**结论**：矩阵中不存在“加密 blob 未解密”“算法不明”这类条目。唯一尚未展开到算法级的是 **Tiny 的 opcode→语义映射**（条目 12），它是 VM 语义问题、已定位到具体比较点，而不是“未知加密”。
+**结论**：矩阵中不存在“加密 blob 未解密”“算法不明”这类条目。唯一尚未展开到算法级的是 **Tiny 的 opcode→语义映射**（条目 12），它是 VM 语义 lift 问题：操作码全集（31 个）、比较块（61 个）与谓词数组布局均已枚举完毕，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5。
+
+补充：全应用 164 个 arm64 `.so` 的普查结果（32 带加密 / 132 不带）同样见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1，使“无未知加密代码”从抽样升级为全量结论。
 
 ## 2. 外层 shield（条目 1、3）
 
@@ -373,4 +375,4 @@ vectors=4  match=0  mismatches=4
 | 单 trace 符号化 lift 的泛化性 | **已验证为不成立**（4/4 mismatch）——不作为参考实现 |
 | `0x50010` 的逻辑门级统一闭式（覆盖全部 CFF 路径） | **未完成**：数据相关控制流使单 trace lift 失效，需逐块／逐路径 lift；已交付的是接口、数据范围、常量集、表清单、可达性与确定性向量 |
 | Tiny 高熵区无引用 | 已验证（三路扫描 0 命中） |
-| Tiny opcode→语义 | **未完成**：需 opcode 级 lift |
+| Tiny opcode→语义 | **未完成**：需逐块 lift；已完成 31 个操作码枚举 + 61 个比较块定位 + 谓词数组布局（[tiny-and-app-sweep.md](tiny-and-app-sweep.md) §3–§5） |
