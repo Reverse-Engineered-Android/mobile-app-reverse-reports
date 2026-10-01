@@ -193,7 +193,7 @@ return ij0.b.s(bArr, new SecretKeySpec(key.getBytes(), "AES"));
 | `libmedia_engine.so` | AES S-box、AES 逆 S-box、Base64 | 媒体引擎内 DRM/签名 |
 | `libpdd_j2v8.so` | AES S-box、AES 逆 S-box、zlib | JS 引擎桥接 |
 | `libtronavx.so` | AES 逆 S-box、Base64、ChaCha20 sigma | 播放器；含 ChaCha20 sigma 常量 |
-| `libdyncommon.so` | AES S-box、zlib | 反注入/环境探测，见 [obfuscation.md](obfuscation.md) §6.1 |
+| `libdyncommon.so` | AES S-box、zlib | 反注入/环境探测；常量表明文，但字符串池异或保护（129 条），见 [obfuscation.md](obfuscation.md) §6.1、§9.4 与 [risk.md](risk.md) §14 |
 | `libcmtreport.so` | CRC32、MD5/SHA-1 IV | 埋点上报 |
 | `libpcrash_dumper.so` | SHA-256 H0、Base64 | 崩溃转储 |
 
