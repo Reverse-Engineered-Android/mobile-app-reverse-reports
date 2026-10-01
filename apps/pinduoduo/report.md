@@ -46,8 +46,9 @@
 7. **混淆闭包**：DEX 层无字符串加密、无加壳；APK 内 6,648 处 Efix 跳板
    （`h4.g.*`）在未安装热补丁时全部短路。native 侧实际出现的手法有三种，均已
    完整还原：OLLVM 控制流平坦化、ADR+RET 返回地址间接化与 .text 内嵌数据、
-   **异或字符串池**（`libpdd_secure.so` 151 条 + `libdyncommon.so` 129 条，
-   两库同密钥同工具）、以及 **`RegisterNatives` 动态注册**（18 个库 28 处注册
+   **异或字符串池**（`libpdd_secure.so` 634 条 + `libdyncommon.so` 458 条，
+   两库同工具、同密钥表的四个字节行 × `eor`/`eon` 两种算子）、以及
+   **`RegisterNatives` 动态注册**（18 个库 28 处注册
    + 1 处注销）。其中字符串池承载了 `libdyncommon` 的 native 侧反 root/反 hook/
    反模拟器探测链与全部 `ab_secure_*` 风控总开关（[risk.md](risk.md) §14）。
    逐库清点见 [obfuscation.md](obfuscation.md) §9。
@@ -82,7 +83,10 @@
    `cdnMd5` 指向增量下发基线，而不是当前内置文件。
 2. `SecureNative.b/s` 的选择子语义由调用点归纳，选择子取值集合尚未逐一断言到
    具体密钥用途。
-3. `libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点，用途为假说
-   （见 [obfuscation.md](obfuscation.md) §9.4.2）。
+3. ~~`libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点~~
+   **已闭合**：调用点（`0x3764c`/`0x37784`）、跳板与选择子结构、两把公钥的
+   逐字节对照、以及"公钥加密上报体"的方向均已给出，见
+   [obfuscation.md](obfuscation.md) §9.4.6。仍未展开的只剩 FLA 分派核的逐块
+   语义（结构已证实）与 `rsaEncrypt*` 名字的绑定路径。
 4. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
    方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。

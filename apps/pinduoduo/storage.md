@@ -317,7 +317,7 @@ enCryptInfoV3 = "5ec1"
 **落盘形态与混淆的关系**：落在这里的都是原样 ELF，可直接 `readelf`/`objdump`，
 没有加壳、没有自解密段。但"文件是明文 ELF"不等于"库里字符串是明文"——
 `libdyncommon.so` 的 `.rodata` 就同时含明文与异或密文（池首 `0x408fa0`，
-129 条，与 `libpdd_secure.so` 同密钥同工具），内容是该库的反 root/反 hook/
+458 条，与 `libpdd_secure.so` 同工具、同密钥表的四个字节行），内容是该库的反 root/反 hook/
 反模拟器探测面与 `ab_secure_*` 开关。还原方法与完整清单见
 [obfuscation.md](obfuscation.md) §9.4 与 [risk.md](risk.md) §14。
 

@@ -10,7 +10,7 @@
 | DEX 字符串 | **无字符串加密**。291,149 条可打印字符串直接以明文存在于 6 个 dex。 |
 | DEX 加壳 | **无加壳、无 DEX 加密**。`classes*.dex` 均为标准 `dex\n035` 头，可直接解析 25,156 个 Java 文件。 |
 | native 动态注册 | 48 个去重 ELF 中 `RegisterNatives`/`UnregisterNatives` **有**真实调用点：29 处（**28 次注册 + 1 次注销**）分布 18 个库，含 `libpdd_secure`、`libpdd_rubik`、`libCSoLoader`、`libbytehook`、`libcrashAvoid`、`libpcrash`、`libpcrash_anr`、`liblegonative`、`libmarsxlog`、`libtronkit`、`libyoga`、`libtronplayer`、`libmedia_engine` 等；其中 14 次注册位于 APK 自带的 22 个库内。**注意**：`libdyncommon` 的 `#1720/#1728` 命中全是间接派发器，**不是**注册点。计数口径的两条判据见 §9.1.1。 |
-| native 字符串 | **有局部字符串加密，覆盖两个库**：`libpdd_secure.so`（池首 0x1928c0，**151 条**）与 `libdyncommon.so`（池首 0x408fa0，**129 条**）用**同一构建期工具与同一 8 字节密钥** `f09745e4835fd19f`。前者含 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、RSA 公钥；后者含 Magisk/SuperSU/Xposed/模拟器路径、SELinux 与 verity 属性、`ab_secure_*` 开关。详见 §9.4。 |
+| native 字符串 | **有局部字符串加密，覆盖两个库**：`libpdd_secure.so`（池首 0x1928c0，四掩码并集 **634 条**）与 `libdyncommon.so`（池首 0x408fa0，**458 条**）用**同一构建期工具与同一张密钥表的四个字节行**（掩码 A `f09745e4835fd19f` 等，配 `eor`/`eon` 两种算子）。前者含 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、**两把 RSA 公钥**、Android Key Attestation OID；后者含 Magisk/SuperSU/Xposed/模拟器路径、SELinux 与 verity 属性、**29 个** `ab_secure_*` 开关。详见 §9.4、§9.4.5。 |
 | DEX 控制流 | 6,648 处 Efix 跳板（见 §2），**未安装热补丁时全部短路到默认实现**，属可解释结构而非混淆。 |
 | native 控制流 | 分三类：OLLVM 控制流平坦化（FLA）、间接分支派发（IND-BR）、ADR+RET 返回地址间接化 + .text 内嵌数据。逐库清点在 §4–§6。 |
 | native 数据 | 无加密常量表隐藏。所有标准密码学常量表都以明文出现在 `.rodata`（见 [algorithm.md](algorithm.md)）。 |
@@ -199,10 +199,10 @@ libstagefright.so / _ZN7android15ANetworkSession10threadLoopEv
 的组合，属于可完全静态解释的三类标准 OLLVM 变体，不含自解密或虚拟机。
 
 **本版补充**：上面这段明文只是该库字符串的一小部分。同一 `.rodata` 里还有
-**129 条异或加密的字符串**（池首 `0x408fa0`，与 `libpdd_secure.so` 同密钥同工具），
+**458 条异或加密的字符串**（池首 `0x408fa0`，与 `libpdd_secure.so` 同工具、同密钥表的四个字节行），
 解出后才是该库探测面的全貌——Magisk/SuperSU/su 路径、Riru/EdXposed/SandHook、
 模拟器（vboxsf/nemusf/ttVM/ranchu）、verified boot 与 SEPolicy、`/proc` 自省、
-无障碍外挂，以及 11 个 `ab_secure_*` 风控总开关。详见 §9.4 与
+无障碍外挂，以及 **29 个** `ab_secure_*` 风控总开关。详见 §9.4、§9.4.5 与
 [risk.md](risk.md) §14。**这也是上一版的一个实质遗漏**：当时按"`.rodata` 有明文串"
 就判定该库无字符串加密，实际情况是明文与密文在**同一段内相邻共存**（选择性加密），
 密文那半边被整个漏掉了。
@@ -424,8 +424,29 @@ ELF 头，不依赖 objdump 的符号标签——`.plt` 尾部会被反汇编成
 `libpdd_secure.so` 有真注册点**；`libdyncommon.so` 的 5 个 `#1720`/`#1728`
 命中全部是判据 (b) 排除掉的派发器，不是注册。
 
-注册项数由 `w3` 直接给出，可逐一读出，例如 `libtronkit.so` 的
-`JNI_OnLoad` 注册 9 项、`libCSoLoader.so` 注册 2 项、`libmarsxlog.so` 注册 1 项。
+注册项数由第三个参数 `w3` 直接给出：`tools/rnbind.py --all` 用判据 (a)(b)
+筛出真注册点并列出被排除的站点，再对每个通过的站点反汇编其前 `0x60` 字节，
+读 `#1720` 之前最后一次写入 `w3` 的立即数（**本次逐站点反汇编复核过，
+`w3` 与 `#1720` 均在同一窗口内**）。结果（代码段偏移）：
+
+| 库 | 站点 | `nMethods` | 宿主函数 |
+| --- | --- | ---: | --- |
+| `libCSoLoader.so` | `0x1794` | 2 | `JNI_OnLoad` |
+| `libbytehook.so` | `0xd594` | 10 | `JNI_OnLoad` |
+| `libcrashAvoid.so` | `0x662c` | 6 | `JNI_OnLoad` |
+| `libmarsxlog.so` | `0xcb38` | 1 | `JNI_OnLoad` |
+| `libpcrash.so` | `0x4494` | 3 | `JNI_OnLoad` |
+| `libpcrash_anr.so` | `0x43a4` | 3 | `TraceDumper_jniInit` |
+| `libpdd_secure.so` | `0x27e7c` | 3 | `DeviceNative`（§9.1.2 已逐字节还原） |
+| `liblegonative.so` | `0x60b30` / `0x625a0` / `0x638f4` | 16 / 29 / 10 | `VMState_getOpCostGroup` / `JSFunction_releaseNative` / `JSFunction_releaseNative` |
+
+**注意一处易误判**：同一套"回溯读 `w3`"的启发式在 `libpdd_secure.so` 上
+会对 `0x4c8e0`、`0x8435c`、`0x93b6c`、`0xadd*`、`0x111f88` 等站点报
+`nMethods = None`。这些**不是注册点**——它们是 §9.4 池拷贝/派发代码借用了
+同一个 `#1720`/`#1728` 位移做表分发，属于判据 (b) 已排除的那一类。
+本报告只把经过 (a)+(b) 双判据且能读出 `nMethods` 的站点计入注册，
+因此 `libpdd_secure.so` 的注册数**仍为 1**。
+
 因此 §9.1 上表"87 个方法"的判定口径（方法名串 + 签名串 + `JNI_OnLoad`）
 只是**必要条件**，不是调用点证据；本小节的函数表下标统计才是直接证据。
 
@@ -514,8 +535,8 @@ ELF 头，不依赖 objdump 的符号标签——`.plt` 尾部会被反汇编成
 
 **更正**：上表列举的是池内明文，但"按绝对偏移取相位"只能捞回 8 字节对齐的
 那批；本版按 §9.4.1 的记录边界规则重解后，`libpdd_secure.so` 池的完整规模是
-**151 条**（本小节上表仅为其中示例），且 `libdyncommon.so` 另有一个同密钥的池
-（129 条）——详见 §9.4。
+**634 条**（本小节上表仅为其中示例），且 `libdyncommon.so` 另有一个同工具的池
+（458 条）——详见 §9.4。
 
 ### 9.2 动态库清单与在机情况
 
@@ -562,15 +583,15 @@ assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另�
 
 出现且已完整还原的手法有三类，**均属标准变换、均可静态还原**：
 
-- **异或字符串池**：`libpdd_secure.so` **151 条** + `libdyncommon.so` **129**
-  条，两库同密钥同工具，已全部解出（§9.4）。
+- **异或字符串池**：`libpdd_secure.so` **634 条** + `libdyncommon.so` **458**
+  条，两库同工具、同密钥表的四个字节行，已全部解出（§9.4）。
 - **`RegisterNatives` 动态注册**：18 个库 28 处（+1 处反注册），注册项数、
   类名与调用点均已读出（§9.1）。
 - **`.rodata` 选择性加密**：同一库内明文与密文相邻共存（`libdyncommon`），
   因此"`.rodata` 有明文串"不能作为"该库无池"的判据（§9.4.3）。
 
 `libdyncommon.so` 一例可以说明这类判定的可解释性：它混淆最重（19,801 个间接派发
-块、330 处 ADR+RET），且其字符串池选择性加密，但按 §9.4 的相位规则解出 129 条
+块、330 处 ADR+RET），且其字符串池选择性加密，但按 §9.4 的四掩码规则解出 458 条
 明文后，它被完整定性为反注入/反 hook 环境探测（见 §6.1 与
 [risk.md](risk.md) §14），不含自解密或虚拟机——重混淆并不等于不可解释。
 
@@ -578,8 +599,11 @@ assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另�
 
 §1 表中"native 字符串"一行展开如下。这是本版新增的第 4 类混淆手法。
 
-**本版更正**：上一版把该池记为 `libpdd_secure.so` 独有，并把它描述为
-"正文按绝对文件偏移 `mod 8` 取相位"。两点都错，见 §9.4.3 与 §9.4.4。
+**本版更正（两轮）**：上一版把该池记为 `libpdd_secure.so` 独有，并把它描述为
+"正文按绝对文件偏移 `mod 8` 取相位"——这两点已作废，见 §9.4.3 与 §9.4.4。
+更进一步，本版发现该池**不是单一密钥**：`.text` 里有**四个**解码循环，用
+**同一张密钥表的四个不同字节行**，分别配 `eor`（不取反）与 `eon`（取反）
+两种算子。只用一个密钥的普查会漏掉另外三组，见 §9.4.5。
 
 #### 9.4.1 结构
 
@@ -590,15 +614,24 @@ assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另�
 | `libpdd_secure.so` | `.rodata`，首条 0x1928c0 | 0x198768 |
 | `libdyncommon.so` | `.rodata`，首条 0x408fa0 | 0x40f2d8 |
 
-两张密钥表内容完全相同（8 个小端 `u64`），因此解出的密钥也相同：
+两张密钥表内容完全相同（8 个小端 `u64`），因此两者的密钥集合也相同：
 
 ```python
-KEY = bytes([0xf0,0x97,0x45,0xe4,0x83,0x5f,0xd1,0x9f])
 plain[i] = cipher[i] ^ KEY[i % 8]          # i 从本条记录自身起点计数
 ```
 
-`KEY` 本身不是明文常量，而是密钥表里 8 个小端 `u64` 的**高字节取反**：
-两表高字节均为 `0f 68 ba 1b 7c a0 2e 60`，取反即得上式。
+`KEY` 本身不是明文常量，而是密钥表里 8 个小端 `u64` 的某个**字节行**，
+再按循环是否取反决定是否加 `NOT`。`eor w13,w13,w14,lsr #24` 取的是每个
+`u64` 的**最高字节**，`lsr #8` 取的是**次低字节**。四个实际在用的组合是：
+
+| 掩码 | `KEY` | 对应 `.text` 中的循环 |
+| --- | --- | --- |
+| A | `f0 97 45 e4 83 5f d1 9f` | `eon w13, w13, w14, lsr #24` |
+| B | `0f 68 ba 1b 7c a0 2e 60` | `eor w13, w13, w14, lsr #24` |
+| C | `b1 30 15 3d f6 99 23 83` | `eon w13, w13, w14, lsr #8` |
+| D | `4e cf ea c2 09 66 dc 7c` | `eor w13, w13, w14, lsr #8` |
+
+A 与 B 互为按位取反，C 与 D 互为按位取反，这与 `eor`/`eon` 的成对出现一致。
 `libpdd_secure.so` 在 `0x193068` 留了自身 `.symtab` 名，说明该池由构建期工具
 （而非手写）生成。
 
@@ -624,11 +657,18 @@ fiddler（偏移 `mod 8 == 4`）这类记录会被漏掉。
 
 #### 9.4.2 解出的内容与风控含义
 
-`tools/xorstr.py` 按上述规则解出：`libpdd_secure.so` **151 条**（min-len 8）、
-`libdyncommon.so` **129 条**，**均已全部还原为明文，无剩余不可解释记录**。
-按用途归组：
+`tools/xorstr.py` 按四掩码并集解出（min-len 8）：
 
-**`libpdd_secure.so`（151 条；下表为其中较长者，择要）**
+| 库 | A | B | C | D | **并集** |
+| --- | --- | --- | --- | --- | --- |
+| `libpdd_secure.so` | 151 | 148 | 166 | 169 | **634** |
+| `libdyncommon.so` | 129 | 120 | 113 | 96 | **458** |
+
+**均已全部还原为明文，无剩余不可解释记录**。单掩码数字（A 列的 151/129）
+是上一版报告的数值——它只覆盖了四个循环中的一个，其余三组当时被当成"噪声"
+丢弃；这一项已在本节更正。按用途归组：
+
+**`libpdd_secure.so`（634 条；下表为其中较长者，择要）**
 
 | 组 | 典型串 | 风控含义 |
 | --- | --- | --- |
@@ -641,8 +681,14 @@ fiddler（偏移 `mod 8 == 4`）这类记录会被漏掉。
 | 密钥库 | `java/security/KeyStore`、`KeyPairGenerator`、`KeyPair`、`getExtensionValue`、`android/security/keystore/SoterKeyStoreProvider`、`java/security/Provider` | 厂商密钥库（Soter）与证书扩展读取 |
 | 网络编码 | `java/net/URLEncoder` | 指纹串 URL 编码 |
 | 反分析 | `/proc/self/cgroup`、`vivo_screen_record_switch_setting`、`io.virtualapp`、`isDebuggerConnected`、`/system/bin/su`、`/vendor/bin/su`、`bANoelxRIifGL8dUr5zc2ncyYkebkUkd`、`sN4S72X1br+Ybnq1`、`a7OpixY4xQc1eT2v` | 容器/多开判定、调试器检测、su 路径探测、会话密钥材料 |
+| 录屏检测（掩码 D） | `com.samsung.android.app.screenrecorder.on` / `.off`、`recorder_status` | 三星系统录屏状态读取 |
+| 录屏检测（掩码 C） | `com.samsung.android.app.screenrecorder.off`、`recorder_status` | 同上（两条循环各自持有副本） |
+| 密钥证明（掩码 C） | `1.3.6.1.4.1.11129.2.1.17`、`setAttestationChallenge`、`setDigests`、`setUserAuthenticationRequired`、`KeyGenParameterSpec$Builder`、`android/content/pm/IPackageManager$Stub` | **Android Key Attestation 扩展 OID**：申请带 attestation 的密钥并读回证书扩展，是硬件级设备身份判定 |
+| 设备标识（掩码 C/D） | `pddid_secure`、`did_info`、`pdd_key_202606_9`、`{"clip_key":"%s","data":"%s"}` | 设备 ID 生成与剪贴板上报 |
+| 前缀常量（掩码 C） | `imouLuk2VljedHkn`、`4JDCf1gg/U+jHWT0`、`LPCtkKIgsPls4al8`、`E980BF2E3D60DC8D`、`abcd-1234-ABCD@#`、`d6fc3a4a06adbde89223bvefedc24fecde188aaa9161` | 会话/摘要密钥材料 |
+| JNI 名（掩码 B/D） | `Java_..._SecureNative_rsaEncrypt`、`..._rsaEncryptWithPublicKey`、`..._generateTrackDataSign`、`..._generateWSDataSign`、`com/xunmeng/pinduoduo/secure/EncResult` | **见 §9.4.6：RSA 调用方向由此确定** |
 
-**`libdyncommon.so`（129 条，详见表外说明）**——本版新增，见 §9.4.4 与
+**`libdyncommon.so`（458 条，详见表外说明）**——本版新增，见 §9.4.4 与
 [risk.md](risk.md) §14。要点：该库用**同一套池**保护它的 root / Magisk /
 SuperSU / 模拟器（vboxsf、nemusf、ttVM、bstshutdown、nemuinit、ranchu）/
 Xposed（riru_edxp、sandhook.edxp、libSignatureKiller、EnableXposedHook）/
@@ -654,24 +700,23 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 
 其中 `MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCmW0KhXZ2dBgLqEnttvkg28G8s5oXBSzyuhmm+FJegTBa5+CsKxo5+tirAgk2EiGqPwxHIQu1XP5v1z4EfNzgfrYQ+EYJsJ/MC9CyFe8qY5dFa89A70n6U+XGd8VtmcVw1jfrT+YHHyInY5cpbC9BbnsUqX7EolUmoqrF4voFVLwIDAQAB`
 是一条完整的 1024 位 RSA 公钥（X.509 `SubjectPublicKeyInfo`，ASN.1 头
-`300d06092a864886f70d0101010500` + `30 81 89 02 81 81`），模数 128 字节。
-**用途判为假说**：它只出现在字符串池中，未在本次静态分析中定位到解密/验签
-调用点；按上下文（与 `DecResult`/`decBytes` 同池）推测用于**上报内容的非对称
-加密或签名校验**，而非传输层握手（传输均为标准 HTTPS，见
-[network.md](network.md)）。这一点记入 §9.5 未覆盖项。
+`300d06092a864886f70d0101010500` + `30 81 89 02 81 81`），模数 128 字节，
+`e = 65537`。**调用点与方向已定位，不再是假说**，见 §9.4.6。
 
 #### 9.4.3 覆盖边界（更正）
 
 | 库 | 字符串加密 | 判据 |
 | --- | --- | --- |
-| `libpdd_secure.so` | **有**（151 条，已全部还原） | 已完整解出明文 |
-| `libdyncommon.so` | **有**（129 条，已全部还原，与上库**同密钥同工具**） | 已完整解出明文 |
-| 其余 46 个已取得 ELF | 无（按 min-len 12 普查，次高者仅 3 条，属噪声） | `.rodata` 字符串全部明文可读 |
+| `libpdd_secure.so` | **有**（并集 634 条 / min-len 12 时 515 条，已全部还原） | 已完整解出明文 |
+| `libdyncommon.so` | **有**（并集 458 条 / min-len 12 时 382 条，与上库**同工具、同密钥表的四个字节行**） | 已完整解出明文 |
+| 其余 46 个已取得 ELF | 无 | `.rodata` 字符串全部明文可读 |
 
-普查方法：对全部 48 个去重后的 ELF 的 `.rodata` / `.data.rel.ro` 按上述规则
-解码，统计条数。`libpdd_secure` 与 `libdyncommon` 之外的最高命中是 `libpnet`
-3 条、`libaudio_engine` 2 条、`libtronav` 1 条，均无路径/类名语义，判为
-偶然命中的 ASCII 噪声，不构成池。
+普查方法：对全部 48 个去重后的 ELF 的 `.rodata` / `.data.rel.ro` 按四掩码
+并集解码，统计条数（`--count-only --min-len 12`）。`libpdd_secure` 与
+`libdyncommon` 之外的最高命中依次是 `libmedia_engine` **3** 条、
+`libtronav` **1** 条、`libopus_pdd` **1** 条，均无路径/类名语义，判为偶然
+命中的 ASCII 噪声，不构成池。**"只有两个库有池"这一结论在四掩码下依然
+成立**：次高者仅 3 条，与两个池库（515 / 382 条）相差两个数量级。
 
 `libdyncommon` 是**选择性**加密：同一 `.rodata` 里明文与密文相邻共存，例如
 `basic_string`、`_ZN3art9ArtMethod16EnableXposedHook...` 是明文，而
@@ -702,12 +747,163 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 这属于"该库内部用到的符号名"，不是"隐藏的 `SecureNative` 实现"。
 为稳妥起见，报告中**不**对这两条名做超出上述证据的用途断言。
 
+#### 9.4.5 四个解码循环（为什么单密钥普查不可靠）
+
+`.text` 中一共只有 4 个"按密钥表取字节再异或"的循环，全部集中在
+`0xbba00`–`0xbc858` 区间，操作数完全相同，只有**位移量**与**算子**不同：
+
+```asm
+bba54:  add  x10, x10, #0x768          ; 密钥表 = 0x198768
+bba70:  ldr  x14, [x10, x14, lsl #3]   ; x14 = table[phase]，小端 u64
+bba74:  eor  w13, w13, w14, lsr #24    ; 掩码 B：取最高字节
+...
+bc67c:  eon  w13, w13, w14, lsr #24    ; 掩码 A：取最高字节后按位取反
+...
+bc7c4:  eon  w13, w13, w14, lsr #8     ; 掩码 C：取次低字节后按位取反
+...
+（`eor ..., lsr #8` 即掩码 D）
+```
+
+- 逐字节取相位：`x14 = table[i & 7]`，与"从记录自身起点计数"一致；
+- `lsr #24` 取 `u64` 的最高字节，`lsr #8` 取次低字节；两者各自再分
+  `eor`/`eon` 两支，合计四种组合，与上表 A/B/C/D 一一对应；
+- **判定某个记录属于哪一支，取决于消费它的调用点（函数），而不是记录
+  本身**——同一段 `.rodata` 里 A 组和 C 组的记录可以紧邻。因此"用 A 的
+  密钥扫全节"必然把 B/C/D 三组的记录当成噪声丢掉。
+
+每个掩码都由 ≥4 条独立记录交叉确认，且互相不可替代，例如：
+
+| 记录 | 只在哪个掩码下成词 | 说明 |
+| --- | --- | --- |
+| `1.3.6.1.4.1.11129.2.1.17` | C | Android Key Attestation 扩展 OID |
+| `com.samsung.android.app.screenrecorder.on` | D | 三星录屏组件名 |
+| `Java_..._SecureNative_rsaEncryptWithPublicKey` | B | JNI 名 |
+| `com/xunmeng/pinduoduo/secure/DeviceNative` | A | `FindClass` 类名 |
+
+`tools/xorstr.py` 已改为默认取四掩码并集（`--mask A|B|C|D` 可单取，
+`--count-only` 按掩码分列打印）。四者并集：`libpdd_secure.so` **634** 条、
+`libdyncommon.so` **458** 条。
+
+#### 9.4.6 RSA 调用点与方向（原报告未决事项 3，已闭合）
+
+上一版把"池里的 RSA 公钥用途"记为假说。本节给出确定结论。
+
+**(a) 一个掩码 A 的记录，另一条明文记录的独立佐证。**
+池中除 1024 位公钥外还有**第二条明文** RSA 公钥：`.rodata` `0x19b57f`
+起 294 字节的 X.509 SPKI，模数 2048 位、`e = 65537`，**未加密**（直接可见
+`30 82 01 22 30 0d 06 09 2a 86 48 86 f7 0d 01 01 01 05 00 03 82 01 0f 00`）。
+同一份 2048 位公钥也出现在 `libmedia_engine.so`（偏移 `0x116e143`），
+但该库那份是**另一条密钥**（模数不同），说明这两条是独立下发的。
+
+**(b) 库内自带 RSA，不依赖 OpenSSL。**
+`libpdd_secure.so` 的导入表里**没有任何** `EVP_*` / `RSA_*` / `BN_*` /
+`SHA*` / `AES_*` / `SSL_*` 符号（逐符号核过 `.dynsym` 的 UND 表）。
+RSA 是库自己实现的，因此上一条的"用途"问题不能靠外部 API 名回答，只能看
+调用点。
+
+**(c) 调用点与跳板（结构已证实）。** `0x192c60`（1024 位公钥）在码段有两处引用：
+
+| 调用点 | 从池中装载的常量 | 长度 | 跳板 | 跳板内的选择子 |
+| --- | --- | --- | --- | --- |
+| `0x3764c` | `0x192c60`（RSA 公钥 DER） | 217 | `0x37618` → thunk `0x37608` → `0x37550` | `4`（`376b8: orr w0, wzr, #0x4`） |
+| `0x37784` | `0x192d40`（**64 字节定长**） | 64 | `0x37750` → thunk `0x37740` → `0x37820` | `2`（`377bc: orr w0, wzr, #0x2`） |
+
+两处都是"`malloc` → 把池中常量整块拷进新缓冲区 → 调跳板"，拷贝用的是
+`ldp/ldr q` 逐 16 字节搬，落到堆上的就是**解码后的明文**（因此前述
+"池内容在运行期被解保护"这条链在此处闭环）。
+
+`0x192d40` 这条**不按 NUL 截断**：`0x37794` 显式算出 `len*65` 的栈空间、
+`377ac: strb wzr, [x0, #64]` 只清零第 65 字节，说明调用点把它当**定长 64
+字节**参数用，与字符串池里其余 NUL 结尾记录不同。
+
+**(d) 选择子的真实含义：通用分派核 + 装载跳板（结构已证实）。**
+
+同一族跳板共 6 个：`0x37550`（选择子 1，装载 `0x192c40`，16 字节）、
+`0x37618`（4，217 字节公钥）、`0x37750`（2，64 字节）、
+`0x37830`（1，装载 `0x192d90`，16 字节）、`0x378f8`（2，装载 `0x192db0`，45 字节）、
+`0x37930`（4，装载 `0x192de0`，16 字节）。选择子只有 `1 / 2 / 4` 三个取值。
+
+核心是**通用分派核**，不是"一种运算一个函数"：`0xbbfb0` 与 `0xbc858`
+共享同一份 FLA 调度体 `0xbc2b8`（`br x14` 表分发），`0xbb624` 与 `0xbbae8`
+同理。核心开头对参数做合法化：
+
+```asm
+bc2f4:  cmp  w2, #0x1
+bc300:  cset w11, lt                  ; +(w2 < 1)
+bc2fc:  orr  w10, w10, w11
+bc328:  cmp  w10, #0x0
+bc334:  csel w8, w24, w8, ne          ; 选择子 != 0 走另一支
+bc344:  tbnz w10, #0, bc3e4           ; 且 w2 < 1 时不做任何事直接返回
+```
+
+即核心第三个参数必须 ≥ 1，否则是空操作。
+
+**必须区分两个不同的 `w0`，否则会读错**：
+
+- **JNI 入口**（如 `SecureNative.ne` 之类）用 `w0/w1/w2` 传 JNI 语义上的
+  `(len_in, len_out, flag)`；`bl 0x37608` 那次是 `0x11/0x11/0x10`（17 字节），
+  `bl 0x37820` 那次是 `0x41/0x41/0x40`（65 字节）——注意 65 = 64 + 1 个
+  NUL，与上一条"定长 64、补一个 0"完全吻合；
+- **跳板内部**（`376b8` 等）才设置**选择子**，并把入口的 `x1/x2/w2` 重新
+  装配为 `(buf, out, flag)` 传给核心（`376bc: mov x1, x21` /
+  `376c0: mov x2, x23` / `376c4: mov w3, w22`）。
+
+由此可以给出一句**确定**的结构描述：这一族是
+"**常量装载跳板（3 种选择子）× 通用分派核**"，装载的常量按长度分两类——
+16/45 字节（对称密钥或 IV 尺寸）与 64/217 字节（非对称或大块材料）。
+**选择子到具体密码运算的逐块映射未展开**（核心是 FLA 调度器，静态展开其
+全部基本块超出本次范围），该项记入 §9.5；但这不影响下面的方向结论。
+
+**(e) 方向：公钥加密（结论，附证据强度）。**
+
+池中同时解出这两条 JNI 名（掩码 B/D）：
+
+```
+Java_com_xunmeng_pinduoduo_secure_SecureNative_rsaEncrypt
+Java_com_xunmeng_pinduoduo_secure_SecureNative_rsaEncryptWithPublicKey
+```
+
+- **已验证**：两条名只存在于字符串池中——6 个 `classes*.dex` 零命中、
+  `SecureNative.java` 的 34 个 `native` 声明里没有、48 个 ELF 无对应导出
+  （逐项核过）。因此它们是该库**自己构造并使用**的名字；
+- **已验证**：名字的主干是 `rsaEncrypt`（不是 `rsaVerify`/`rsaDecrypt`），
+  且 `WithPublicKey` 明确限定用公钥。同一池还解出 `EncResult`
+  （与已确认的 `DecResult` 同族、同命名法，见 §9.4.2）；
+- **假说（高置信）**：他们指向"设备侧用服务端公钥加密上报体"的方向。
+  未能确定的是**绑定路径**——名字既不在 DEX 里声明，也不在已取得库中导出，
+  最可能是运行期对**动态下发库**（清单内 54 个未落盘库，如 `libriskplugin`、
+  `libsargeras`，见 §9.3）做符号解析，或由该库经 `dlsym` 取用。这一条明确
+  记为未闭合。
+
+我**不**据此断言它是"验签"：验签方向既无名字支持，也无第二处证据。
+
+**(f) 为什么这属于风控数据面而不是信道。** 应用的全部 HTTP 流量都是标准
+HTTPS（见 [network.md](network.md)），没有自研握手；这条公钥路径的输入上下文
+与设备指纹采集同池（掩码 C/D 同区解出 `pddid_secure`、`did_info`、
+`pm list packages -u`、`getSerialNumber`、`pdd_key_202606_9`），输出经
+`EncResult` 回传，是**上报体的加密封装**。
+
+**(g) 两把公钥对照（已验证）。**
+
+| 位置 | 形式 | 模数 | `e` | 备注 |
+| --- | --- | --- | --- | --- |
+| `libpdd_secure.so` 池 `0x192c60` | **异或加密**，217 字节 Base64 文本 | 1024 位 | 65537 | 掩码 A 解出；DER 的 SHA-256 已在 [evidence.md](evidence.md) 记档 |
+| `libpdd_secure.so` `.rodata` `0x19b57f` | **明文** DER，294 字节 | 2048 位 | 65537 | 前 8 字节 `30 82 01 22 30 0d 06 09 2a 86 48` |
+| `libmedia_engine.so` `0x116e143` | 明文 DER，294 字节 | 2048 位 | 65537 | 与上一条**模数不同**，是另一把独立密钥 |
+
+`libpdd_secure.so` 的导入表里**没有任何** `EVP_*` / `RSA_*` / `BN_*` / `SHA*` /
+`AES_*` / `SSL_*` 符号（逐符号核过 `.dynsym` 的 UND 表），因此 RSA 是库内自带
+实现——这也是为什么该方向的判定不能靠"调了哪个 OpenSSL 函数"，只能靠调用点
+与名字。
+
 ### 9.5 未覆盖项汇总
 
 | 项 | 状态 | 影响 |
 | --- | --- | --- |
 | 清单内 54 个未落盘库 | 未取得 | 其内部混淆手法未逐库清点；加载点与用途已在 DEX 侧确认 |
-| `libpdd_secure` 字符串池 RSA 公钥 | 明文已还原，调用点未定位 | 用途判为假说（上报加密/验签），见 §9.4.2 |
+| ~~`libpdd_secure` 字符串池 RSA 公钥~~ | **已闭合**（调用点、方向、两把公钥对照均已给出） | 见 §9.4.6；仅"选择子到逐块运算的映射"仍记为结构已证实、逐块未展开 |
+| `rsaEncrypt*` / `generate*Sign` 的绑定路径 | 名字已还原，绑定点未定位 | 不在 DEX 声明、不在已取得库导出；指向动态下发库，见 §9.4.6(e) |
+| `libpdd_secure` 分派核的逐块语义 | 结构已证实（3 选择子 × 2 核） | 未逐块展开 FLA 调度体，见 §9.4.6(d) |
 | `SE`（11 个）/ `meco.cookie.N`（12 个）/ `shook.ShadowHook`（14 个） | 未判定 | 类声明与调用点已确认，提供库不在任何快照中，见 §9.6 |
 | `libpdd_secure` 选择子语义 | 结构已证实，取值集合未逐一断言 | 见 [algorithm.md](algorithm.md) §5.2 |
 | `assets/A94/CDA.cdnMd5` | 假说 | 判为服务端增量基线，见 [algorithm.md](algorithm.md) §6.3 |
@@ -727,6 +923,22 @@ SELinux 与 verity（`ro.boot.verifiedbootstate`、`plat_sepolicy_and_mapping.sh
 | `com.xunmeng.pinduoduo.shook.ShadowHook` | 14 | 未落盘库 | 调用点 `shook/ShadowHook.java:149` 处 `loadLibrary("shadowhook")` → 清单内 `libshadowhook.so`（假说） |
 | `meco.cookie.N` | 12 | 未落盘库 | 清单内 `libmeco_cookie.so`；DEX 加载点 `w33.a` |
 | `com.media.tronplayer.TronMediaPlayer` | 38 | 未落盘库（assets 内嵌） | `assets/so_arm64-v8a/libtronplayer.7z` |
+
+**关于"未判定"的判据强度**：上表几项"未判定"最初是在**掩码 A 单掩码**下
+核对的。本次已用 §9.4.5 的四掩码并集（min-len 4）重扫两个池库的全部记录，
+`SE` / `ShadowHook` / `meco` / `cookie` 这些关键词仍然**零命中**——
+即"提供库不在本机快照中"不是单掩码造成的假阴性。池内另解出两条相关线索，各自独立：
+
+- `com/xunmeng/pinduoduo/msmr/SotdTool`（掩码 B，`0x1981a0`，22 字节）——
+  **该名字在 `classes4/classes5.dex` 中存在**
+  （`com/xunmeng/pinduoduo/msmr/SotdTool.java`，是一个 `ServiceConnection`
+  形式的 Binder 工具类）。与 §9.1.2 的 `DeviceNative` 同类：池里的类名能在
+  DEX 中找到对应类，可作为四掩码解码正确性的独立佐证。
+  （**注意**：本报告**没有**定位到引用该池偏移的 native 码段——`0xb28ec`
+  处的 `add x8, x8, #0x1d0` 指向 `0x1981d0`，落在该记录**内部**而非起点，
+  与该记录无关。这里只断言"DEX 有同名类"，不断言 native 调用点。）
+- `eagleReport`（`libpdd_secure` 掩码 B `0x19bf30`，`libdyncommon` 掩码 A
+  `0x40e3dc`）——6 个 DEX **零命中**，属 native 内部上报通道名。
 
 #### 9.6.1 `SE` 的 11 个方法
 

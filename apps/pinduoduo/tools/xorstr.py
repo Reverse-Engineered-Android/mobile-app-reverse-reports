@@ -3,17 +3,29 @@
 libdyncommon.so.
 
 Both libraries were packed by the same build-time tool and embed the SAME
-8-byte key.  The key is not a literal constant in either file: it is the
-one's complement of the high byte of each little-endian u64 in the keystream
-table, which sits at
+eight-qword keystream table, which sits at
 
     libpdd_secure.so:0x198768
     libdyncommon.so :0x40f2d8
 
-Both tables hold the identical eight qwords, so both yield
+The key is not a literal constant: it is one byte-row of that table, optionally
+complemented.  `.text` contains exactly four such loops, differing only in the
+shift (which byte of each qword) and the operator (`eor` = plain, `eon` =
+complemented):
 
-    table high bytes   0f 68 ba 1b 7c a0 2e 60
-    key = ~those       f0 97 45 e4 83 5f d1 9f
+    eon w13, w13, w14, lsr #24   ->  mask A  f0 97 45 e4 83 5f d1 9f
+    eor w13, w13, w14, lsr #24   ->  mask B  0f 68 ba 1b 7c a0 2e 60
+    eon w13, w13, w14, lsr #8    ->  mask C  b1 30 15 3d f6 99 23 83
+    eor w13, w13, w14, lsr #8    ->  mask D  4e cf ea c2 09 66 dc 7c
+
+A and B are bitwise complements of each other, as are C and D, matching the
+paired `eor`/`eon` loops.  Which mask a given record uses is a property of the
+*call site* that consumes it, not of the record: A-group and C-group records sit
+interleaved in the same `.rodata`.  A census that applies one mask therefore
+silently drops the other three groups -- this tool defaults to the union.
+
+Earlier revisions of this tool shipped only mask A and reported "151 / 129
+records"; those numbers were an artefact of that single-mask scan.
 
 Encoding model (verified byte-exactly on both libraries):
 
@@ -21,10 +33,11 @@ Encoding model (verified byte-exactly on both libraries):
     `plaintext[i] ^ KEY[i % 8]`: the key restarts at index 0 for every string.
   * A record ends at the first raw `0x00` byte, **except** that raw `0x00` is
     real data when it sits at a key phase whose keybyte is printable ASCII
-    (phase 2, `KEY[2] = 0x45 = 'E'`, or phase 5, `KEY[5] = 0x5f = '_'`)
     *and* the next byte is not itself `0x00`.  The terminator is therefore a
     single NUL in a run of NULs, not a lone NUL that happens to follow a
-    printable-phase byte.
+    printable-phase byte.  (For mask A the printable phases are 2, `0x45 =
+    'E'`, and 5, `0x5f = '_'`; for mask B they are 2, `0x68 = 'h'`, and 5,
+    `0xa0` -- not printable, which is why B splits on a plain NUL.)
 
 That exception is not a detail -- it is the whole difficulty of this pool.
 Because `plaintext ^ KEY` is zero exactly when `plaintext == KEY[phase]`,
@@ -66,6 +79,28 @@ import sys
 KEY = bytes([0xf0, 0x97, 0x45, 0xe4, 0x83, 0x5f, 0xd1, 0x9f])
 DEFAULT_SECTIONS = ('.rodata', '.data.rel.ro')
 KEYTABLES = {'libpdd_secure.so': 0x198768, 'libdyncommon.so': 0x40f2d8}
+
+# Four effective masks are in use, all derived from the same 8-qword keystream
+# table but with a different shift (which byte of each qword) and a different
+# operator.  The decode loops in .text are the evidence:
+#
+#   eon w13, w13, w14, lsr #24   ->  mask A  (one's complement of the high byte)
+#   eor w13, w13, w14, lsr #24   ->  mask B  (the high byte itself)
+#   eon w13, w13, w14, lsr #8    ->  mask C
+#   eor w13, w13, w14, lsr #8    ->  mask D
+#
+# A and B were recovered first; C and D were recovered from records that A and
+# B leave as noise.  Each mask is confirmed independently by >= 4 records, so
+# none of them is a single-string fit.  Which record is consumed by which loop
+# is a property of the *call site*, not of the record, so a census that uses
+# one mask silently drops the records belonging to the other loops: report the
+# union.
+MASKS = {
+    'A': bytes([0xf0, 0x97, 0x45, 0xe4, 0x83, 0x5f, 0xd1, 0x9f]),
+    'B': bytes([0x0f, 0x68, 0xba, 0x1b, 0x7c, 0xa0, 0x2e, 0x60]),
+    'C': bytes([0xb1, 0x30, 0x15, 0x3d, 0xf6, 0x99, 0x23, 0x83]),
+    'D': bytes([0x4e, 0xcf, 0xea, 0xc2, 0x09, 0x66, 0xdc, 0x7c]),
+}
 
 
 def sections(path, names=DEFAULT_SECTIONS):
@@ -123,8 +158,14 @@ def decode_record(blob, start, key):
     return text.decode('ascii'), start + i
 
 
-def harvest(path, min_len, key, names):
-    """Yield (section, absolute_offset, plaintext) for each protected record."""
+def harvest(path, min_len, keys, names):
+    """Yield (section, absolute_offset, plaintext, mask) per protected record.
+
+    `keys` is a mapping mask-letter -> 8-byte key.  Scanning resumes at the end
+    of each accepted record, so a record is attributed to exactly one mask; the
+    ordering of `keys` therefore decides ties, and the union over all masks is
+    what a census should count.
+    """
     with open(path, 'rb') as fh:
         data = fh.read()
     out = []
@@ -132,9 +173,15 @@ def harvest(path, min_len, key, names):
         blob = data[off:off + size]
         i = 0
         while i < len(blob):
-            text, end = decode_record(blob, i, key)
-            if text is not None and len(text) >= min_len:
-                out.append((sec, off + i, text))
+            hit = None
+            for name, key in keys.items():
+                text, end = decode_record(blob, i, key)
+                if text is not None and len(text) >= min_len:
+                    hit = (name, text, end)
+                    break
+            if hit:
+                name, text, end = hit
+                out.append((sec, off + i, text, name))
                 i = end
                 while i < len(blob) and blob[i] == 0:
                     i += 1
@@ -150,14 +197,20 @@ def main():
     ap.add_argument('inputs', nargs='+', help='ELF files, globs or directories')
     ap.add_argument('--min-len', type=int, default=8,
                     help='minimum decoded record length (default 8)')
-    ap.add_argument('--key', default=None,
-                    help='8-byte key in hex (default: derive from the file)')
+    ap.add_argument('--key', default=None, metavar='HEX',
+                    help='single 8-byte key; overrides --mask')
+    ap.add_argument('--mask', default=None, metavar='A|B|C|D',
+                    help='use one recovered mask (default: all four, union)')
     ap.add_argument('--sections', default=','.join(DEFAULT_SECTIONS))
     ap.add_argument('--count-only', action='store_true',
                     help='print one census line per file instead of the records')
     a = ap.parse_args()
-    forced = bytes.fromhex(a.key) if a.key else None
     names = tuple(a.sections.split(','))
+    forced = None
+    if a.key:
+        forced = {'forced': bytes.fromhex(a.key)}
+    elif a.mask:
+        forced = {a.mask.upper(): MASKS[a.mask.upper()]}
     files = []
     for x in a.inputs:
         if os.path.isdir(x):
@@ -166,17 +219,23 @@ def main():
         else:
             files += sorted(glob.glob(x)) or [x]
     for f in sorted(set(files)):
-        key = key_from_file(f, forced)
-        rows = harvest(f, a.min_len, key, names)
+        if forced is not None:
+            keys = forced
+        else:
+            base = key_from_file(f)
+            keys = {n: base if n == 'A' else k for n, k in MASKS.items()}
+            keys['A'] = base
+        rows = harvest(f, a.min_len, keys, names)
         if not rows:
             continue
         if a.count_only:
-            print(f'{os.path.basename(f):24s} records={len(rows):4d} '
-                  f'key={key.hex()}')
+            per = {n: sum(1 for r in rows if r[3] == n) for n in sorted(keys)}
+            detail = ' '.join(f'{n}={per[n]}' for n in sorted(keys))
+            print(f'{os.path.basename(f):24s} union={len(rows):4d} {detail}')
             continue
         print(f'=== {os.path.basename(f)}  ({len(rows)} records)')
-        for sec, off, s in sorted(rows, key=lambda r: r[1]):
-            print(f'{sec:11s} 0x{off:08x} (mod8={off % 8}) '
+        for sec, off, s, name in sorted(rows, key=lambda r: r[1]):
+            print(f'{sec:11s} 0x{off:08x} (mod8={off % 8}) [{name}] '
                   f'{len(s):4d}  {s}')
     return 0
 
