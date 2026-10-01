@@ -23,6 +23,7 @@
 6. 联系人上传只筛选并归一化中国大陆 11 位手机号和显示名，按 300 条分页，并进行应用绑定的 AES-CBC/Base64 加密。位置上传接口仅传经纬度，但调用点属于开发/诊断组件，不能据此断言普通用户每次启动都上传位置。
 7. 本地存储混合使用明文 SQLite、WCDB/SQLCipher 加密 SQLite、MMKV/Preferences、Java serialization 和 gzip。9.47 历史快照可重建 9 个加密 DB 和读取 17 个明文 DB；当前 9.48 只读查询复核了相同格式和 schema，但业务行数已增长。
 8. 风控是纵深体系：请求签名、设备/环境指纹、完整性检查、JS/native 风控上报、账号风险接口、验证码、人脸核身和第三方推送 SDK 策略共同工作。
+9. 权限面由三 APK 并集构成 **80 项**，`READ_PHONE_STATE` 只声明在 split config APK；弹框为三层结构，首启合规弹窗不可取消。内置隐私合规自查框架对 **55 个五位数敏感 API 号 + 148 个 AppOps 索引**全量登记并做超频/双路采样上报；位置采集存在受远端开关控制的第二层门控（默认关闭）。声明与实际采集存在 **8 项**落差，详见 [privacy-and-permissions.md](privacy-and-permissions.md)。
 
 ## 主要交互流程
 
@@ -91,7 +92,7 @@ LongLinkProxy/AIDL -> libxhslonglink.so -> Tencent Mars STN persistent TCP
 | 对象上传 | 临时 secret/token + fileId；文件或 1 MiB 分片 |
 | 本地风险值 | AES-CBC/PKCS7 + 标记 + Base64，或 RSA 包装 AES key/IV |
 
-详细字段、端点、认证边界和公开实现边界见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md)、[algorithm.md](algorithm.md) 和 [completeness.md](completeness.md)。
+详细字段、端点、认证边界和公开实现边界见 [network.md](network.md)、[transfer.md](transfer.md)、[storage.md](storage.md)、[algorithm.md](algorithm.md) 和 [completeness.md](completeness.md)。权限弹框链路、数据采集范围与隐私协议对照见 [privacy-and-permissions.md](privacy-and-permissions.md)。
 
 ## 风控机制概览
 
