@@ -88,10 +88,13 @@
    `cdnMd5` 指向增量下发基线，而不是当前内置文件。
 2. `SecureNative.b/s` 的选择子语义由调用点归纳，选择子取值集合尚未逐一断言到
    具体密钥用途。
-3. ~~`libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点~~
+3. `libpdd_secure.so` 池内 5 条**非文本**记录（45/12/12/12/12 字节）判为二进制
+   密钥/IV 材料，只断言位置、长度、非文本三点，不做密钥语义推断；见
+   [obfuscation.md](obfuscation.md) §9.4.5。
+4. ~~`libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点~~
    **已闭合**：调用点（`0x3764c`/`0x37784`）、跳板与选择子结构、两把公钥的
    逐字节对照、以及"公钥加密上报体"的方向均已给出，见
    [obfuscation.md](obfuscation.md) §9.4.6。仍未展开的只剩 FLA 分派核的逐块
    语义（结构已证实）与 `rsaEncrypt*` 名字的绑定路径。
-4. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
+5. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
    方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。
