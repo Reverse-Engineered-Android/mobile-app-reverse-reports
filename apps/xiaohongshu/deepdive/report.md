@@ -77,7 +77,7 @@
 
 **154 个域原语**全部定名（`fe_add/carryfold` 48、`fe_reduce19` 47、`fe_sq` 20、`fe_mul` 14 等）并给出伪代码。九项密码学指纹守恒**逐项 EXACT**：`adds`/`adcs` 各 364、`mul` 514、`umulh` 390、`madd` 252、掩码 178、`extr #51` 130、`lsr #51` 63、×19 58（静态 = 执行覆盖，差值全 0，且逐例程求和一致）。188 个未执行槽位逐段定性，**0 个**含密码学指纹。
 
-**Java/dex 侧混淆审计（§9）**：`@u5`/`@v5` 加密字段名 **519/519 闭式还原**（100% 合法 Java 标识符；`j4` 解出 `hashCode`/`toString`/`getClass`/`notify`/`notifyAll`/`wait`/`clone`/`equals` 全部 8 个 Object 方法）；Java 侧字符串解密器 **822 调用点（字节码精确）→ 811 个内联 (cipher,key) 对 → 811 全映射，0 未映射、0 矛盾**（五种修正形式 + 两种操作数顺序；11 个转发蹦床逐条列明，2 个硬站点按地址闭合）。**daemon dex 三层混淆完整审计**：字符串 141 调用点、`@x0` 116/116、`@w0` 77 站点、`v.<clinit>` 74 条明文、IPC 12 个命令（§9.7）。并**定名 `Petal` 的归属**——`PetalConfig` 是插件化框架配置（`PETAL_MODE` 为 `boolean false`，用作 RN/Weex 注解默认值），不是混淆器。
+**Java/dex 侧混淆审计（§9）**：`@u5`/`@v5` 加密字段名 **519/519 闭式还原**（100% 合法 Java 标识符；`j4` 解出 `hashCode`/`toString`/`getClass`/`notify`/`notifyAll`/`wait`/`clone`/`equals` 全部 8 个 Object 方法）；Java 侧字符串解密器 **822 调用点（字节码精确）→ 811 个内联 (cipher,key) 对 → 811 全映射，0 未映射、0 矛盾**（五种定点变换 + 两种操作数顺序；11 个转发蹦床逐条列明，2 个硬站点按地址闭合）。**daemon dex 三层混淆完整审计**：字符串 141 调用点、`@x0` 116/116、`@w0` 77 站点、`v.<clinit>` 74 条明文、IPC 12 个命令（§9.7）。并**定名 `Petal` 的归属**——`PetalConfig` 是插件化框架配置（`PETAL_MODE` 为 `boolean false`，用作 RN/Weex 注解默认值），不是混淆器。
 
 ## 易混点对照（现状口径）
 
@@ -108,7 +108,7 @@
 
 不公开：APK/SO/DEX 本体、反汇编全量文件、真实 key/token/sid/deviceId、真实请求或响应、服务端下发内容、可复现线上风控绕过的构造。
 
-未闭环项已在各文档显式列出。Tiny 域区逐块算术 lift 已完成（154 域原语 + 伪代码，九项指纹守恒逐项 EXACT，§5.6.9）；Java/dex 侧混淆面亦已闭环（§9）。Tiny 分发层结构完全闭环（61 分派块 ↔ 61 谓词槽 ↔ 31 操作码三向双射、零冲突；61 个编译期跳转位移全复现，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.6–§5.6.7），其证据等级低于 `0x50010`——Tiny 侧为静态闭环 + 全 31 操作码执行集（5 888–35 577 条，总和 246 772），**未做的是逐输入饱和**，而非“覆盖浅”。主要边界四类：`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、`libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）、以及 `libturingmfa.so` 其余 8 个构造子的取件依赖真实 Android 运行时。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
+未闭环项已在各文档显式列出。Tiny 域区逐块算术 lift 已完成（154 域原语 + 伪代码，九项指纹守恒逐项 EXACT，§5.6.9）；Java/dex 侧混淆面亦已闭环（§9）。Tiny 分发层结构完全闭环（61 分派块 ↔ 61 谓词槽 ↔ 31 操作码三向双射、零冲突；61 个编译期跳转位移全复现，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §5.6.6–§5.6.7），其证据等级低于 `0x50010`——Tiny 侧为静态闭环 + 全 31 操作码执行集（5 888–35 577 条，总和 246 772），**未做的是逐输入饱和**，而非“覆盖浅”。主要边界四类：`libtinyd.so` 的 `JNINativeMethod` 三元组（CFF 内运行时构造，需进程内插桩）与 4 字节载荷取值语义（协议形状已定）、运行时抓包才能确定的项（服务端 `http_range_size` 实际取值、CDN `Accept-Ranges`）、`libxyasf.so` 父消息的 8 个子消息字段号（来自运行时 type-info 表；子消息内部 51 个字段号已全部取得）、以及 `libturingmfa.so` 其余 8 个构造子的运行期取值（静态语义已按 FDE 边界覆盖 23 函数 / 19 导入，密码学与静态数据段写入均为 0）。Cookie 作用已结构性证清：API 客户端未装 `CookieJar`，cookie 仅属 WebView/RN/第三方。
 
 设备指纹一项属**已恢复**，见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)：该库未做字符串加密，采集面可静态穷举，无需 VM 级 lift。
 
