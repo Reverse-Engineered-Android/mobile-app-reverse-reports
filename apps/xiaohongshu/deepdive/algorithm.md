@@ -86,7 +86,7 @@ vectors=3 mismatches=0
 
 合成向量与扩散统计见 [crypto.md](crypto.md) §4.5、§4.6。
 
-单 trace 符号化 lift（`re/xyass_lift50010.py` + `re/xyass_type6_ref.py`）经修正对比宽度后实测 **4/4 mismatch**，对训练轨迹外的输入不成立，原因是上述数据相关控制流；因此**不作为参考实现**。
+单 trace 符号化 lift（`re/xyass_lift50010.py` + `re/xyass_type6_ref.py`）经对齐对比宽度后实测 **4/4 mismatch**，对训练轨迹外的输入不成立，原因是上述数据相关控制流；因此**不作为参考实现**。
 
 证据等级：**接口、数据范围、结构、常量集、表清单、动态可达性、确定性向量均已固化**；CFF 转移图亦已完整枚举并饱和（412 site / 767 边 / 417 目标），**选择层亦已闭环**（262 FIXED / 69 BASE / 18 DATA，见 [crypto.md](crypto.md) §4.6.4）。
 

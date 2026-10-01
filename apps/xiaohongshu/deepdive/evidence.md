@@ -77,7 +77,7 @@ fork / syslog / abort-message 特征支持独立守护进程判断（`assets/fd2
 | --- | --- | --- |
 | `libsecurebase.so` | `JNI_OnLoad 0xd13c`，表 `0x38000` | 2 个动态注册方法；登录态 KV 文件名派生与定制哈希 |
 | `libeidjni.so` | 20 个 `Java_com_eidlink_jni_EIDReadCardJNI_*` | NFC/eID SDK |
-| `libturingmfa.so` | `JNI_OnLoad 0x1fcc4`，表 `0x56540` / `0x56690` | 14 + 1 个动态注册方法。该库 `.init_array` 9 项全非零，其中第 6 项 `0x34d74` 是**加载期原地自解密字符串表**的解密器（5 207 条指令、0 调用、0 入边、1 个 `ret`）；密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 明文（源列表 416 项）；产物 `re/tmfa_initarray.json`、`re/tmfa_schedule.json`，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7 |
+| `libturingmfa.so` | `JNI_OnLoad 0x1fcc4`，表 `0x56540` / `0x56690` | 14 + 1 个动态注册方法。该库 `.init_array` 9 项全非零，其中第 6 项 `0x34d74` 是**加载期原地自解密字符串表**的解密器（5 207 条指令、0 调用、0 入边、1 个 `ret`）；密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 明文（源列表 416 项）；产物 `re/tmfa_initarray.json`、`re/tmfa_schedule.json`。其余 8 个构造子经 FDE 精确边界与注册析构目标闭包分析，覆盖 23 函数 / 19 导入、密码学指令 0、写静态数据段目标 0；产物 `re/tmfa_init_fde.py`、`re/tmfa_init_static.json`、`re/tmfa_init_reach.py`、`re/tmfa_init_reach.json`、`re/tmfa_init_disasm.txt`，见 [risk-controls.md](risk-controls.md) §7 |
 
 ## 网络与协议证据
 
