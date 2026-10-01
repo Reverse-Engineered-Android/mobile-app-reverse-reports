@@ -104,8 +104,31 @@ start_offset, content_length, current_offset`。
 | 图片 / 视频 | `cdn.pddpic.com`、`mcdn.pddpic.com`、`img.pddpic.com`、`commimg.pddpic.com` | 应用缓存目录 |
 | 业务文件 | `file.pinduoduo.com` | 同上 |
 | 运行时 native 库 | 动态加载器 | `files/dynamic_so/<name>_<epoch_ms>_<md5>/` |
-| 组件 / 模板 | vita 组件库 | `vita-database` 的 `UriInfo.absolute_path` |
+| 组件 / 模板 | vita 组件库（`/volantis3-open/component/...`） | `files/.vita/<组件ID>/<版本>/`，路径登记在 `vita-database` 的 `UriInfo.absolute_path` |
 | 长连接会话 | PNet | `files/network/pnet/.../ssl_session/` |
+
+### 3.2.1 组件下发（Vita）的下载数据范围
+
+Vita 是全 App 唯一按"组件"粒度批量下载代码/资源/So 的通道，具体范围见
+[vita.md](vita.md) §7：
+
+- **下载什么**：`<build_no>/<组件ID>.{zip,7z,br}` 三种压缩格式，或
+  `diff/<本地build_no>/<远端build_no>/<组件ID>.br` 差分格式；另有
+  `index/<build_no>/<组件ID>.zip` 离线索引。
+- **格式选择**：由响应里 6 对 `url*`/`*_diff_url` 与客户端 `PatchType`
+  （`ZIP/Z7/BR` × `FULL/DIFF`）比对决定，客户端偏好 Brotli。
+- **校验材料**：每个包型带独立 `signkey`（SHA256WithRSA 签名），另有
+  文件级 `<组件>.md5checker` 全文件 MD5 表。
+- **加密**：`security_level ∈ {1,2}` 的组件走 `/volantis3-open/aes/...`，
+  载荷为 AES-128-CBC（全零 IV）密文，密钥由 `security_key` 经 RSA 链解出。
+- **回传**：`/api/app/v1/component/report` 会上报 `secure_level`、`secure_key`、
+  `secure_version`、`available_space`、`patching_file_name`、
+  `patching_old_file_size`、`lock_file_existed`、`manifest_exists`、
+  `is_support_zip_patch`、`is_zip_diff_package`，以及 23 个下载/补丁/解密
+  事件码（`download_start`…`ipc_download_fail`）。
+- **实际落地量**（本设备只读快照）：`files/.vita` 46 个组件目录约 34.6 MB；
+  `files/dynamic_so` 26 个目录约 74 MB；组件注册表 126 个，已安装 46 个，
+  **80 个已注册但从未下载**。
 
 ### 3.3 上传/下载共用的头部
 

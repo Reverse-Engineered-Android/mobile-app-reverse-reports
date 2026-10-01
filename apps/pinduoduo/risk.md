@@ -426,3 +426,46 @@ SDK 内还硬编码了三组远程调试网关（`mobilegw.stable.alipay.net`、
 
 该库的加载点、清单归属与在机情况见 [evidence.md](evidence.md) §3，
 在 26 个 `files/dynamic_so` 中随业务按需下载。
+
+## 15. 组件框架（Vita）作为风控库的下发通道
+
+Vita 本身不是风控组件，但它是**风控 native 库的唯一下发通道**，因此风控覆盖面
+必须按它来解释。完整逆向见 [vita.md](vita.md)。
+
+| 与风控相关的点 | 内容 |
+| --- | --- |
+| 证书固定 | 全 App **只有** 3 个 Vita 接口被 `forceEnalbePinner: true` 强制固定（`/api/app/v1/component/query`、`…/manual/query`、`…/manual/query/titan`） |
+| 组件签名 | SHA256WithRSA，公钥硬编码在 `classes3.dex`（RSA-1024） |
+| 载荷加密 | `security_level ∈ {1,2}` → `/volantis3-open/aes/component/...`，AES-128-CBC、取密钥前 16 字节、**全零 IV** |
+| 密钥回传 | `/api/app/v1/component/report` 上报 `secure_level`、**`secure_key`**、`secure_version` |
+| 下载/补丁事件 | 23 个事件码（`download_start`…`ipc_download_fail`） |
+| 失败诊断字段 | `available_space`、`patching_file_name`、`patching_old_file_size`、`lock_file_existed`、`manifest_exists`、`is_support_zip_patch`、`is_zip_diff_package` |
+| 行为画像 | `comp_resource_visit*`、`comp_daily_usage_statistics` 聚合上报 |
+| 调试器开关 | MMKV `vita-debugger`、`scan-status-vita-debugger` |
+| 版本封禁 | MMKV `vita_version_block_info` / `_fake_info`（样本为空） |
+
+### 15.1 已注册未下发的风控组件（80 个）
+
+`files/.newLocker` 的 183 个 `.vlock` 文件名是 `MD5(组件ID)`，反解得注册表
+**126 个组件**；`vita_local_comp_v2` 的已安装表为 **46 条**，故 **80 个已注册
+但从未下载**。其中风控/加固相关的至少包括：
+
+```
+libpdd_secure      libmeco_cookie    libsargeras        libshadowhook
+libshadowhook_nothing  libxunwind    libriskplugin      libpdd_sa_hook
+libbytehook        libCSoLoader      libpcrash          libpcrash_anr
+libpcrash_dumper   libapm_cpu        libapm_thread_monitor  libpapm_trace
+libpapmLeak        libBigAllocMonitor  libwallet_crypto_box  libfastdump
+libmdumper         libxdl            libchat_msg        libgoldarch
+```
+
+**这一条直接解释了一个此前的未决项**：`SE`（11 个方法）、`meco.cookie.N`
+（12 个）、`shook.ShadowHook`（14 个）三族 native 方法在 APK 内 51 个 ELF 中
+（含四掩码字符串池并集、JNI 注册表扫描、原始字节搜索）**零命中**。原因不是
+分析遗漏或单掩码假阴性，而是其提供库
+（`libriskplugin` / `libmeco_cookie` / `libshadowhook`）**在 Vita 注册表中处于
+"已注册未下发"状态**——服务端在本设备上从未触发下载。
+
+因此"全部风控代码"的覆盖边界应表述为：**已下发到设备的部分已穷尽**；
+未下发部分（80 个组件）的**存在性、ID 与用途已确认**，但其内部实现不在本设备上，
+无法从本机快照静态还原。

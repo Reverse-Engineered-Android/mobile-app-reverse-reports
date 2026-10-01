@@ -137,6 +137,41 @@
 `MsgboxDB_V2_<UID>` 的 WAL 头：`magic=0x377f0682`、`page_size=4096`、
 `seq=151100134`、10 帧、覆盖页 `1,2,3,3,1,2,4,5,6,7`。
 
+### 7.1 组件框架（Vita）取证
+
+只读取证，组件二进制**不出设备**，只在设备上跑 `md5sum`/`sha256sum` 后把
+**哈希与元数据**带回：
+
+| 项 | 数量 | 核对结果 |
+| --- | ---: | --- |
+| `files/.vita` 组件目录 | 46 | 170 个文件全量 MD5 实测 |
+| `.md5checker` 声明记录 | 146 | **134 通过**；12 条不匹配**全为** `extra_info.json`（可变元数据） |
+| So 载荷 | 23 | **23/23 全部通过**（`.vita` 10 + `dynamic_so` 13） |
+| `files/.newLocker` | 183 | 反解出 126 个组件 ID；4 个版本锁；2 个未解析 |
+| `vita_local_comp_v2`（MMKV） | 46 条 | 与 `.vita` 目录数一致 |
+
+样本 `libtronavx.so`（4,000,176 字节）：
+
+| 校验 | 值 |
+| --- | --- |
+| MD5 | `5b122de57929bae97add77d386799431` |
+| SHA-256 | `71d88a54ca242206c039e5f8e9b60903b9f3004b35b5067f0fb0c271715f7592` |
+| 一致的三处 | `md5checker` 条目 / 目录名末段 / `extra_info.json.md5` |
+
+`vita-database` 行数**必须连同未 checkpoint 的 WAL 读取**：
+`UriInfo` 0→3、`VitaAccessInfo` 39→43、`VitaVersionInfo` 42→46、`VitaCleanInfo` 0。
+
+DEX 侧硬编码 RSA 公钥（X.509 SPKI，全部为验签公钥）：
+
+| # | DEX | 位宽 | DER 字节 | SHA-256(DER) 前 16 位 |
+| ---: | --- | ---: | ---: | --- |
+| 1 | `classes.dex` | 1024 | 162 | `f0a5723ee90872b1…` |
+| 2 | `classes.dex` | 1024 | 162 | `c9daed6d9bfbbabd…` |
+| 3 | `classes3.dex` | 1024 | 162 | `0ad4904c26c83028…` |
+| 4 | `classes3.dex` | 1024 | 162 | `9f70fdf2f9b774fa…` |
+| 5 | `classes3.dex` | 1024 | 162 | `cb5ef78dcd0427f7…`（Vita 组件验签） |
+| 6 | `classes3.dex` | 2048 | 294 | `1a40e8d0a36b8a5f…` |
+
 ## 8. 复现方式
 
 分析全部在离线状态完成：

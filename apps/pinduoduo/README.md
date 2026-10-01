@@ -17,6 +17,8 @@
   变换，均可静态还原，含覆盖两个库、四掩码并集的异或字符串池）；`SoBuildInfo`
   清单中另有 54 个库在本设备从未下载，明确列为未覆盖项。
 - 本地数据库格式与存储信息范围（含未 checkpoint 的 WAL）。
+- 动态组件框架（Vita/Volantis）的落盘格式、组件注册表（126 个，含 80 个已注册
+  未下发）、网络协议与 MD5+RSA+AES 完整性链。
 
 入口：
 
@@ -28,6 +30,7 @@
 - [混淆闭包](obfuscation.md) — DEX/Efix 跳板与逐库 native 混淆清点
 - [算法与 native](algorithm.md) — `libpdd_secure.so` 常量表、JNI 导出、CFF 反扁平化
 - [本地存储](storage.md) — 数据库格式、WAL、MMKV、动态库落盘
+- [动态组件框架](vita.md) — Vita/Volantis 组件下发、清单与注册表、完整性链
 - [逆向证据](evidence.md) — 地址、哈希、符号与证据等级
 - [分析完成度矩阵](completeness.md) — 逐项要求与覆盖证据
 

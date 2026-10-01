@@ -551,7 +551,7 @@ ELF 头，不依赖 objdump 的符号标签——`.plt` 尾部会被反汇编成
 | APK `lib/arm64-v8a` | 22 | 冷启动必需，随包分发 |
 | `files/dynamic_so` | 26 | 本设备已按需下载并落盘 |
 | `assets/so_arm64-v8a/*.7z` | 3 | 内嵌压缩，启动时解出（`libtitan`、`libtronplayer`、`libstatic-webp`） |
-| **清单内但不在本设备** | **54** | 代码路径存在，本机从未触发下载 |
+| **清单内但不在本设备** | **54** | 代码路径存在，本机从未触发下载（Vita 已注册，见下） |
 
 54 个未落盘库全部能在 DEX 中找到加载点，例如 `libmeco_cookie.so`（`w33.a`
 `System.loadLibrary`）、`libriskplugin.so`（`apm/risk/lock/c`）、
@@ -566,6 +566,32 @@ ELF 头，不依赖 objdump 的符号标签——`.plt` 尾部会被反汇编成
 assets 内嵌 3 个、运行时落盘 26 个，合计 51 个 ELF。清单中另有
 `libwallet_crypto_box.so` 一次都没有被取得，其命名指向密码学职责，属于明确的
 未覆盖项。
+
+#### 9.2.1 这 54 个库的准确状态：已注册、按需下发、本机未触发
+
+本设备上的组件框架（Vita / Volantis）给出了这 54 个库的**权威状态**，而不是
+"缺失"。`files/.newLocker/` 下 183 个零字节 `.vlock` 文件，其文件名是
+**`MD5(组件ID)`**（可带 `-patch` 与版本后缀）；反解后得到**完整组件注册表
+126 个**，与 `files/mmkv/vita_local_comp_v2` 的**已安装表 46 条**做差：
+
+| 集合 | 数量 |
+| --- | ---: |
+| 已注册（`.newLocker`） | 126 |
+| 已安装（`vita_local_comp_v2` / `files/.vita`） | 46 |
+| **已注册但未下载** | **80** |
+
+`SoBuildInfo` 的 105 个 `absent` 条目中，**54 个**出现在这 80 个已注册未下载项里；
+其余 51 个使用 `v7alib*` 命名（Vita 用 `v64lib*`），属另一套命名空间，
+样本设备为 arm64 故不适用。因此：
+
+- 这 54 个库**不是分析遗漏，也不是 APK 缺件**，而是**已注册、等待按需下发**；
+- 触发条件是"网络 + 版本策略同时命中"（§9.2 正文），未命中时永远不会落盘；
+- 已注册未下载清单里的风控/加固组件包括 `libpdd_secure`、`libmeco_cookie`、
+  `libsargeras`、`libshadowhook`、`libxunwind`、`libriskplugin`、`libpdd_sa_hook`、
+  `libbytehook`、`libCSoLoader`、`libpcrash{,_anr,_dumper}`、`libapm_cpu`、
+  `libpapm_trace`、`libBigAllocMonitor`、`libwallet_crypto_box` 等。
+
+格式、清单文件与注册表解法见 [vita.md](vita.md) §3、§5。
 
 ### 9.3 已取得库上的闭包结论
 
@@ -908,12 +934,12 @@ HTTPS（见 [network.md](network.md)），没有自研握手；这条公钥路�
 
 | 项 | 状态 | 影响 |
 | --- | --- | --- |
-| 清单内 54 个未落盘库 | 未取得 | 其内部混淆手法未逐库清点；加载点与用途已在 DEX 侧确认 |
+| 清单内 54 个未落盘库 | 未取得；**状态已定**（Vita 已注册未下发） | 其内部混淆手法未逐库清点；加载点与用途已在 DEX 侧确认，注册表证据见 §9.2.1 与 [vita.md](vita.md) §5 |
 | ~~`libpdd_secure` 字符串池 RSA 公钥~~ | **已闭合**（调用点、方向、两把公钥对照均已给出） | 见 §9.4.6；仅"选择子到逐块运算的映射"仍记为结构已证实、逐块未展开 |
 | `rsaEncrypt*` / `generate*Sign` 的绑定路径 | 名字已还原，绑定点未定位 | 不在 DEX 声明、不在已取得库导出；指向动态下发库，见 §9.4.6(e) |
 | `libpdd_secure` 分派核的逐块语义 | 结构已证实（3 选择子 × 2 核） | 未逐块展开 FLA 调度体，见 §9.4.6(d) |
 | 池内 5 条非文本记录 | 已判定为二进制密钥/IV 材料（位置/长度/非文本三点已验证） | 不做密钥语义推断；**不属**"未分析的混淆代码"，见 §9.4.5 |
-| `SE`（11 个）/ `meco.cookie.N`（12 个）/ `shook.ShadowHook`（14 个） | 未判定 | 类声明与调用点已确认，提供库不在任何快照中，见 §9.6 |
+| `SE`（11 个）/ `meco.cookie.N`（12 个）/ `shook.ShadowHook`（14 个） | 未判定 | 类声明与调用点已确认；提供库在 Vita 注册表中为"已注册未下发"（`libriskplugin`/`libmeco_cookie`/`libshadowhook`），本机确无，见 §9.6 与 §9.2.1 |
 | `libpdd_secure` 选择子语义 | 结构已证实，取值集合未逐一断言 | 见 [algorithm.md](algorithm.md) §5.2 |
 | `assets/A94/CDA.cdnMd5` | 假说 | 判为服务端增量基线，见 [algorithm.md](algorithm.md) §6.3 |
 | 收包侧 Xlog | 仅确认加密容器 | 见 [storage.md](storage.md) |
@@ -977,7 +1003,10 @@ ELF 中找不到提供者（既无 `Java_…_SE_*` 导出，也无 `#1720` 注�
 清单内 54 个未落盘库中，`libriskplugin.so` 与 `libshook`/`libsargeras` 是
 `SE` 的**候选**提供者（`libriskplugin` 的 DEX 加载点在 `apm/risk/lock/c`，
 与 `SE` 同属安全域），但本设备从未下载该库，**无法用符号确认**，故记为
-未判定而非断言。
+未判定而非断言。Vita 注册表（§9.2.1）确认 `com.xunmeng.pinduoduo.v64libriskplugin`、
+`…v64libshadowhook`、`…v64libmeco_cookie`、`…v64libsargeras` 均在**已注册但
+未下载**的 80 项之内——即"提供库不在本机快照中"是**服务端下发策略的结果**，
+而非抓取不完整。
 
 #### 9.6.2 `atn` / `csd` / `dsi`
 
