@@ -211,7 +211,8 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
 - **（b）`RegisterNatives` 动态注册**：库不导出 `Java_*`，在 `JNI_OnLoad` 里用
   `JNIEnv` 函数表注册。判定口径已修正为**函数表下标**（`#1720` =
   `RegisterNatives`、`#1728` = `UnregisterNatives`），并要求基址寄存器确为被解
-  引用的指针以排除 PLT/`.bss` 假阳性：APK 内共 **25 处真实调用点，分布 12 个库**。
+  引用的指针以排除 PLT/`.bss` 假阳性：已取得的 51 个 ELF 中共 **25 处真实调用点，
+  分布 12 个库**（其中 APK 自带的 22 个库内为 14 次注册）。
   "方法名串 + 签名串 + `JNI_OnLoad`"只是必要条件，不构成调用点证据；旧版此处
   写"0 次"以及按该口径得出的 87 个方法数都需要按 §9.1.1 的新判据重估。见
   [obfuscation.md](obfuscation.md) §9.1。

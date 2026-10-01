@@ -9,7 +9,7 @@
 | --- | --- |
 | DEX 字符串 | **无字符串加密**。291,149 条可打印字符串直接以明文存在于 6 个 dex。 |
 | DEX 加壳 | **无加壳、无 DEX 加密**。`classes*.dex` 均为标准 `dex\n035` 头，可直接解析 25,156 个 Java 文件。 |
-| DEX 动态注册 | APK 内 native 库中 `RegisterNatives` **有**真实调用点：25 处（18 次注册 + 7 次注销）分布 12 个库，含 `libpdd_secure`、`libpdd_rubik`、`libCSoLoader`、`libbytehook`、`libcrashAvoid`、`libpcrash`、`libpcrash_anr`、`liblegonative`、`libmarsxlog`、`libtronkit`、`libdyncommon`、`libyoga`。详见 §9.1。 |
+| native 动态注册 | 已取得的 51 个 ELF 中 `RegisterNatives`/`UnregisterNatives` **有**真实调用点：25 处（18 次注册 + 7 次注销）分布 12 个库，含 `libpdd_secure`、`libpdd_rubik`、`libCSoLoader`、`libbytehook`、`libcrashAvoid`、`libpcrash`、`libpcrash_anr`、`liblegonative`、`libmarsxlog`、`libtronkit`、`libdyncommon`、`libyoga`；其中 14 次注册位于 APK 自带的 22 个库内。详见 §9.1。 |
 | native 字符串 | **有局部字符串加密**：`libpdd_secure.so` 的 `.rodata` 代码段内嵌一个异或保护的字符串池（基址 `0x1928c0`，8 字节循环密钥 `f09745e4835fd19f`），内含 `DeviceNative` 类名、`miui.intent.TAKE_SCREENSHOT`、RSA 公钥等。详见 §9.4。 |
 | DEX 控制流 | 6,648 处 Efix 跳板（见 §2），**未安装热补丁时全部短路到默认实现**，属可解释结构而非混淆。 |
 | native 控制流 | 分三类：OLLVM 控制流平坦化（FLA）、间接分支派发（IND-BR）、ADR+RET 返回地址间接化 + .text 内嵌数据。逐库清点在 §4–§6。 |
