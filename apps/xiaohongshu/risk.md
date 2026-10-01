@@ -66,6 +66,8 @@ Java 层可见采集器：
 
 native 层还检测/采集 root、模拟器、Xposed、VirtualApp、ptrace/TracerPid、maps、EGL/GPU、Widevine deviceUniqueId、系统属性和 APK 签名/CRC。指纹 native 可自行 HTTP 上报，不能只 hook Java OkHttp。
 
+这批采集器不只服务于风控：其敏感 API 调用同时受应用内置**隐私合规自查框架**登记与限频（55 个五位数 API 号 + 148 个 AppOps 索引、超频异常、APM/Sentry 双路采样上报），位置/GNSS/小区信息还受一层远端可切换的门控；采集类别与用户告知的对照见 [privacy-and-permissions.md](privacy-and-permissions.md)。
+
 ### native 上报容器
 
 `libxyasf.so` 内的完整静态链路是：
@@ -175,4 +177,5 @@ Getui/GTC/GBD 的本地数据库保存：
 - 修改设备字段需考虑 native 指纹、Widevine ID、传感器、Build、APK 完整性和时间/网络一致性。
 - 仅导出风险 DB 通常无法恢复 AES 明文，因为 key/IV 被 TEE Keystore 私钥包装。
 - native 采集可能绕过 Java hook；动态分析必须覆盖 JNI、独立进程、自报网络和 watchdog。
+- 风控采集面与隐私告知面并不重合：无障碍服务列表、运行进程列表、传感器清单、剪贴板全文在首启文本中无对应条目（见 [privacy-and-permissions.md](privacy-and-permissions.md) §5.2）。
 - 本报告不提供绕过、伪造 token、自动化真实账号操作或规避风控的方法。

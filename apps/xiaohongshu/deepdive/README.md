@@ -22,6 +22,7 @@
 - **CFF 逐块 lift 已完成**：域运算区拆为 5 个内联域例程 + 1 段独立辅助（R1–R5 + R6）；执行序实测证明 95.7% 是直线代码（435 个 distinct run 全判读），**154 个域原语**定名并给出伪代码，九项密码学指纹守恒**逐项 EXACT**（`adds`/`adcs` 各 364、`mul` 514、`umulh` 390、`madd` 252、掩码 178、`extr #51` 130、`lsr #51` 63、×19 58），188 个未执行槽位逐段定性且 0 个含密码学指纹（§5.6.9）。
 - **Java/dex 侧混淆审计**（§9）：`@u5`/`@v5` 加密字段名 **519/519 闭式还原**（100% 合法 Java 标识符）、Java 侧字符串解密器 **822 调用点按字节码精确计数、811 个内联 (cipher,key) 对全部映射到明文（0 未映射、0 矛盾）**、11 个反射包装器枚举、**daemon dex 三层混淆完整审计**（IPC 12 个命令 + `@x0` 116/116 + `@w0` 77 + `v.<clinit>` 74 条明文 + 588 B 内嵌 dex 定性）；并**定名 `Petal` 的归属**——`PetalConfig` 是插件化框架配置（`PETAL_MODE = false`），不是混淆器；`fvc` 注解包是通用 HTTP 注解而非名字加密。
 - 需求对照审计。
+- 权限与隐私面归上层 [privacy-and-permissions.md](../privacy-and-permissions.md)：权限清单与弹框链路、内部隐私合规框架、声明与实际采集对照、隐私协议措辞对照。
 
 ## 入口
 
@@ -51,6 +52,7 @@
 | 证据 | [evidence.md](../evidence.md) | [evidence.md](evidence.md) |
 | 完成度 | [completeness.md](../completeness.md) | [audit.md](audit.md) |
 | 全应用 native 加密普查 | —（上层未覆盖） | [tiny-and-app-sweep.md](tiny-and-app-sweep.md) |
+| 权限弹框与数据采集 | [privacy-and-permissions.md](../privacy-and-permissions.md) | —（本目录不含权限面） |
 
 ## 口径差异（需注意）
 

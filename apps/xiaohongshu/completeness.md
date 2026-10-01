@@ -13,10 +13,15 @@
 | 下载数据范围 | 图片/视频、前端资源、广告素材、DSL 模板、插件、下载元数据 | [transfer.md](transfer.md) | 按来源、格式和本地缓存范围列出；不展开用户正文 |
 | 风控代码 | Shield/Tiny、设备指纹、环境完整性、JS 指纹、验证码/核身、账号处置、推送/策略 SDK | [risk.md](risk.md) | 组件、JNI/Java 入口、采集类别、上报边界和处置链已覆盖 |
 | 加密/签名 | Shield 外层、HMAC 外壳、Tiny 边界、长连接 ECDH/AES/gzip、WCDB/Keystore、联系人 AES | [algorithm.md](algorithm.md)、[storage.md](storage.md) | 只发布已验证的结构和依赖；秘密、白盒表、私钥和可重放实现不进入仓库 |
+| 权限弹框 | 三 APK 权限并集 80 项、三层弹框链路、聚合说明文本生成、电话权限独立节流链路 | [privacy-and-permissions.md](privacy-and-permissions.md) | 权限→弹框→申请三段可核验；不可取消弹窗与基础功能模式降级路径已定名 |
+| 未告知/超范围收集 | 首启文本 13 条覆盖项 vs 实际采集项、8 项越范围/未告知条目与判定依据 | [privacy-and-permissions.md](privacy-and-permissions.md) | 逐项给出类/方法与字节码证据；未闭合项写入该文 §9 |
+| 隐私协议对照 | 28 条隐私资源、9 条 H5 正文 URL、内部隐私合规框架 55 个五位数 API 号 + 148 个 AppOps 索引 | [privacy-and-permissions.md](privacy-and-permissions.md) | 协议正文不在样本内为显式边界；措辞落差按中英文资源逐条对照 |
 
 > **深挖批次补充（[deepdive/](deepdive/README.md)）**：上表是上层批次的边界。深挖批次另做了三件本表未覆盖的事——**全应用 164 个 arm64 `.so` 的加密普查**（**33 带 / 131 不带**；口径见下）与**混淆形态普查**（重度 CFF 3 个库 + **1 个无 CFF 的自解密对象**，共 4 个）、**`libtiny.so` 内联 X25519 域运算**的定名（`0x525000`–`0x531e4c`）、以及 **`libtiny.so` 字符串加密的闭式还原**（320 调用点解出 312 条明文，闭环率 100%）。口径与证据见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.5、§2.2.1、§2.4。**另两项**：**`libtiny.so` 域区逐块算术 lift 完成**（435 distinct run 全判读、154 域原语 + 伪代码、九项密码学指纹守恒逐项 EXACT、188 未执行槽位逐段定性且 0 个含密码学指纹，§5.6.9）；以及 **Java/dex 侧混淆审计**（`@u5/@v5` 加密字段名 519/519 闭式还原；Java 侧字符串解密器 **822 调用点按字节码精确计数，811 个内联 (cipher,key) 对全部映射到明文，0 未映射**；11 个反射包装器枚举；**daemon dex 三层混淆完整审计**——字符串 141 调用点、`@x0` 116/116、`@w0` 77 站点、`v.<clinit>` 74 条明文、IPC 12 个命令，§9.2b/§9.7），并**定名 `Petal` 的归属**（插件化框架代号，非混淆器）。
 >
 > **native 面补充**：`libturingmfa.so`（腾讯 TuringFD/MFA）带一张**加载期原地自解密**的字符串表，它不在前三条判据的命中名单里。**第 4 条判据（加载期自解密数据表）**并**重跑全 164 库**（三台独立仪器），**只有它命中**：解密器 `0x34d74`（5 207 条指令、**0 调用、0 入边、1 个 `ret`、完全展开**），密钥调度 `key_index = src_index mod 8`（真规则 `key_index = src_index mod 8`），**348 个非空条目 / 325 条可打印明文**（另 68 个不可见空串 ⇒ 源列表 **416** 项）（含 OAID 厂商 AIDL 表、反模拟器与完整性路径、Binder/反射直取、`AES/GCM/NoPadding`/`HmacSHA256` 方法名）。因此加密普查为 **33/131**，混淆面为 **4 个库**。三项独立否证均已如实登记证据等级（91 个库的构造子因缺真实 Android 运行时未跑到底）。详见 §1.6、§1.7。
+
+> **权限与隐私批次（[privacy-and-permissions.md](privacy-and-permissions.md)）**：与上表互补，覆盖权限面——三 APK 权限并集 **80 项**、三层弹框链路（`PrivacyPolicyDialog` → `f72.c` 聚合说明 → `m82.m` 实际申请）、应用内置**隐私合规自查框架**（55 个五位数敏感 API 号 + 148 个 AppOps 索引全部定名）、位置采集的**双层门控**（受远端开关 `andr_enable_coarse_location_check` 控制，默认关闭），以及 **8 项越范围/未告知收集**与**协议措辞对照**的逐条判定依据。
 
 ## 2. 风控组件清单
 
@@ -51,6 +56,7 @@
 | 上传/下载 | [transfer.md](transfer.md) | token/permit、分片、联系人/媒体/风控/长连接范围分开 |
 | 风控 | [risk.md](risk.md) | native/Java/第三方组件和风险处置链闭环 |
 | 存储/密钥 | [storage.md](storage.md) | DB 参数、Keystore custody、Java serialization/gzip 边界闭环 |
+| 权限/隐私 | [privacy-and-permissions.md](privacy-and-permissions.md) | 权限并集、三层弹框、内部合规框架 55 个五位数 API 号 + 148 个 AppOps 索引、越范围收集 8 项与协议措辞对照逐条闭环 |
 | 函数地址与 JNI | [evidence.md](evidence.md) | 地址、签名、符号和证据等级可复查 |
 
 ## 5. 研究边界

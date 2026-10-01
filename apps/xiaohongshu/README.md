@@ -9,6 +9,7 @@
 - Room/Tencent WCDB、MMKV、风险 SDK 数据库、Java serialization 与 gzip 存储格式。
 - DB 口令、Android Keystore RSA-AES 解密链路和不可离线恢复的边界。
 - 请求签名、设备指纹、环境完整性、人机验证、账号风控与推送 SDK 策略。
+- 权限清单与弹框链路、内部隐私合规框架、声明与实际采集对照、隐私协议措辞与上传范围对照。
 
 入口：
 
@@ -20,6 +21,7 @@
 - [逆向证据](evidence.md)
 - [算法边界](algorithm.md)
 - [分析完成度矩阵](completeness.md)
+- [权限弹框、数据采集与隐私协议对照](privacy-and-permissions.md)
 
 ## 原生加密与传输深挖（独立补充）
 

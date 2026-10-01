@@ -181,6 +181,18 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同 |
 | native 上报 | `libxyasf.so` strings/JNI | protobuf 字段、multipart `file=image.jpg`、`POST /api/v1/d/upload` |
 
+## 权限与隐私
+
+| 面 | 证据 |
+| --- | --- |
+| 权限清单 | `aapt2 dump badging`（`re/privacy/perm_base.txt`、`perm_config.arm64_v8a.txt`、`perm_config.mdpi.txt`、`perm_union.txt`）；`re/privacy/manifest_tree.txt`（8481 行） |
+| 弹框链路 | `com.xingin.privacy.policy.PrivacyPolicyDialog`、`PrivacyPolicyPresenter`、`vt9.g.setUp()`；`f72.c`（`ru_dialog_permission_explain`）、`m82.m` |
+| 电话权限节流 | `com.xingin.login.permisson.PhonePermissionHelperExtension`、SP `is_permission_dialog_shown`、APM `IMEI_APP`/`IMEI_SYSTEM` |
+| 合规自查框架 | `android.xingin.com.spi.privacy.IPrivacyTracker`、`PrivacyTracerImpl`、`PrivacyThrowable`、`FreqPrivacyThrowable`、`xt9.d`、`wt9.*`、`yt9.*`（55 个五位数 API 号 + `zt9.a` 148 个 AppOps 索引） |
+| 位置门控 | `wt9.e`；远端键 `andr_enable_coarse_location_check`（默认 0） |
+| 协议文本 | `re/privacy/resources_values.txt`（269 580 行）、`strings_parsed.json`（133 680 条）、`privacy_strings.txt`、`long_prompts.txt`、9 条 H5 正文 URL |
+| 资源解析工具 | `re/privacy/resolve.py`、`extract_str.py`、`pick.py` |
+
 ## 非公开实现与静态可见边界
 
 | 项目 | 状态 |
@@ -194,5 +206,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | native protobuf 字段号与变换算法 | 字段名/上传容器闭环；私有变换不公开 |
 | 长连接 protobuf 字段号和 wire 类型 | 已闭环 |
 | 长连接 key/IV 派生和外层 frame 头 | 协商边界闭环；运行时秘密派生不公开 |
+| 隐私协议正文 | 9 条 H5 URL 已知；正文不在样本内，需网络侧获取 |
+| 基础模式上报签名 salt | 结构 `MD5(deviceUuid+timestamp+salt)` 已确认；32 位十六进制 salt 不公开 |
 
 所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。
