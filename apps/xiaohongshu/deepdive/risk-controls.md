@@ -148,7 +148,27 @@ Java 层可见的检测点（硬检测主要在 native）：
 
 链路：`IdentityEssentialEditActivity`（`mBtnFaceVerify`）/ 分步实名流程（`nameAtomization` 包：`RealNameFlowConfig`、`ThemeConfig`，接口 `IIdentityService`）→ 腾讯慧眼 WBCF + `turingcam` + 优图活体 + SM2（国密）。`libturingmfa.so` 提供 TuringFD 设备风险/指纹与 DeviceToken 协同（`JNI_OnLoad` @ `0x1fcc4`，表 `0x56540` / `0x56690`，14 + 1 个动态注册方法）。
 
+**`libturingmfa.so` 的采集面（本轮解出，此前不可读）**：该库把方法名与采集路径**逐字节加密**在 `.data` 字符串表里，
+由加载期构造子 `0x34d74` 原地解密（密钥调度 `key_index = src_index mod 8`（**旧稿闭式 `key_i=(0x0F+0xA0*i)&0xFF` 已作废，仅 42/348 命中**））。
+本轮已还原 **348 个非空条目 / 325 条可打印明文**（源列表共 **416** 项，含 68 个不可见空串），采集面因此可以直接列出（完整清单见
+[tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7(f)）：
+
+| 类别 | 条数 | 代表条目 |
+| --- | ---: | --- |
+| OAID / 厂商设备 ID（跨 10 余家厂商 AIDL） | 37 | `com.uodis.opendevice.aidl.OpenDeviceIdentifierService`（华为）、`com.hihonor.cloudservice.oaid.IOAIDService`（荣耀）、`com.samsung.android.deviceidservice.IDeviceIdService`、`com.asus.msa.SupplementaryDID.IDidAidlInterface`、`com.zui.deviceidservice.IDeviceidInterface`（联想）、`com.bun.lib.MsaIdInterface`/`com.mdid.msa`（MSA）、`com.android.id.impl.IdProviderImpl`、`getOAID(Landroid/content/Context;)`、`android_id`/`ANDROID_ID`、`pps_oaid`、`tencent_identifier` |
+| 反模拟器 / 环境与完整性 | 57 | `/proc/self/maps`、`/proc/self/mountinfo`、`/proc/self/cgroup`、`/proc/interrupts`、`/proc/net/arp`、`/proc/version`、`/proc/sys/kernel/random/boot_id`、`/sys/bus/virtio`、`/sys/block/mmcblk0/device/cid`、`/sys/class/net/wlan0/address`、`/dev/block/loop`、`/dev/block/dm`、`/system/bin/df`、`init.svc.qemud`/`noxd`/`droid4x`/`vbox86-setup`/`ttVM_x86-setup`、`microvirt.vbox_dpi`、`Hypervisor\|goldfish`、`qemu\|vbox\|eth`、`ro.serialno`/`ro.boot.serialno`/`gsm.serial`、`ro.build.fingerprint`、`/DCIM/.tmfs`、`/.turing.dat` |
+| 反射 / Binder 直取（绕公开 API） | 17 | `android/os/ServiceManager`、`ServiceManagerNative`、`com/android/internal/os/BinderInternal`、`android/content/pm/IPackageManager$Stub`、`android/hardware/display/IDisplayManager$Stub`、`android/view/IWindowManager$Stub`、`java/lang/reflect/Proxy` + `newProxyInstance(...)`、`asInterface(...)` ×4、`checkService(...)` |
+| 密码学方法名（只持"要调什么"） | 12 | `javax/crypto/Cipher`、`javax/crypto/spec/SecretKeySpec`、`javax/crypto/spec/GCMParameterSpec`、`javax/crypto/spec/IvParameterSpec`、`javax/crypto/Mac`、`AES/GCM/NoPadding`、`HmacSHA256`、`getInstance(...)`、`doFinal([B)[B` |
+
+动态注册方法与上述字符串**互相印证**：`k91_FC6D5B0A7013DB60` 的签名为 `([B)[B`
+（对应 `getDFPWup` 的字节变换）、`l91_…` 为 `(InvocationHandler, AtomicReference, ClassLoader)V`
+（对应 `Proxy`/`newProxyInstance`，即**运行期动态代理安装器**）。另有
+`com/applisto/appcloner/hooking/Hooking` 一条，属**应用克隆（分身）检测**面。
+
 **未闭环**：腾讯/优图 SDK 为闭源第三方组件，其内部活体算法不在本次范围。
+`libturingmfa.so` 自身的剩余边界是：`.init_array` 其余 8 个构造子（`0xdaf4`/`0x15120`/`0x2abfc`/`0x2c590`/`0x2e588`/`0x34c34`/`0x4cc1c`/`0x4d174`）需真实 Android 运行时才能执行；
+9 个前导常量单元（`0x569c0`–`0x569e3`，解出 `V Z B C S I J F D`）无指针引用，其消费方需运行期观测。
+这两项均**不是"未知加密"**——加密已完整解出（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7）。
 
 ## 8. 支付风控
 
@@ -184,6 +204,10 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 | ~~Java/dex 侧混淆~~ | — | **已闭环（本轮）**：`@u5/@v5` 加密字段名 519/519 闭式还原（100% 合法 Java 标识符）、Java 侧字符串解密器 811/811 调用点全映射（0 未映射）、daemon dex 三层混淆完整审计（§9.7）、11 个反射包装器枚举、类/包名短名经证实为 R8 字典压缩；并纠正旧稿 `Petal` 归因错误（§9） |
 | ~~「内嵌 dex 无引用、不构成隐藏代码面」~~ | — | **已作废并重审（本轮）**：`assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B）是 `libtinyd.so` 的 **Java 侧守护进程**（63 类、12 个 IPC case、`@x0` 116/116、`v.<clinit>` 74 条明文）；`c4d121c215evx1s51d.dex`（940 B）与 588 B 内嵌 dex 均为**单类 `La;` 的 R8 反射蹦床**（4 个方法逐字相同），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §9.7 |
 | ~~「Java 侧字符串加密 212/212」~~ | — | **已作废并重建口径（本轮）**：212 来自匹配 jadx 重命名后的标识符，随树变化（同 dex 三棵树 = 441/674/57）。新口径为**字节码精确**：822 调用点 → 811 内联对 → **811 全映射、0 未映射**，见 §9.2b.1 |
+| ~~`libturingmfa.so`「无加密代码」~~ | — | **已作废（最新一轮）**：它带一张**加载期原地自解密**的字符串表，旧稿把它列在"132 个库不带加密代码"名单里。新增第 4 条判据后**全 164 库重跑，只有它命中**：解密器 `0x34d74`（5 207 条指令、**0 调用、0 入边、1 个 `ret`、完全展开**）、密钥调度 `key_index = src_index mod 8`（**旧稿闭式 `key_i=(0x0F+0xA0*i)&0xFF` 已作废，仅 42/348 命中**）、**348 个非空条目 / 325 条可打印明文**（另 68 个不可见空串 ⇒ 源列表 **416** 项）。加密普查由 32/132 修正为 **33/131**，混淆面由 3 库修正为 **4 库**，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.6/§1.7 |
+| `libturingmfa.so` 其余 8 个构造子 | `.init_array` 的 `0xdaf4`/`0x15120`/`0x2abfc`/`0x2c590`/`0x2e588`/`0x34c34`/`0x4cc1c`/`0x4d174` | 需真实 Android 运行时的 `JNIEnv`、libc 与 `DT_NEEDED` 符号；**只有 `0x34d74`（表解密器）是自足可跑的**。**非"未知加密"** |
+| `libturingmfa.so` 9 个前导常量单元 | `0x569c0`–`0x569e3`（解出 `V Z B C S I J F D`） | 无任何 `R_AARCH64_RELATIVE` 指针指向它们，只能看到原地读取；**哪个消费者读哪一个**需运行期观测。**非"未知加密"** |
+| 加载期自解密表的**全量否定**证据等级 | 163 个库"运行期无改写" | 按三类读：**62 个库无 `.init_array` 条目（结构性排除）**、**11 个库构造子跑完且 `.data`/`.rodata` 逐字节比对（已实测）**、**91 个库构造子无一跑到底（缺真实运行时）**。第三类只能读作"**在我们能执行的范围内无改写**"。另：仪器只覆盖 `.init_array` 路径，挂 `JNI_OnLoad`/业务入口的自解密需更强入口覆盖 |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | ~~`libtinyd.so` 的 `JNINativeMethod` 表~~ | — | **已闭环（本轮）**：不必读 CFF 建表过程，读**被注册者**即可——daemon dex 全库只声明**一个** `native` 方法 `Lcom/xingin/tiny/daemon/d;.a(I[Ljava/lang/Object;)Ljava/lang/Object;`，故该表只能绑定它（类名/方法名/签名三项确定，见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.3.1） |
