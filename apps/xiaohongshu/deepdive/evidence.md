@@ -128,7 +128,12 @@ fork / syslog / abort-message 特征支持独立守护进程判断（`assets/fd2
 | `xyass_final_vectors.py` | 8 组确定性向量 | 重复执行一致 |
 | `xyass_blkchain.py` | 间接分支目标普查 | 337 个目标、283–2861 次 `blr` |
 | `xyass_type6_character.py` | 确定性 / 路径 / 输出空间统计 | 全输入确定性成立 |
-| `xyass_avalanche.py` | 单比特扩散统计 | 见 [crypto.md](crypto.md) §4.6 |
+| `xyass_avalanche.py` | 单比特扩散统计 | 见 [crypto.md](crypto.md) §4.7 |
+| `xyass_cfg_saturate.py` | CFF 转移关系饱和实测（逐 site 记录实际目标） | **404 site / 750 边 / 409 目标**；最后 500 组 +1 边、+0 site（饱和） |
+| `xyass_cfg_defuse.py` | 递归 def-use 解析每个 `br`/`blr` 目标来源（重写） | 504 分片中**可达 404 个全部**为 `add Xd,base,wOff`；**0 个静态常量目标** |
+| `xyass_cfg_tables.py` | `.data` 槽位取值 + 跨实例确定性 | 16 槽位跨 3 次全新实例逐字节一致 |
+| `xyass_cfg_memstatic.py` | 区域内访存值与文件镜像比对 | 表数据**与文件不同**（`.data` 槽位文件值为 0），静态不可读 |
+| `xyass_cfg_siteindex.py` | 逐 site 目标集合与出度 | 110 个 site 出度 ≥ 2，最大 16 |
 | `xyass_type67_static.py` | 区域指令族/加密指令普查 | 加密扩展指令 0 条 |
 | `xyass_type67_map.py` | 函数边界 / 调用 / 常量集 | 26 函数、1 调用目标、299 常量 |
 | `xyass_const_split.py` | 数据常量 vs 地址加数分离 + 已知表比对 | 已知表全 0 命中 |

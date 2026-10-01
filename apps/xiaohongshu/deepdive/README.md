@@ -10,7 +10,7 @@
 - 认证机制：`id_token` 来源与传播、`sid`、设备字段、Shield/Tiny 签名字段与接入点。
 - 上传数据范围：permit/quick-upload-check 端点、全文件 MD5 去重、分块公式、Qiniu/COS 分支、断点记录、MIME 表、令牌全字段。
 - 下载数据范围：Range 构造点与复位、206/`Content-Range` 解析、服务端可控字段、其他 Range 使用点。
-- 加密算法恢复：RC4 外层（逐字节验证）、定制 HMAC-H（含 64 轮调度，3 向量 0 mismatch）、`0x50010` type 6/7 变换（常量池、CFF、依赖矩阵、确定性向量）。
+- 加密算法恢复：RC4 外层（逐字节验证）、定制 HMAC-H（含 64 轮调度，3 向量 0 mismatch）、`0x50010` type 6/7 变换（常量池、依赖矩阵、确定性向量、**CFF 转移关系 404 site / 750 边 / 409 目标的饱和枚举**）。
 - 风控组件清单与证据等级。
 - `libxyasf.so` 设备指纹：82 个 JNI 入口、8 个 protobuf 子消息 51 字段（含编号）、4 个 native 检测方法判定、`as.xiaohongshu.com` 上报端点与载荷封装、标准 MD5 核对。
 - `libtinyd.so` 伴随守护：字符串加密闭式还原（4 解码器 × `i%20` 调度表，7/7 明文）、管道 IPC 定长 4 字节协议、`setArgV0("zygote")` 进程伪装链、CFF 分发池与 14/14 跳转验证。
@@ -54,7 +54,7 @@
 - **原生算法**以本目录为准：`crypto.md` 给出被引用的 rodata 对象逐个清单 + 动态可达性验证，并撤回了早期“无 rodata 常量表引用”的错误结论。
 - **本地存储**以上层为准：本目录未做存储分析。
 - **Mars STN / protobuf**以上层为准：本目录未覆盖长连接 wire 格式。
-- 上层 `algorithm.md` 中“type 6/7 秘密变换不公开”是本目录 `crypto.md` 明确**不予采用**的表述——该变换已被定性并固化向量，只是覆盖全部 CFF 路径的统一闭式尚未产出（原因见 `crypto.md` §4.6）。
+- 上层 `algorithm.md` 中“type 6/7 秘密变换不公开”是本目录 `crypto.md` 明确**不予采用**的表述——该变换已被定性并固化向量，CFF 转移关系亦已完整枚举（404 site / 750 边 / 409 目标，见 `crypto.md` §4.6）；尚未符号化的是各 site 的**转移选择谓词**。
 - **全应用普查**以本目录为准：`tiny-and-app-sweep.md` 覆盖 164 个 arm64 `.so`（32 带加密 / 132 不带），上层未做此项。
 
 base APK SHA-256：`0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c`。
