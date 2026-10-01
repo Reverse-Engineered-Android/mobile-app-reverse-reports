@@ -95,14 +95,17 @@
 4. ~~`libpdd_secure.so` 异或字符串池中的 RSA 公钥尚未定位到调用点~~
    **已闭合**：调用点（`0x3764c`/`0x37784`）、跳板与选择子结构、两把公钥的
    逐字节对照、以及"公钥加密上报体"的方向均已给出，见
-   [obfuscation.md](obfuscation.md) §9.4.6。仍未展开的只剩 FLA 分派核的逐块
-   语义（结构已证实）与 `rsaEncrypt*` 名字的绑定路径。
+   [obfuscation.md](obfuscation.md) §9.4.6。FLA 分派核的逐块语义**亦已闭合**，
+   见 [obfuscation.md](obfuscation.md) §9.4.7 与 [vita.md](vita.md) §8.4。
 5. `SE`（11 个）、`meco.cookie.N`（12 个）、`shook.ShadowHook`（14 个）native
    方法的提供库不在本机快照中，见 [obfuscation.md](obfuscation.md) §9.6。
    **原因已定**：其候选提供库（`libriskplugin`/`libmeco_cookie`/`libshadowhook`）
    在 Vita 组件注册表中处于"**已注册但未下发**"状态，见
    [vita.md](vita.md) §5.2 与 [risk.md](risk.md) §15.1。
 6. 组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest` 判为
-   RSA-1024 签名（长度与公钥位宽一致），填充方案与签名范围未逐字节断言；
-   `qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失。见
-   [vita.md](vita.md) §12。
+   RSA-1024 签名（长度与公钥位宽一致），填充方案与签名范围未逐字节断言。
+   ~~`qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失~~
+   **已闭合且原判断有误**：`security_key` 是**硬编码 16 字节对称密钥的
+   AES-128 解密**，实现为纯 native（`SecureNative.dv` →
+   `libpdd_secure.so 0x1f75c`），AES-128 密钥扩展已与 FIPS-197 逐字节对齐。
+   见 [vita.md](vita.md) §8.4 与 §12。

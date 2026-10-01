@@ -169,9 +169,10 @@ native 方法在 51 个 ELF 中零命中：其提供库
 | 证书固定仅覆盖 3 个 Vita 接口 | **已验证** | `certificate_pinning_enable_uris_77700` 配置串 |
 | MD5 + SHA256WithRSA + AES 完整性链 | **已验证**（算法与参数）；填充方案为假说 | `ol0/a0.k()`、`vita/patch/inner/a.b()` |
 | DEX 侧 6 把 RSA 公钥 | **已验证** | 位宽、DER 长度、SHA-256 |
-| `qb2/h`（`security_key` RSA 解密实现） | **未取得** | jadx 输出缺失，见 [vita.md](vita.md) §12 |
+| `security_key` 解密实现 | **已验证**（原「未取得」撤销） | 纯 native 链路 `uv2/a`→…→`SecureNative.dv`；AES-128 密钥扩展与 FIPS-197 逐字节一致，见 [vita.md](vita.md) §8.4 |
 | 2 个未解析 vlock 的组件 ID | **未判定** | 反查 44.5 万候选串无命中 |
 
 **结论**：组件框架的落盘格式、清单格式、登记表、注册表、网络协议与完整性链
-已全部给出，可逐条复现；剩余 3 项未决已在 [vita.md](vita.md) §12 列明。
+已全部给出，可逐条复现；剩余未决已在 [vita.md](vita.md) §12 列明，其中
+`security_key` 解密实现一项**已闭合**。
 
