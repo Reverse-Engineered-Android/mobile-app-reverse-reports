@@ -44,11 +44,13 @@
    仅少数模块显式传入 crypt key。运行时下载的 native 库以**明文、未加壳**形式
    落在 `files/dynamic_so`，目录名携带 `名称_epoch毫秒_MD5`。
 7. **混淆闭包**：DEX 层无字符串加密、无加壳；APK 内 6,648 处 Efix 跳板
-   （`h4.g.*`）在未安装热补丁时全部短路。native 侧实际出现的手法有四种，均已
-   完整还原：OLLVM 控制流平坦化、ADR+RET 返回地址间接化、.text 内嵌数据，
-   以及**异或字符串池**（`libpdd_secure.so` 基址 `0x1928c0`，113 条有效串）
-   与 **`RegisterNatives` 动态注册**（12 个库 25 处真实调用点）。逐库清点见
-   [obfuscation.md](obfuscation.md) §9。
+   （`h4.g.*`）在未安装热补丁时全部短路。native 侧实际出现的手法有三种，均已
+   完整还原：OLLVM 控制流平坦化、ADR+RET 返回地址间接化与 .text 内嵌数据、
+   **异或字符串池**（`libpdd_secure.so` 151 条 + `libdyncommon.so` 129 条，
+   两库同密钥同工具）、以及 **`RegisterNatives` 动态注册**（18 个库 28 处注册
+   + 1 处注销）。其中字符串池承载了 `libdyncommon` 的 native 侧反 root/反 hook/
+   反模拟器探测链与全部 `ab_secure_*` 风控总开关（[risk.md](risk.md) §14）。
+   逐库清点见 [obfuscation.md](obfuscation.md) §9。
 
 ## 覆盖矩阵
 

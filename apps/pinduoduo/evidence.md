@@ -163,14 +163,15 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
 | [cff4.py](tools/cff4.py) | 按真实函数收尾定界的逐导出规模 | 34 个导出共 21,613 条指令 |
 | [native_closure2.py](tools/native_closure2.py) | DEX 声明 native ↔ 各库导出符号 | 646 已解析 / 966 未解析 |
 | [jnibind.py](tools/jnibind.py) | 绑定方式三分（导出 / `RegisterNatives` / 未判定） | 646 / 87 / 879（按必要条件口径） |
-| [rnbind.py](tools/rnbind.py) | `RegisterNatives`/`UnregisterNatives` 真实调用点 | 18 / 7（12 个库，25 处） |
-| [pddstr.py](tools/pddstr.py) | `libpdd_secure.so` 异或字符串池 | 268 条候选 / 113 条有效串 |
+| [rnbind.py](tools/rnbind.py) | `RegisterNatives`/`UnregisterNatives` 真实调用点（排除 `.plt` 桩与 packed-offset 派发器） | 28 / 1（18 个库，29 处） |
+| [xorstr.py](tools/xorstr.py) | `libpdd_secure.so` + `libdyncommon.so` 异或字符串池（自校验：密钥从文件自身密钥表推导） | 151 条 / 129 条，全部还原 |
 | [alipay_map.py](tools/alipay_map.py) | 支付宝 SDK `AD`/`AL` 编码 → 采集函数 | 41 / 41 全部定位 |
 | [so_manifest2.py](tools/so_manifest2.py) | `SoBuildInfo` 清单 ↔ 设备落盘 ↔ 加载点 | 199 条：22 APK / 26 落盘 / 54 未落盘 |
 | [db_snapshot.py](tools/db_snapshot.py) | 只读 SQLite 快照（含 WAL 重放），只输出列形状聚合，不输出行值 | 22 个库的 DDL、行数、列形状 |
 
-输入约定：`rnbind.py <lib.so|dir>` 直接反汇编并报告调用点；
-`pddstr.py <lib.so>` 解出字符串池（`--min-lower` 调过滤强度，`--all` 输出全部候选）；
+输入约定：`rnbind.py <lib.so|dir>` 直接反汇编并报告调用点（`--all` 附带被排除的
+假阳性）；`xorstr.py <lib.so|dir>` 解出字符串池（`--min-len` 调最短长度，
+`--count-only` 只打印条数与推导出的密钥，`--key` 可覆盖密钥）；
 `alipay_map.py <jadx-sources>` 从反编译源码重建编码映射；
 `obfclass.py` 需要反汇编文本（`objdump -d`）与输出 JSON 两个参数；
 `cff4.py` 读取工作目录下的 `libpdd_secure.dis`；`native_closure2.py`、
@@ -209,13 +210,15 @@ aarch64-linux-gnu-objdump -d <lib>-> .text 反汇编
   例如 `com.eclipsesource.v8.V8` 的 88 个方法以 `_1` 开头（`V8__1_1release` 等），
   按转义归一化后可与 `libpdd_j2v8.so` 的 111 个 `Java_*` 导出对上。
 - **（b）`RegisterNatives` 动态注册**：库不导出 `Java_*`，在 `JNI_OnLoad` 里用
-  `JNIEnv` 函数表注册。判定口径已修正为**函数表下标**（`#1720` =
-  `RegisterNatives`、`#1728` = `UnregisterNatives`），并要求基址寄存器确为被解
-  引用的指针以排除 PLT/`.bss` 假阳性：已取得的 51 个 ELF 中共 **25 处真实调用点，
-  分布 12 个库**（其中 APK 自带的 22 个库内为 14 次注册）。
+  `JNIEnv` 函数表注册。判定口径为**函数表下标**（`#1720` = `RegisterNatives`、
+  `#1728` = `UnregisterNatives`）**并叠加两条排除判据**：调用点不在 `.plt` 段内
+  （`.plt` 以同样步长走 GOT 槽，每个导入符号都会命中一次该位移），且该寄存器在
+  `ldr` 之后未经任何算术直达 `blr`/`br`（本 app 自己的 FLA 派发器是
+  `ldr → add → blr`）。按此口径：48 个去重 ELF 中共 **28 处注册 + 1 处注销，
+  分布 18 个库**（其中 APK 自带的 22 个库内为 14 次注册）。
   "方法名串 + 签名串 + `JNI_OnLoad`"只是必要条件，不构成调用点证据；旧版此处
-  写"0 次"以及按该口径得出的 87 个方法数都需要按 §9.1.1 的新判据重估。见
-  [obfuscation.md](obfuscation.md) §9.1。
+  写"0 次"、以及后续按仅下标口径得出的"25 处 / 12 个库"都需要按该判据重估。
+  见 [obfuscation.md](obfuscation.md) §9.1.1。
 - **（c）库不在快照中**：`SoBuildInfo` 清单列出的 199 个动态库中，本设备只落盘了
   22（APK）+ 26（`files/dynamic_so`）+ 3（assets 内嵌）个，其余 54 个从未下载
   （`libsargeras`、`libchat_msg`、`libgiflib`、`libmeco_cookie`、`libxunwind` 等）。
