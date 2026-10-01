@@ -102,10 +102,4 @@
    **原因已定**：其候选提供库（`libriskplugin`/`libmeco_cookie`/`libshadowhook`）
    在 Vita 组件注册表中处于"**已注册但未下发**"状态，见
    [vita.md](vita.md) §5.2 与 [risk.md](risk.md) §15.1。
-6. 组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest` 判为
-   RSA-1024 签名（长度与公钥位宽一致），填充方案与签名范围未逐字节断言。
-   ~~`qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失~~
-   **已闭合且原判断有误**：`security_key` 是**硬编码 16 字节对称密钥的
-   AES-128 解密**，实现为纯 native（`SecureNative.dv` →
-   `libpdd_secure.so 0x1f75c`），AES-128 密钥扩展已与 FIPS-197 逐字节对齐。
-   见 [vita.md](vita.md) §8.4 与 §12。
+6. ~~组件框架（Vita）的 `config.json` 中 `.pkg` 的 128 字节 `digest` 只判为 RSA-1024 签名~~ **已闭合**：`digestVersion: 1` 为 SHA-256 + RSA/PKCS#1 v1.5，签名覆盖完整下载文件；已用断点库保留的 `x-pos-meta-digest`、对应 CDN 对象与 `ol0/a0.k()` 的 Vita 公钥复验。见 [vita.md](vita.md) §8.1。同时 ~~`qb2/h`（`security_key` 的 RSA 解密实现）在 jadx 输出中缺失~~ **已闭合且原判断有误**：`security_key` 是硬编码 16 字节对称密钥的 AES-128 解密，实现为纯 native（`SecureNative.dv` → `libpdd_secure.so 0x1f75c`），AES-128 密钥扩展已与 FIPS-197 逐字节对齐。见 [vita.md](vita.md) §8.4 与 §12。
