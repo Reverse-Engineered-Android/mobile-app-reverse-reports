@@ -21,6 +21,11 @@
    运行时流量验证。
 5. **本轮未执行真实登录、下单或支付。** 所有结论来自只读解包和静态分析，
    没有重放 API，也没有读取或发布真实手机号、地址、订单、支付或会员数据。
+6. **同意与撤回链路在静态层可见，但撤回只证明清理了本地状态。**
+   `getPrivacyConfig()` 读取 `isOpen` / `revokePolicyDescription` 决定是否展示
+   个人信息列表入口与撤回文案；`revokeAgreement()` 清空 storage、清空
+   globalData 中的会员字段并写入 `revoke` 标记后重新拉起首页。代码中**没有**
+   可见的服务端撤回请求，因此不能据此断言服务端同意状态已被撤销。
 
 ## 样本与解包
 
@@ -177,6 +182,50 @@ https://bdp-api.bkchina.cn
 
 这能证明代码存在同意提示和隐私使用记录，但不能单独证明所有网络请求都
 严格发生在同意之后。该边界与微信主应用的 [privacy.md](privacy.md) 一致。
+
+### 7. 同意记录与撤回链路
+
+| 环节 | 静态调用点 | 行为 |
+| --- | --- | --- |
+| 隐私设置读取 | `getPrivacyConfig()` → `getPrivacySetting({ body: { params: {} } })` | `code==0` 时取 `body.isOpen` 写入 `showPersonList`、`body.revokePolicyDescription` 写入 `revokeContent` |
+| 个人信息入口 | `accountSetting` 渲染 `showPersonList ? i18n(index13) : null` | 入口是否出现由服务端 `isOpen` 控制 |
+| 撤回提示 | `showRevokePop()` → `popup(revokeContent \|\| " ", "撤回同意隐私申请")` | 文案来自服务端 `revokePolicyDescription` |
+| 执行撤回 | `revokeAgreement()` → `removeAllCache()` + `setStorageSync("revoke","revoke")` + `reLaunch("/pages/index/index")` | 重新进入首页 |
+| 本地清理 | `removeAllCache()` → `clearStorageSync()`，并把 `miniOpenid`、`sageMemberCode`、`birthday`、`oldMemberCode`、`nickName`、`headImg`、`unionid`、`vipPhone`、`alipayUserId` 置空，写 `isLogout="Y"` | **只清本地** |
+
+登录按钮的 open-type 按能力探测选择：
+
+```text
+canIUse("getPrivacySetting")
+  ? "getPhoneNumber|agreePrivacyAuthorization"
+  : "getPhoneNumber"
+```
+
+`privacyCollect.record()` 共 6 个调用点：
+
+| 类型 | 调用位置 | 触发时机 |
+| --- | --- | --- |
+| `TYPES.PHONE` | `pagesMenu/pages/login/index` ×3 | 手机号/验证码登录成功后 |
+| `TYPES.ADDRESS` | `pagesMenu/pages/address/detail` ×2 | 新增/保存地址成功后 |
+| `TYPES.ADDRESS` | `pagesMenu/pages/order/orderConfirm` ×1 | 创建订单成功且 `salesScene==2`（外送）时 |
+
+这些是**隐私使用记录**调用点，能证明“采集后做登记”，不能证明登记先于上传，
+也不能证明登记结果被服务端接受。
+
+### 8. 个人信息清单接口的证据边界
+
+真机 V8 缓存的只读字符串提取给出三个接口：
+
+```text
+/privacyManagementSettings/action/queryOne
+/personalInfoCategorys/action/queryList
+/personalInfoCollectionItems/action/queryList
+```
+
+但在本次解包得到的 `app-service.js` 及其拆分模块中**没有找到这三个接口的
+调用点**。缓存与解包包是两份不同产物（V8 快照与 WCC 发布包），因此只能确认
+“设备缓存中存在这些接口名”，**不能**确认当前版本实现了个人信息清单页，也
+不能确认它们被谁调用。这属于待闭合的证据边界，不作为已实现功能报告。
 
 ## 隐私与安全观察
 
