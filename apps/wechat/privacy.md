@@ -21,6 +21,10 @@
 5. **没有把广泛风控能力写成已确认的“越权”。** 政策与代码能力可以证明
    收集范围较宽；是否超范围使用、是否绕过同意、服务端如何使用，仍需运行
    时流量和后端证据。
+6. **2026-10-02 真机只读快照补齐了“当前授权状态”这一段：** 10 项用户敏感
+   权限已授予、6 项未授予；位置、相机、麦克风、剪贴板在 AppOps 层被限制为
+   `foreground`，联系人、短信、电话状态、历史媒体等默认 `ignore`。这与政策
+   “敏感权限不默认开启”的表述方向一致，但**授权状态仍然不等于已调用或已上传**。
 
 ## 政策已明确覆盖的类别
 
@@ -62,6 +66,33 @@ debugger/recovery 等环境的检查。当前政策文本：
 上位类别覆盖。但若实际上传这些字段，仍应在摘要、权限记录或功能提示中让
 用户能理解其存在、用途和范围。
 
+## 真机运行时授权状态
+
+| 状态 | 权限 |
+| --- | --- |
+| 已授予（均带 `USER_SET`） | `ACCESS_FINE_LOCATION`、`ACCESS_COARSE_LOCATION`、`CAMERA`、`RECORD_AUDIO`、`READ_MEDIA_VISUAL_USER_SELECTED`、`NEARBY_WIFI_DEVICES`、`BLUETOOTH_CONNECT`、`BLUETOOTH_ADVERTISE`、`BLUETOOTH_SCAN`、`POST_NOTIFICATIONS` |
+| 未授予 | `READ_CONTACTS`、`READ_MEDIA_IMAGES`、`READ_MEDIA_VIDEO`、`READ_EXTERNAL_STORAGE`、`ACTIVITY_RECOGNITION`、`ACCESS_MEDIA_LOCATION` |
+
+其中 `READ_CONTACTS`、`ACTIVITY_RECOGNITION`、`ACCESS_MEDIA_LOCATION` 没有
+`USER_SET`，说明用户尚未对该权限做过选择；`READ_MEDIA_IMAGES` /
+`READ_MEDIA_VIDEO` 为 false 且带 `USER_FIXED`，同时
+`READ_MEDIA_VISUAL_USER_SELECTED=true`，符合 Android 14+ 的“仅选择部分
+照片视频”状态。
+
+AppOps uid 级模式中，位置（粗/精）、相机、麦克风、剪贴板读写为
+`foreground`；联系人、通话/日历/短信、电话状态与号码、外部存储、历史媒体、
+媒体位置、活动识别等为 `ignore`。
+
+**关键限制：**
+
+1. 这是**授权状态**快照，不是调用记录，更不是网络上传记录；
+2. AppOps 的 `time=`/`rejectTime=` 是读取时刻的相对增量，采集中同一字段在
+   两次相隔约 15 秒的只读读取间就发生位移，因此本报告不把任何时间戳用作
+   微信采集行为的证据；
+3. 本轮没有抓取网络流量，也没有在拒收/撤回/接受三组状态间做对照。
+
+详见 [`evidence/phone-runtime.md`](evidence/phone-runtime.md)。
+
 ## 同意与权限记录
 
 静态证据显示微信资源包含“个人信息与权限管理”“小程序中的个人信息与
@@ -71,7 +102,7 @@ debugger/recovery 等环境的检查。当前政策文本：
 本轮缺少以下动态证据：
 
 1. 首次启动、拒绝隐私政策、接受隐私政策三个状态的网络流量；
-2. 危险权限拒绝/授予状态与实际 API 调用时间线；
+2. 危险权限实际 API 调用时间线（授权状态已拿到，调用时间线仍缺）；
 3. 撤回通讯录、位置、剪贴板或传感器权限后的停止行为；
 4. 风控字段是否在未使用对应功能时仍上传；
 5. 服务端接收、保留和用途说明。

@@ -9,9 +9,10 @@
 5. 支付路径不是单一 JSON API，而是“业务 CGI + PayMars/MMTLS + PSK/session + 签名证书”的组合。静态映射确认 `genprepay`、`payauthapp`、`jsapipay`、`tinyapppay`、`scanqrcodepay`、`h5pay`、`offlinepayconfirm`、`payorderquery`、绑定/短信/数字证书等完整链路。
 6. 登录认证由 `ManualAuth` / `AutoAuth` Protobuf 进入 `MMProtocalJni`，再经签名、RSA/AES 或 Hybrid ECDH 封包和 Mars/MMTLS 传输。脱离真实 UIN、device ID、session/autoauth key、cookie、路由和签名材料不能直接重放 CGI。
 7. 设备风控信号包括设备标识、安装/构建信息、ADB/开发者状态、Root/Hook 痕迹、触摸轨迹、相机/音频/显示状态和 Normsg 不透明安全数据。静态分析能证明采集或进入上传结构，但不能还原服务端评分权重。
-8. Manifest 有 100 个 `uses-permission` 条目、59 个导出组件，其中 44 个没有组件权限；但本轮未发现可复现的本地提权或已利用越权。重点聊天文件 Provider 包含调用 UID、单一包名、签名摘要、会话和路径校验，未证明可绕过。
+8. Manifest 有 100 个 `uses-permission` 条目、59 个导出组件，其中 44 个没有组件权限。6 个无 Manifest 权限的 Provider 已逐一反编译：5 个有调用方身份、签名或作用域约束，`XWebCoreContentProvider` 的 `openFile()`/`insert()` 只校验自身包名（恒真），构成**已确认但影响受限的越权读取/上报注入面**；可读范围被 `filelist.config` 限定为 XWeb 引擎只读资源。本轮未发现本地提权，也未发现读取其他用户会话的路径。
 9. 与 2026-08-17 版隐私指引对照后，AndroidID/OAID、SSID/BSSID、应用安装、进程/内存、加速度传感器等属于政策已披露的宽采集；IMSI、SIM country、基带/序列号和截屏/录屏状态存在逐字告知颗粒度缺口，但尚缺同意前上传和实际超范围使用的运行时证据。
 10. 本地 `wxapkg` 可只读解出 133 个文件，包含可分析的编译 `app-service.js`/`page-frame.js` 和 83 个页面/组件 bundle，但不等于拿到原始工程。汉堡王点餐的门店、菜单、购物车、试算、创建订单、支付和登录链路已静态还原。
+11. 真机只读快照（Android 16 / API 36）确认 `base.apk` SHA-256 与静态样本一致，小程序包目录共 112 个 `wxapkg`（`general` 96、`firstParty` 13、`commLib` 3），并给出 `appid` → 版本序号 `274` → `_63336007_274.wxapkg` → `app-service.js_*` 缓存目录的静态对应链；10 项用户敏感权限已授予、6 项未授予，位置/相机/麦克风/剪贴板在 AppOps 层限于 `foreground`。授权状态不等于已调用或已上传，AppOps 时间戳因只读检查本身会位移而不作为采集证据。
 
 ## 样本与方法
 
@@ -28,6 +29,7 @@
 | 数据范围 | 68 个 SQLite/WCDB 文件、媒体目录结构、历史解密快照 |
 | Manifest/隐私范围 | 8.0.78 `AndroidManifest.xml`、重点 Provider、2026-10-02 抓取的 2026-08-17 隐私指引 |
 | 小程序范围 | 汉堡王点餐 `wxapkg`、同机 AppService/page-script 缓存，只读静态分析 |
+| 真机只读范围 | Android 16（API 36）上的 `dumpsys package` / `appops get` / procfs 进程根视图（`/proc/<pid>` + `root/...`）摘要；无注入、无 Hook、无内存写入、无跨 UID 组件调用 |
 
 数据库字段和密钥路径由 8.0.78 smali、JNI/ELF 与 `PRAGMA table_info` 交叉确认；登录/消息 Java 协议证据来自 8.0.68 JADX，支付网络和数据库原生证据来自 8.0.78。权限/提权、告知边界和小程序流程分别见 [permissions.md](permissions.md)、[privacy.md](privacy.md) 和 [miniprogram.md](miniprogram.md)。数据库行仅做计数、类型和时间范围聚合，不公开行样例。证据位置见 [evidence.md](evidence.md)。
 

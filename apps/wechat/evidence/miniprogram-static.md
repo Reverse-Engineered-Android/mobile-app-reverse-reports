@@ -15,6 +15,25 @@
 `page_scripts/c35c...-%2FpagesMenu%2Fpage-frame.js` 与解包后的
 `page-frame.js` SHA-256 完全相同。
 
+## 真机存储与命名对应
+
+同一台真机的应用数据下，`MicroMsg/appbrand/pkg/` 共 **112 个 `.wxapkg`
+普通文件**（`general` 96、`firstParty` 13、`commLib` 3）；按 appid 建立的
+索引、包文件和 JS 缓存目录通过**同一版本序号**关联：
+
+| 类型 | 模式 | 本样本 |
+| --- | --- | --- |
+| 索引 | `<appid>_<index>.idx` | `wx8d200a641cdec6a1_274.idx` |
+| 包 | `_<crc>_<index>.wxapkg` | `_63336007_274.wxapkg` |
+| 缓存目录 | `app-service.js_<appid>`、`<subpkg>_app-service.js_<appid>`、`precompile.<appid>` | `app-service.js_wx8d200a641cdec6a1` 等 |
+| 页面脚本 | `page_scripts/<appid>-v<index>/` | 同序号 `274` |
+
+由此可把 appid、版本序号、包文件和运行时缓存对应起来，**不需要运行小程序、
+不需要抓包、不需要注入**。注意 `ls | grep wxapkg` 会把 `.wxapkg.zstd`
+旁路文件一起计入；按普通文件计数才是 96/112。
+
+链路与真机权限快照见 [`phone-runtime.md`](phone-runtime.md)。
+
 ## 环境与 API 字符串
 
 主 AppService 缓存的只读 `strings` 提取给出：
