@@ -89,6 +89,61 @@ https://bdp-cdn.bkchina.cn/portal/privacy.html
 https://bdp-cdn.bkchina.cn/portal/pdf/privacy.pdf
 ```
 
+## 同意记录与撤回调用点
+
+```text
+getPrivacyConfig():
+  getPrivacySetting({ body: { params: {} } })
+  code == 0  ->  body.isOpen               -> showPersonList
+             ->  body.revokePolicyDescription -> revokeContent
+
+accountSetting render:
+  showPersonList ? i18n("...accountSetting.index.index13") : null
+
+showRevokePop():
+  popup(revokeContent || " ", "撤回同意隐私申请")
+
+revokeAgreement():
+  removeAllCache()
+  setStorageSync("revoke", "revoke")
+  reLaunch("/pages/index/index")
+
+removeAllCache():
+  clearStorageSync()
+  globalData.{miniOpenid,sageMemberCode,birthday,oldMemberCode,
+              nickName,headImg,unionid,vipPhone,alipayUserId} = ""
+  setStorageSync("isLogout", "Y")
+```
+
+登录按钮 open-type 的能力探测：
+
+```text
+canIUse("getPrivacySetting")
+  ? "getPhoneNumber|agreePrivacyAuthorization"
+  : "getPhoneNumber"
+```
+
+`privacyCollect.record()` 调用点：
+
+| 类型 | 文件 | 次数 |
+| --- | --- | ---: |
+| `TYPES.PHONE` | `pagesMenu/pages/login/index.js` | 3 |
+| `TYPES.ADDRESS` | `pagesMenu/pages/address/detail.js` | 2 |
+| `TYPES.ADDRESS` | `pagesMenu/pages/order/orderConfirm.js`（`salesScene==2`） | 1 |
+
+个人信息清单相关接口只在真机 V8 缓存字符串中出现，**在本次解包的
+`app-service.js` 及拆分模块里没有找到调用点**：
+
+```text
+/privacyManagementSettings/action/queryOne
+/personalInfoCategorys/action/queryList
+/personalInfoCollectionItems/action/queryList
+```
+
+因此只能确认“缓存中存在接口名”，不能确认当前发布包实现了个人信息清单页。
+
+## 边界
+
 ## 边界
 
 - 未运行小程序，未调用业务 API，未执行登录、下单或支付。
@@ -96,3 +151,7 @@ https://bdp-cdn.bkchina.cn/portal/pdf/privacy.pdf
 - 缓存中出现的其他 appid 只作为跳转目标或缓存候选，不作为汉堡王主 appid
   的确定身份。
 - 未解出原始工程、构建配置和服务端代码；结论仅覆盖本样本的发布包与缓存。
+- `revokeAgreement()` 清空的是本地 storage 与 globalData；代码中没有可见的
+  服务端撤回请求，不能据此断言服务端同意状态被撤销。
+- `privacyCollect.record()` 证明“采集后登记”，不证明登记发生在上传之前，
+  也不证明服务端接受或保留了该记录。
