@@ -55,6 +55,25 @@
 | Root/Hook/活体/MIS 机制 | `evidence/risk-source.md` |
 | 误报边界 | `evidence/risk-source.md` |
 
+## 权限、提权与隐私
+
+| 结论 | 公开证据 |
+| --- | --- |
+| 100 权限、59 导出组件、44 无组件权限 | [permissions.md](permissions.md)、`evidence/manifest-audit.md` |
+| 重点聊天文件 Provider 的 UID/签名/路径校验 | `evidence/manifest-audit.md` |
+| 明文网络配置与应用级安全属性 | `evidence/manifest-audit.md` |
+| 2026-08-17 隐私指引与静态字段逐项对照 | [privacy.md](privacy.md) |
+| IMSI/SIM/细粒度设备字段的告知颗粒度缺口 | [privacy.md](privacy.md)、`evidence/risk-source.md` |
+
+## 小程序静态提取
+
+| 结论 | 公开证据 |
+| --- | --- |
+| `wxapkg` 133 文件、包/脚本哈希与“发布源码而非原始工程”边界 | `evidence/miniprogram-static.md` |
+| 汉堡王环境域名、门店/菜单/订单/支付/登录 API | `evidence/miniprogram-static.md` |
+| 手机号与地址的 `privacyCollect` 调用点 | `evidence/miniprogram-static.md` |
+| 门店到支付的页面调用链 | [miniprogram.md](miniprogram.md) |
+
 ## 不公开材料
 
-原始数据库、`KeyInfo.bin`、key/UIN/device ID、消息/联系人/朋友圈/支付行、真实网络负载、完整 smali/ELF/反汇编和媒体均留在受控环境，不进入本仓库。
+原始数据库、`KeyInfo.bin`、key/UIN/device ID、消息/联系人/朋友圈/支付行、真实网络负载、完整 smali/ELF/反汇编、原始小程序包/缓存和媒体均留在受控环境，不进入本仓库。
