@@ -61,9 +61,13 @@
 | --- | --- |
 | 100 权限、59 导出组件、44 无组件权限 | [permissions.md](permissions.md)、`evidence/manifest-audit.md` |
 | 重点聊天文件 Provider 的 UID/签名/路径校验 | `evidence/manifest-audit.md` |
+| 其余 5 个无 Manifest 权限 Provider 的调用方/作用域校验 | [permissions.md](permissions.md) |
+| `XWebCoreContentProvider` 缺少调用方鉴权、`filelist.config` 只读限制 | [permissions.md](permissions.md) |
 | 明文网络配置与应用级安全属性 | `evidence/manifest-audit.md` |
 | 2026-08-17 隐私指引与静态字段逐项对照 | [privacy.md](privacy.md) |
 | IMSI/SIM/细粒度设备字段的告知颗粒度缺口 | [privacy.md](privacy.md)、`evidence/risk-source.md` |
+| 真机版本/哈希一致性、10 已授予 + 6 未授予、AppOps `foreground`/`ignore` | `evidence/phone-runtime.md` |
+| AppOps 时间戳因只读检查位移，不作为采集证据 | `evidence/phone-runtime.md` |
 
 ## 小程序静态提取
 
@@ -73,6 +77,7 @@
 | 汉堡王环境域名、门店/菜单/订单/支付/登录 API | `evidence/miniprogram-static.md` |
 | 手机号与地址的 `privacyCollect` 调用点 | `evidence/miniprogram-static.md` |
 | 门店到支付的页面调用链 | [miniprogram.md](miniprogram.md) |
+| 真机 112 个 `wxapkg` 与 appid → 版本序号 → 包/缓存对应链 | `evidence/phone-runtime.md`、`evidence/miniprogram-static.md` |
 
 ## 不公开材料
 
