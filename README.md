@@ -11,6 +11,7 @@
 | 支付宝 | `com.eg.android.AlipayGphone` | `12.12.30.8000` | `212310` | SQLCrypto/UnQLite、登录授权、在线/离线支付、设备风险 |
 | 微信 | `com.tencent.mm` | `8.0.68/8.0.78` | `3003/3180` | 数据库解密、登录/消息/支付协议、朋友圈/小程序缓存、设备风控 |
 | 拼多多 | `com.xunmeng.pinduoduo` | `8.26.0` | `82600` | anti-token/v1+v2 签名、登录 token 链、动态库分发、混淆闭包、22 个本地库 |
+| 美团 | `com.sankuai.meituan` | `12.66.404` | `1200660404` | mtgsig/DFP/Yoda、登录挑战、支付与 POI 静态接口、权限隐私、67 个 native 库 |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 
@@ -19,6 +20,7 @@
 - 支付宝：[概览](apps/alipay/README.md)、[报告](apps/alipay/report.md)、[逐库清单](apps/alipay/database-inventory.md)、[证据](apps/alipay/evidence.md)、[设备风险](apps/alipay/device-risk.md)
 - 微信：[概览](apps/wechat/README.md)、[主报告](apps/wechat/report.md)、[数据库清单](apps/wechat/database-inventory.md)、[协议](apps/wechat/protocol.md)、[风控](apps/wechat/risk-control.md)、[证据索引](apps/wechat/evidence.md)
 - 拼多多：[概览](apps/pinduoduo/README.md)、[报告](apps/pinduoduo/report.md)、[网络与协议](apps/pinduoduo/network.md)、[认证](apps/pinduoduo/auth.md)、[上传下载](apps/pinduoduo/transfer.md)、[风控](apps/pinduoduo/risk.md)、[混淆闭包](apps/pinduoduo/obfuscation.md)、[算法与 native](apps/pinduoduo/algorithm.md)、[本地存储](apps/pinduoduo/storage.md)、[证据](apps/pinduoduo/evidence.md)、[完成度](apps/pinduoduo/completeness.md)
+- 美团：[概览](apps/meituan/README.md)、[报告](apps/meituan/report.md)、[网络与协议](apps/meituan/network.md)、[认证](apps/meituan/auth.md)、[上传下载](apps/meituan/transfer.md)、[风控](apps/meituan/risk.md)、[权限](apps/meituan/permissions.md)、[隐私](apps/meituan/privacy.md)、[证据](apps/meituan/evidence.md)、[完成度](apps/meituan/completeness.md)
 - 通用：[逆向方法](docs/methodology.md)、[证据标准](docs/evidence-standard.md)、[脱敏规则](SECURITY.md)
 
 ## 公开范围
