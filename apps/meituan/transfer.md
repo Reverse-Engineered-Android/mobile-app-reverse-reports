@@ -147,3 +147,23 @@ response length 和耗时；具体业务 payload 由事件对象序列化。
 - **条件发送**：相机/相册图片、位置查询、联系人/日历选择、登录 token；
 - **仅本地处理或未证实上传**：静态解析到的大部分日志字段和敏感权限读取；
 - **服务端不可见**：上传后保存期限、用途、二次分发。
+
+## 9. 设备端落盘范围（只读实测）
+
+只读 SSH 检查（`/proc/1/root/data/user/0/com.sankuai.meituan`，PID 34151）得到
+的本地数据范围，与上文的“能上传什么”分开陈述——下列内容是**已在本地落盘**：
+
+| 类别 | 实际形态 |
+|---|---|
+| 定位历史 | `com.sankuai.meituanMTLocationDb.db` / `MTLocationTableV2` 34 行；`LOC` Base64 不透明串，`TIME` epoch 毫秒，`GEOHASH` 明文 |
+| 统计事件 | `mt-statistics-db-cache.event.evs` 明文 JSON（`dpid/uuid/oaid/android_id/mac/bssid/union_id/micro_msid/app_session/locate_city_id/cityid/district_id/pushid/msid/mk_trackid/ad_tracking_enabled/ch/logintype/svs`），并含经纬度 |
+| 遥测队列 | `kitefly.db.log` 6 行，`token` 与 `env` 明文（`babelUserId/babelid/deviceType/mccmnc/networkType/sdkVersion/buildVersion`） |
+| 请求监控 | `request_monitor.db` / `jakarta_requests` schema 完整，0 行 |
+| 聚合 SQL 上报 | `hades_db_sql` schema 完整，0 行 |
+| 聊天 | `1857661084_message_db.db`（667 KB、43 对象、`addition.recvs BLOB`）与 `imkit_db.db.vcard` 为明文本地存储 |
+| 隐私同意 | `privacy_config/kv` + `assets/*.conf` 二进制；`is_privacy_mode`、权限标签 |
+| 风控配置 | `files/horn/` 690 个文件，其中 20 个 `final_horn_config_mtguard-*` |
+| 指纹落盘 | `._mtg_mtdfp_up/.mini/`（`hornCache` 47487 B、`eman_ppa` 428 B、`mtg_dfp_gzcf.txt` 3328 B）、`app_turingdfp/1/.turing.dat` |
+
+`LOC` 不是明文坐标；`event.evs` 与 `kitefly.db` 的 JSON 才是明文标识面。
+本次没有把任何标识值写入报告，也没有发起上传请求。

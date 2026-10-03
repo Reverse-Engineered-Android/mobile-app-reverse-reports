@@ -13,10 +13,16 @@ versionName: 12.66.404
 DEX source files after JADX: 70519
 JADX --show-bad-code errors: 50
 files containing "Method not decompiled": 26
+unique "Method not decompiled" signatures: 28
 ```
 
 ARM32 与 ARM64 DEX 内容一致；重复 ARM32 样本已去除。资源、manifest 和
 native 库均从同一 APK 解出。
+
+样本来源：`https://i.meituan.com/client/meituan` 的下载入口与
+`https://cube.meituan.com/ipromotion/cube/toc/component/base/getVersionInfo?clientType=MT_ANDROID`
+返回的版本元数据（检索日期 2026-10-04），据此确认 `12.66.404` / `1200660404`
+为当前官方 Android 版本，再取得对应 ARM64 APK。
 
 ## 2. 反编译证据
 
@@ -61,6 +67,118 @@ current exact strings:
 
 `com.meituan.android.common.mtguard.shell.IIVTQYOSF` 在初始化时复制/预加载
 这四个文件；因此它们不是误命名的普通 shared object。
+
+### 3.1 `libmtguard_log.so` 实际是 DEX
+
+对该文件单独运行 JADX（`--show-bad-code --deobf`，rc=0，45 个类）后得到完整
+运行时类：`com.meituan.android.common.mtguard.MainBridge`、`MTGuardEntry`、
+`MainCryptoKeyIndex`、`collect/*`（`AccessibilityUtils`、`InstalledAppManager`、
+`AppInfoWorker`、传感器采集类）、`wtscore/plugin/sign/core/*`、
+`wtscore/plugin/encryption/gmtkby`、`Ok3NetworkInterceptor`、DFP `BaseReporter`、
+OAID helper、`com.xiaomi.security.xsof.*` 等。
+
+```java
+// MainBridge.java:121
+private static native Object[] main(int i, Object[] objArr);
+
+// MainBridge.java:487（main3 委托）
+MainBridge.main3(i, objArr)  ->  main(i, objArr)
+```
+
+`MainBridge.main2`（`MainBridge.java:140` 起）是 Java 侧命令实现的大 switch，
+关键分支的精确行为：
+
+| case | 精确代码 |
+|---:|---|
+| 6 | `return "6.7.15";` |
+| 11 | `AccessibilityUtils.isAccessibilityEnable` |
+| 13 / 17 / 18 / 19 | 传感器厂商/名称：`getDefaultSensor(9)` / `getDefaultSensor(1)` |
+| 33 | `DevicesIDsHelper.getOAID` |
+| 37 | `Ok3NetworkInterceptor.MITM_INFO` |
+| 41 | `MTGlibInterface.raptorFakeAPI` |
+| 54 | `return ...gmtkby() ? "64" : "32";` |
+| 59 | 隐私模式 |
+| 61 | `raptorAPI` |
+| 69 | `getRunningAppProcesses()` |
+| 72 | `MTGuardEntry.internalInit` |
+
+`MainCryptoKeyIndex` 枚举值精确为 `AESKEY("aesKey")`、`COMMONKEY("commonKey")`、
+`CONCHKEY("conchKey")`、`WTKEY("wtKey")`、`MAOYANKEY("maoyan_aes_key")`、
+`OWLKEY("owl_aes_key")`。`wtscore/plugin/encryption/gmtkby.java:26-39` 的
+`gmtkby(byte[], String, int)` 调用
+`MainBridge.main3(i == 2 ? 31 : 30, {byte[], String})`（枚举 `czjazaupf = 2`、
+`gmtkby = 1`），即 Java 侧只负责选择命令号，真正的加解密在 native `main` 内。
+
+### 3.2 `libmtguard_1/2/3.so` 的封装契约
+
+这三个文件不是 ELF、不是 ZIP、不是 gzip/zlib/raw-deflate：首部是 16 字节
+版本头（`1.1.4` / `1.1.8` / `1.1.1` + 零填充），正文严格按 16 字节对齐，
+1795 / 1851 / 325 个 16 字节块全部唯一（满熵），全文无 ELF/DEX/gzip/ZIP
+magic。
+
+`libmtguard.so` 是一个 ELF64 AArch64 库（Android 21、NDK r16b、stripped，
+BuildID sha1 `773d1b811dbcf4af1d2e8ddaa24fd1bb15ed6c66`），唯一导出符号是
+`JNI_OnLoad`（`0x40970`）。它内置了一个 ELF 动态加载器：
+
+```text
+0x77f38:  bl  0x3cca0 <dlopen@plt>     ; dlopen@plt 全库唯一调用点
+0x77f30:  mov w1, #2                   ; RTLD_NOW
+```
+
+调用点所在函数从 `0x77c84` 开始，语义为：解析 16 字节表项的版本字符串表，
+`calloc(count, 0x90)` 分配句柄数组，逐项校验 `strlen(ptr) <= 0x80`、
+`strncpy(dst+8, ptr, 0x7f)`，然后 `dlopen(ptr, RTLD_NOW)` 并保存 handle；
+全部成功返回 1，任一项失败返回 0。`JNI_OnLoad` 自身被 OLLVM 控制流平坦化，
+但加载器语义可从该函数恢复。
+
+Java 侧配套代码：
+
+- `com.meituan.android.common.mtguard.shell.IIVTQYOSF` 常量：
+  `FLWMEVUMVC = "6.7.15"`、`GBANDXHNS = "1.1.4"`、`HSPBHBJI = "1.1.8"`、
+  `ZZGP = "1.1.1"`、`BRFI = 6071500`，以及
+  `FSGIUFGOU = {"libmtguard_1.so","libmtguard_2.so","libmtguard_3.so","libmtguard_log.so"}`。
+- `ShellBridge.java:64-75` 的 `main3` 委托 native `main`（第 71 行
+  `return main(i, objArr);`），`main2` case 10 返回
+  `{1.1.4, 1.1.8, 1.1.1}`。
+- `MTGuard.loadSo`（`MTGuard.java:729-757`）：`tryLoad(...)` →
+  `prepareForSo(nativeLibraryDir)` → `ShellBridge.main3(1, {strTryLoad, preload_native_dir})`。
+- `MTGuard.prepareForSo`（`MTGuard.java:759-936`）：`nativeLibraryDir` 缺失/为空时
+  回退到 `sApplicationInfo.dataDir` 与 `OWPIKWGXA.IIVTQYOSF(str)` 路径助手；
+  先经 `ShellBridge.main3(64, ...)`（首进程闸门，`0x820`）打开 APK ZIP
+  （`new ZipFile(sourceDir)`），把 `FSGIUFGOU` 的 4 个条目复制到 guard 目录，
+  拒绝多 ABI，成功后执行 `OWPIKWGXA.IIVTQYOSF("6.7.15", dataDir)` 并设置
+  `preload_native_dir`（`0x921-0x925`）。
+- `com.meituan.android.common.utils.mtguard.IIVTQYOSF`：读取
+  `files/.0852110f868f8a20` JSON（`main_info` 数组、`4_<ver>_version` 键）；
+  `BRFI(String)` 组装路径
+  `files/cips/common/cc18a13fb3fd351e/32bb636196f91ed5/m/{32|64}/<ver>.so`，
+  把 `MD5(file)` 与 `DNFBGIX(OWPIKWGXA(ver))` 比较；`DNFBGIX`（第 140-159 行）
+  用硬编码模数
+  `D37E339A...72A6CB` 与指数 `10001` 做 `RSA/ECB/NoPadding`，去掉前导零后
+  UTF-8 解码，再与 ZIP comment（`ZipFile.getComment()`）前 32 字符比对，
+  `DU()` 回写 JSON。
+
+### 3.3 运行时判定：预加载块在本版本中不被执行
+
+对运行中的美团进程（`/proc/<pid>/maps`）做只读检查，只有
+`libmtguard.so` 与 `libmtguard_log.so` 被映射；`libmtguard_1/2/3.so` 从未
+作为 ELF 映射。设备上 guard 目标目录
+`files/cips/common/cc18a13fb3fd351e/32bb636196f91ed5/m/64` 为空，
+`c/64`、`e/64`、`s/64` 亦为空，`files/.0852110f868f8a20` 不存在。
+
+因此结论是：这三个文件是加密预加载载荷（容器格式已完整刻画：16 字节版本头 +
+16 字节对齐的不透明正文 + Java 侧 `utils/mtguard/IIVTQYOSF` 完整性/版本校验 +
+native `dlopen` 加载器 `0x77ef0-0x77f88`）；在没有解密密钥的前提下无法静态
+继续解析其内部，且它们在本次构建中从未被映射执行，不是本 APK 的可执行风控
+逻辑。报告不声称已解密该载荷。
+
+已尝试并失败的解密路径（用于界定边界，不代表密钥存在）：单字节 XOR、对
+`\x7fELF` / `dex\n035\0` 的 XOR、AES-128/192/256-ECB（密钥取自
+{首部、版本补零、md5(版本)、sha1(版本)[:16]、重复版本、全零、0xFF、包名、
+签名证书 SHA-256、证书 hex}）、IV=首部的 AES-CBC、同密钥候选的 RC4、
+gzip/zlib/raw-deflate。`libmtguard.so` 内也未出现 AES S-box / 逆 S-box /
+SM4 S-box / ChaCha 常量，说明该密码学层位于被加密的未解析层或为自定义/
+混淆例程。
 
 与 12.35.236 的 62 库比较：
 
@@ -131,6 +249,86 @@ if (gmtkby.jefswxstkc.booleanValue() && NVGlobal.isInit()) {
 这些条目覆盖了报告中出现的全部“加密/签名”代码。密钥索引是选择器，不是密钥
 值；本报告不提取、打印或伪造任何生产密钥。native command 120/2/31 的输出
 用途和输入由 Java 调用点界定，不把控制流内部的未解混淆指令当作新的加密算法。
+
+### 5.1 具体报文格式
+
+`com.dianping.nvnetwork.tunnel.tool.SecureTools` 是 NVNetwork 隧道报文的全部
+密码学实现：
+
+```text
+getProtocolData 外层包（SecureTools.java:347-365）：
+  FF 01 00 <flag:1B> <secure:1B> <totalLength:int32 BE> <noSecureLength:uint16 BE>
+  || payload || encryptedBlock
+  secure 字节：不加密=0；加密=1；加密且 macFlag 且 HTTP_REQUEST=3
+
+encryptedBlock = <prefixLength:int32 BE> || prefix || source
+  prefix  -> secureLoad（zip 0=raw，1/2=gzip）
+  source  -> rsp（zip 0/1=raw，2=gzip）
+
+parseData(int zip, byte[])（SecureTools.java:398-441）：
+  要求 >= 4 字节；前 4 字节为大端 prefix 长度；余下按 zip 模式解压。
+parseData(byte[])（SecureTools.java:444-475）：旧格式，在首个 NUL 处切分。
+
+compress(byte[])（SecureTools.java:100）：
+  ByteArrayOutputStream(16384) + GZIPOutputStream，写满后 toByteArray()。
+
+HMAC（SecureTools.java:571-596）：
+  jSONObject.put("z", secureProtocolData.zip);
+  Mac.init(new SecretKeySpec(keyBytes, "hmacSHA256"));
+  jSONObject.put("h", Base64.encodeToString(mac.doFinal(...), 2));
+  密钥字节 = encriptData.f12893b + secureProtocolData.id
+```
+
+对称与非对称辅助：
+
+- `tool/c.java`：`SecretKeyFactory("DES")` + `DESKeySpec` + `Cipher("DES")`；
+  第 26 行 `init(2, key)` 为解密，第 38 行 `init(1, key)` 为加密。
+- `tool/f.java`：`KeyFactory("RSA")` + `X509EncodedKeySpec` +
+  `Signature("SHA1WithRSA")`，第 30 行 `signature.verify(Base64 解码后的签名)`。
+- `SecureTools.getRSAKeys()`（第 368 行起）返回 RSA 密钥材料，失败抛
+  `"Get RSA Error"`。
+
+`MTGuard` 的 native 包装与之一致：`decrypt` → `main3(31, {byte[], keyIndex.value})`、
+`encrypt` → `main3(30, ...)`、`encLoad` → `33`、`encStore` → `32`；
+`decryptAES`/`encryptAES` 走命令 31/30 并把 byte 密钥 `new String(bArr2)` 传入。
+`CryptoKeyIndex`（主 sources）与 `MainCryptoKeyIndex`（log DEX）枚举完全相同。
+
+### 5.2 28 个残留方法的归类
+
+`Method not decompiled` 共 26 个文件、28 个唯一签名。逐一用
+`jadx --single-class --comments-level debug` 或源码上下文核对后，归类如下
+（`jadx --single-class` 以 rc=3 结束但仍输出完整 debug dump，属预期）：
+
+| 残留方法 | 归类 | 判定依据 |
+|---|---|---|
+| `com.meituan.cronet.okhttp.a.intercept` | 网络传输 | Cronet/OkHttp 传输切换 + `SseRequestOptions` + 上报；使用 `com.meituan.cronet.config.d.*`、`com.sankuai.meituan.common.net.request.c.*`、`com.meituan.cronet.report.d.*`，最终 `chain.proceed`；无密码学 |
+| `com.sankuai.common.utils.b.a(String)` | 编码 | UTF-8 → 字母表 `g(int)` Base64 变体；结果以 gzip magic `0x8b1f` 开头时用 `GZIPInputStream` 解压；无密码学 |
+| `com.dianping.nvnetwork.tunnel.tool.SecureTools.compress` | 压缩 | 见 §5.1，GZIP 封装 |
+| `com.alipay.sdk.m.l0.b.b(byte[])` | 编码 | Base64 解码（上下文含 `"bad base-64"`） |
+| `com.alipay.sdk.m.a0.b.D(Context)` | 设备元数据 | `Build.SERIAL`、`privacy.aop.f.i()`；`E()` 列 `/dev/qemu_pipe` 等模拟器路径 |
+| `com.meituan.passport.utils.t0.l(...)` | 埋点 | 分析事件分发（`com.meituan.passport.utils.u0.a/b`，键 `c_hvcwz3nv`、`b_fui1o3ib`、`Locate.once`、`locate_token`、`pt-a3555ae11c727a6b`）；无密码学 |
+| `com.meituan.android.pt.homepage.modules.guessyoulike.request.j.d(String,String)` | 字符串映射 | 纯映射（`"first"/"second"/"default"` + 点击过滤/返回/区域/地址/位置串）；无密码学 |
+| `com.meituan.android.train.deviceinfo.a.a/e` | 设备元数据 | `MessageDigest` `SHA-1`（第 1044、1846-1848 行）、`SHA-256`（1614-1616）、`Base64.encodeToString(...,2)`（1490、1828）、`GZIPOutputStream`（1815-1823）；仅摘要/Base64/gzip |
+| `com.meituan.android.bike.framework.foundation.network.utils.a.f(Context)` | 运营商映射 | MCC/MNC 表（460 → 中国移动/联通/电信）；无密码学 |
+| `com.meituan.android.common.unionid.oneid.util.AppUtil.getHarmonyDeviceType/getHarmonyEmuiVersion` | 设备元数据 | Harmony 机型 / `Runtime.exec` 读 EMUI 版本 |
+| `com.meituan.passport.standard.utils.j.a(boolean,String)` | 登录埋点 | passport 标准组件事件 |
+| `com.meituan.msc.performance.f.a(...)` | 性能埋点 | MSC 性能上报 |
+| `com.meituan.android.food.retrofit.base.i.convert(Object)` | 反序列化 | Retrofit converter |
+| `com.meituan.android.movie.tradebase.pay.view2.d1.a.onCompleted` | UI 回调 | 支付页动画回调 |
+| `com.meituan.android.multilingual.impl.e.getIconResourceId` | 资源 | 多语言图标资源 id |
+| `com.sankuai.waimai.order.mach.h.K` | UI | 外卖订单状态机 |
+| `com.sankuai.waimai.platform.widget.weather.j.E(int)` | 动画 | 天气组件动画 |
+| `com.sankuai.meituan.mtliveqos.utils.cpu.b.b()` | CPU | 直播 QoS CPU 采样 |
+| `com.sankuai.meituan.model.c.onUpgrade(...)` | 数据库 | SQLite `onUpgrade` |
+| `com.sankuai.xm.base.util.ExifInterface.f(...)` / `com.xiaomi.exif.i.a(...)` | EXIF | 图片 EXIF 解析 |
+| `org.commonmark.internal.o.a.a(...)` | 解析 | CommonMark 块解析 |
+| `a.a.a.a.b.handleMessage(Message)` | 框架 | 消息处理 |
+| `com.huawei.hms.aaid.init.a.run` | 推送 | HMS 推送初始化 |
+| `com.meituan.android.mgc.api.minorGuide.c.run` | 引导 | MGC 引导 |
+| `com.meituan.android.common.statistics.channel.j.l0(...)` | 统计 | 埋点通道 |
+
+结论：28 个残留中没有未解释的密码学实现；安全相关的全部可读方法已归入
+§5 与 [risk.md](risk.md) §2。
 
 ## 6. 证据等级
 
@@ -214,3 +412,79 @@ if (gmtkby.jefswxstkc.booleanValue() && NVGlobal.isInit()) {
 | `libyoga.so` | `11ebdd2eec98318c4c65e67a3b84d147200fe653cfc3ab2420535ba363684746` |
 | `libyoga_newarch.so` | `220d714b5978179336441d3029c0b242df2e7cc334e5c9c8d367e227f7e08be3` |
 | `libyoga_recce.so` | `be331a0170b278b39985c12a4b7f508ded4cf2241c6e1c4cb6a152131e217fb0` |
+
+## 8. 设备端只读数据库验证
+
+在 `root@192.168.37.25`（Android 16，Redmi `23117RK66C`）上以只读方式检查
+运行中应用的真实落盘格式。SSH 命名空间与 init 不同，`/data/data` 与
+`/data/user` 不在该命名空间中，因此统一经
+`/proc/1/root/data/user/0/com.sankuai.meituan` 访问；应用进程 PID 34151。
+设备无 `sqlite3` 二进制，改用 `/usr/bin/python3` 的 `sqlite3` 模块，先把文件
+复制到 `/tmp` 再读（直接以只读方式打开 `-wal`/`-journal` 相邻路径会失败）。
+
+### 8.1 数据库真实 schema
+
+| 文件 | 表 | 列 | 行数 |
+|---|---|---:|---:|
+| `databases/com.sankuai.meituanMTLocationDb.db` | `MTLocationTableV2` | `_id, WIFI, CELL, LOC, TIME, GEOHASH, WIFI_TYPE, LOCATION_TAG` | 34 |
+| `databases/kitefly.db` | `log` | `id, uploaded, log, tags, type, category, ts, status, token, _value, env, details, raw, is_main_thread, loguuid, thread_id, thread_name, inner_property` | 6 |
+| `databases/mt-statistics-db-cache` | `event` | `autokey, channel, environment, evs, level, ctm, pfcount` | 1 |
+| `databases/request_monitor.db` | `jakarta_requests` | `id, request_id, host, path, request_start_time, request_type, request_size, extra_type, request_result, cause, message, response_size, time_cost` | 0 |
+| `databases/hades_db_sql` | `hades_biz_sql` | `id, modelName, eventType, eventTime, channel, source, resourceId, wifiName, network, cityId, custom, saveTime, custom_json, sessionId` | 0 |
+| `databases/battery.db` | `battery` | `processName, businessName, date, bgLongActivityProcessTime, bgSleepProcessTime, bgFreezeProcessTime`（主键 `date,businessName,processName`） | — |
+| `databases/1857661084_message_db.db`（667 KB，43 对象） | `msg_info, grp_msg_info, pub_msg_info, msg_sync_read, chat_stamp, session, receipt_info, msg_pub_opposite, msg_group_opposite, addition` | `addition` 含 `recvs BLOB` | — |
+| `databases/imkit_db.db` | `vcard` | `avatar_url, big_avatar_url, name, info_id, type, in_group, status, extension, uts, description, …` | — |
+| `databases/dx_sdk_statistics_report.db` | `chain_trace, statistics_report` | — | — |
+
+### 8.2 定位库：位置数据不是明文
+
+`MTLocationTableV2.LOC` 是 Base64 外观的不透明串（样例长度 2764，解码后
+2073 字节），并非可直接阅读的坐标；`TIME` 为 epoch 毫秒字符串（如
+`1791036406473`），`GEOHASH` 为 `webwrumq` 形式的明文 geohash。样例行的
+`WIFI`、`CELL` 为空。因此“位置库保存明文经纬度”这一说法不成立。
+
+### 8.3 统计与日志库：明文 JSON，含稳定标识
+
+`kitefly.db.log` 的 `token` 与 `env` 是明文；`env` JSON 含
+`babelUserId`、`babelid`（64 位 hex，DPID 形制）、`deviceType`、`mccmnc`、
+`networkType`、`sdkVersion`、`buildVersion`、`app`、`appVersion`。
+`mt-statistics-db-cache.event.evs` 也是明文 JSON，键含 `dpid`、`uuid`、
+`oaid`、`android_id`、`mac`、`bssid`、`union_id`、`micro_msid`、`app_session`、
+`locate_city_id`、`cityid`、`district_id`、`pushid`、`msid`、`mk_trackid`、
+`ad_tracking_enabled`、`ch`、`logintype`、`svs`；`channel = data_sdk_group`。
+报告只保留字段名与截断样例，不落盘完整标识值。
+
+### 8.4 隐私与风控运行态文件
+
+- `files/cips/common/privacy_config/kv` 为二进制 KV（非 SQLite），含
+  `is_privacy_mode`、`current_config` 及
+  `/data/user/0/com.sankuai.meituan/files/cips/common/privacy_config/assets/…conf` 路径；
+  `assets/*.conf` 是二进制同意记录，标签含 `Android-mtguard`、
+  `pt-a3555ae11c727a6b`、`Phone.read`、`BlueTooth.admin`、`Locate.once`、
+  `Microphone`、`Pasteboard`、`locate_token` 等。
+- `files/horn/` 共 690 个文件，其中 20 个 `final_horn_config_mtguard-*` 配置
+  （env、env-blk、blk、settings、siua、bio、bio-field、fama、rom-check、xid、
+  vmp-funcs、switch、background、raptor-v6、enc-salt、readlink、files-stat、
+  report-funcs、app-path、sig-ignore）。这些是 Horn 缓存二进制记录，内嵌明文
+  查询串可见：
+  `deviceType=23117RK66C&appVersion=12.66.404&osVersion=16&is64=true&sdkVersion=0.4.17&packageName=com.sankuai.meituan&id=…&version=v1&token=…&MtGuardVersionCode=6071500&PhoneManufacturer=XIAOMI&SoVCode=6.7.15`，
+  响应为 `{"data":"<base64>","data_sig":"<base64>"}`。
+- `files/.mtg_sequence` = `{"sequence":"11492"}`；`files/.mtg_process_file_lock`
+  0 字节；`files/mtg_mts_log` 0 字节；
+  `files/._mtg_mtdfp_up/.mini/` 含 `hornCache`（47487 B）、`eman_ppa`（428 B，
+  Base64 不透明）、`mtg_dfp_gzcf.txt`（3328 B）、`mtg_dfp_gzcf_f.txt` = `[]`。
+- `files/.hodor/media_v3_scope/*.scp` 为 1 MiB 分块（54 个），
+  `media_v3_content/*.ctt` 47 B。
+- `app_turingdfp/1/.turing.dat` 不透明；
+  `app_turingfd/mpdc_105498_1`、`mpdc_r_105498_1`（32 B）、
+  `12/105498_au_2`（1860 B）。
+- `shared_prefs/com.sankuai.meituan_preferences.xml` 含
+  `ms_dns_cache_ips_sdk_1rtb_net`、`android_id`、`versionCode=1200660404`。
+
+### 8.5 与预加载块的交叉验证
+
+应用 native 库目录（`/proc/1/root/data/app/~~9M1LRfktFIoAWWqrQyqLVA==/com.sankuai.meituan-bmaxzYY-K6Ix4pnTatBadw==/lib/arm64`）
+含 67 个库、其中 5 个 mtguard（`libmtguard.so`、`_1`、`_2`、`_3`、
+`libmtguard_log.so`）；运行进程 maps 只映射前两者（§3.3）。
+`MtGuardVersionCode=6071500` 与 `IIVTQYOSF.BRFI = 6071500` 一致，
+`SoVCode=6.7.15` 与 `FLWMEVUMVC = "6.7.15"` 一致。
