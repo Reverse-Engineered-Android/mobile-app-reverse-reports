@@ -89,6 +89,19 @@
           "sha256": "d57b1ebcd757207ad569233ec8d7cf663dd1acb69a2fde8915b58af0aa0d7c1c"
         }
       ]
+    },
+    {
+      "app": "Meituan",
+      "package": "com.sankuai.meituan",
+      "version_name": "12.66.404",
+      "version_code": 1200660404,
+      "files": [
+        {
+          "name": "meituan-12.66.404-arm64.apk",
+          "size": 91327888,
+          "sha256": "06df08431653502ef9988b7f951dfcfdcdc0758eccbb54aa0fe1cda4e423e8ef"
+        }
+      ]
     }
   ]
 }
