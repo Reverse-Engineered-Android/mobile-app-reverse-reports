@@ -76,6 +76,25 @@ startActivity(MainActivity.class);
 
 ## 5. 未经告知或超范围的结论
 
+### 5.1 设备端落盘实测（只读）
+
+只读 SSH 检查运行中应用的实际数据库（完整 schema 见
+[evidence.md](evidence.md) §8）：
+
+| 落盘面 | 实测格式 | 范围 |
+|---|---|---|
+| `com.sankuai.meituanMTLocationDb.db` / `MTLocationTableV2` | 34 行；`LOC` 是 Base64 外观不透明串（2764 字节，解码 2073），`TIME` epoch 毫秒，`GEOHASH` 明文；`WIFI`/`CELL` 可空 | 定位历史 |
+| `mt-statistics-db-cache.event.evs` | 明文 JSON | `dpid`、`uuid`、`oaid`、`android_id`、`mac`、`bssid`、`union_id`、`micro_msid`、`app_session`、`locate_city_id`、`cityid`、`district_id`、`pushid`、`msid`、`mk_trackid`、`ad_tracking_enabled`、`ch`、`logintype`、`svs` |
+| `kitefly.db.log` | 6 行，`token` / `env` 明文 | `babelUserId`、`babelid`、`deviceType`、`mccmnc`、`networkType`、`sdkVersion`、`buildVersion` |
+| `request_monitor.db` / `hades_db_sql` | 0 行 | 本次未积累 |
+| `privacy_config/kv` + `assets/*.conf` | 二进制 KV 与同意记录 | `is_privacy_mode`、`current_config`、`Android-mtguard`、`Locate.once`、`Phone.read`、`BlueTooth.admin`、`Microphone`、`Pasteboard`、`locate_token` |
+
+`event.evs` 的样例事件里同时出现明文经纬度（报告中保留为 `22.22 / 113.55`，
+仅说明存在坐标字段）与稳定设备标识，说明统计事件在本地以明文 JSON 保存位置与设备指纹；这属于
+**本地落盘**事实，不等同于已证明该事件被上报。`kitefly.db` 与
+`mt-statistics-db-cache` 同时是 `upload`/遥测链路的候选队列，报告据此区分
+“已本地记录”与“已确认上报”。
+
 ### 可以确认
 
 - 首次同意前存在 `isPrivacyMode` 受限态；
@@ -84,7 +103,8 @@ startActivity(MainActivity.class);
 - DFP/Yoda 能采集稳定的设备与行为信号，远超普通订单功能的最小需要；
 - 代码具备读取日历、联系人、相机、录音和外部存储的能力。
 
-### 不能从静态分析确认
+### 5.2 不能从静态分析确认
+
 
 - 服务端是否超范围保存、共享或画像；
 - 每次启动是否真的调用全部采集函数；
@@ -92,7 +112,8 @@ startActivity(MainActivity.class);
 - 用户在具体 UI 中是否看到每一字段的用途说明。
 
 因此报告使用“具备能力/存在条件性上传/静态未证实”三层表述，不把权限声明
-直接写成实际泄露。
+直接写成实际泄露。定位库的 `LOC` 实测为不透明串而非明文经纬度，这一点明确
+写入最终结论，避免把 Base64/opaque 存储误判为明文位置留存。
 
 ## 6. 最终隐私判断
 

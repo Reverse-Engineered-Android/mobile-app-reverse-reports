@@ -41,6 +41,84 @@ mtgsig + certificate pin + DFP endpoint policy
 | request signature | 120 | `mtgsig` |
 | encryption/decryption | 31 | key-index 数据转换 |
 
+### 2.1 精确行号与命令号
+
+`jadx/sources/com/meituan/android/common/mtguard/MTGuard.java` 中每个命令调用点
+的确切行号（方法声明行 → `ShellBridge.main3` 调用行）：
+
+| 方法（声明行） | 调用行 | 命令 |
+|---|---:|---:|
+| `decrypt` (67) | 77 | 31 |
+| `decryptAES` (98 / 110) | 118 | 31 |
+| `deviceFingerprintData` (134) | 145 | 105 |
+| `deviceFingerprintID` (172) | 185 | 103 |
+| `encLoad` (189) | 197 | 33 |
+| `encStore` (207) | 217 | 32 |
+| `encrypt` (231) | 241 | 30 |
+| `encryptAES` (262 / 274) | 284 | 30 |
+| `getAccessibilityInfos` (320) | 328 | 102 |
+| `getXid` (369) | 376 | 104 |
+| `hasMalware` (385) | 392 | 17 |
+| `inSandBox` (401) | 408 | 19 |
+| `internalInit` (487) | 496 | 100 |
+| `isAccessibilityEnable` (500) | 508 | 101 |
+| `isCameraHack` (517) | 524 | 22 |
+| `isDarkSystem` (533) | 540 | 24 |
+| `isDebug` (549) | 556 | 21 |
+| `isEmu` (565) | 572 | 16 |
+| `isHook` (581) | 588 | 20 |
+| `isProxy` (597) | 604 | 18 |
+| `isRemoteCall` (613) | 620 | 19 |
+| `isRoot` (629) | 636 | 15 |
+| `isSigCheckOK` (645) | 652 | 10 |
+| `isVirtualLocation` (661) | 668 | 23 |
+| `isproxyDetect` (677) | 684 | 18 |
+| `isrootDetect` (693) | 700 | 15 |
+| `issimulatorDetect` (709) | 716 | 16 |
+| `loadSo` (729) | 739 | 1 |
+| `prepareForSo` (759) | 820 | 64 |
+| `subprocessReport` (1030) | 1041 | 109 |
+| `uiAutomatorClickCount` (1132) | 1140 | 11 |
+| `upload` (1148) | 1165 | 110 |
+| `uploadDeviceInfo` (1175) | 1181 | 103 |
+
+`wtscore/plugin/detection/uiautomator/OWPIKWGXA.java` 的行号：25 → 11、
+82 → 13、91 → 14。`wtscore/plugin/encryption/gmtkby.java:26-39`：
+`gmtkby(byte[], String, int)` 调
+`MainBridge.main3(i == 2 ? 31 : 30, {byte[], String})`（枚举 `czjazaupf = 2`、
+`gmtkby = 1`），返回 `Integer` 时按 errno 记 Logan 并返回 null。
+`ShellBridge.java:64-75` 的 `main3` 在第 71 行 `return main(i, objArr);` 委托
+native。
+
+`libmtguard_log.so` 是 DEX，含真正的运行时 `MainBridge`：第 121 行
+`private static native Object[] main(int i, Object[] objArr);`，`main3`
+（第 487 行）委托它；`main2`（第 140 行起）是 Java 侧命令实现，精确分支包括
+case 6 → `"6.7.15"`、case 11 → `AccessibilityUtils.isAccessibilityEnable`、
+case 13/17/18/19 → `getDefaultSensor(9)`/`(1)`、case 33 →
+`DevicesIDsHelper.getOAID`、case 37 → `Ok3NetworkInterceptor.MITM_INFO`、
+case 41 → `MTGlibInterface.raptorFakeAPI`、case 54 → `"64"/"32"`、
+case 59 → 隐私模式、case 61 → `raptorAPI`、case 69 →
+`getRunningAppProcesses()`、case 72 → `MTGuardEntry.internalInit`。
+`MainCryptoKeyIndex` 与 `CryptoKeyIndex` 枚举一致：
+`aesKey, commonKey, conchKey, wtKey, maoyan_aes_key, owl_aes_key`。
+
+### 2.2 预加载与完整性校验的精确代码
+
+`shell/IIVTQYOSF` 常量 `FLWMEVUMVC = "6.7.15"`、`GBANDXHNS = "1.1.4"`、
+`HSPBHBJI = "1.1.8"`、`ZZGP = "1.1.1"`、`BRFI = 6071500`、
+`FSGIUFGOU = {libmtguard_1.so, libmtguard_2.so, libmtguard_3.so, libmtguard_log.so}`。
+
+`MTGuard.prepareForSo`（`MTGuard.java:759-936`）先用 `ShellBridge.main3(64, …)`
+做首进程闸门（`0x820`），再 `new ZipFile(sourceDir)` 打开 APK，把 4 个
+`FSGIUFGOU` 条目复制到 guard 目录并拒绝多 ABI，成功后
+`OWPIKWGXA.IIVTQYOSF("6.7.15", dataDir)` 并设置 `preload_native_dir`
+（`0x921-0x925`）。`utils/mtguard/IIVTQYOSF` 用 `RSA/ECB/NoPadding`
+（模数 `D37E339A…72A6CB`、指数 `10001`）解密版本串，与
+`MD5(file)` 及 ZIP comment 前 32 字符比对（第 122、140-159、375、485 行）。
+native 侧 `libmtguard.so` 的 `dlopen@plt` 全库唯一调用点在 `0x77f38`
+（函数 `0x77c84` 起），以 `RTLD_NOW` 加载 16 字节表项中的版本路径；
+`JNI_OnLoad`（`0x40970`）被 OLLVM 平坦化。
+
 `internalInit(context, i)` 的初始状态：
 
 - 隐私态 `Privacy.createPermissionGuard().isPrivacyMode(context) == true`
@@ -51,7 +129,7 @@ mtgsig + certificate pin + DFP endpoint policy
 
 ## 3. 行为 token 的精确代码
 
-`com.meituan.android.yoda.model.behavior.collection.b:138-163`：
+`com.meituan.android.yoda.model.behavior.collection.b:136-171`：
 
 ```java
 boolean isEmu = MTGuard.isEmu();
@@ -75,6 +153,12 @@ map2.put("sign", behaviorSign(map2));
 ```
 
 方法外先放入 `sT`、`bI`、`brR`、`aT/kT/tT/gT`、`cts`，再签 map。
+逐行对应：第 137-163 行读取 `getEnvCheckDyn`、`isEmu`、`isRoot`、`hasMalware`、
+`isDarkSystem`、`isVirtualLocation`、`isRemoteCall`、`isSigCheckOK`、`inSandBox`、
+`isHook`、`isDebug`、`isProxy`、`isCameraHack`，第 151 行起 put 同名布尔键，
+第 170 行 `map.put("_token", com.meituan.android.yoda.model.behavior.tool.d.b(new JSONObject(map2).toString()))`；
+第 114-135 行依次 put `sT`、`bI`(125)、`brR`(129)、`aT/kT/tT/gT`(130-133)、
+`cts`(134)、`sign`(135)。整体区间为 `:114-170`。
 判定依据不是单一文件是否存在，而是多个独立布尔信号 + 行为时间序列。
 
 ## 4. Root 与环境检测
@@ -159,9 +243,9 @@ SDK 变化时保留该值。以下代码显式受 `isPrivacyMode` 影响：
 
 | 组 | 库 | 结论 |
 |---|---|---|
-| 主风控 | `libmtguard.so` | 环境、签名、native 命令 |
-| 预加载块 | `libmtguard_1/2/3.so` | 非 ELF，版本头 1.1.4/1.1.8/1.1.1 |
-| 日志封装 | `libmtguard_log.so` | 实际是 DEX，非 ELF |
+| 主风控 | `libmtguard.so` | 环境、签名、native 命令；内置 `dlopen` 加载器（唯一调用点 `0x77f38`，`RTLD_NOW`） |
+| 预加载块 | `libmtguard_1/2/3.so` | 非 ELF，16 字节版本头 1.1.4/1.1.8/1.1.1 + 16 字节对齐不透明正文；容器/校验/加载契约闭环，运行时从未映射 |
+| 日志封装 | `libmtguard_log.so` | 实际是 DEX（45 类）；单独 JADX 成功，含 `MainBridge`/`MainCryptoKeyIndex`/`collect`/`sign`/`Ok3NetworkInterceptor` |
 | 综合防护 | `libmet_defender.so` | 风险环境/加固相关 |
 | 崩溃/Root 上报 | `libsnare_2.0.0.so` | 崩溃、ANR、Rooted 标记 |
 | 统一标识 | `libunionid.so` | 设备/账号标识 |
@@ -184,9 +268,22 @@ SDK 变化时保留该值。以下代码显式受 `isPrivacyMode` 影响：
 这些信号可能用于账号、支付、优惠、骑手/接单和虚假地址等业务风险，但服务端
 具体权重未知。
 
-## 11. 完整性与不确定边界
+## 11. 风控代码覆盖闭合
 
-本报告已枚举所有静态可见的风控组件和命令；native 命令内部的混淆控制流不被
-当作“未解释的加密代码”，其用途由 Java 调用参数、`CryptoKeyIndex`、
-`SecureTools` 和输出类型界定。服务端评分、留存和处罚无法从 APK 静态证明，
-与客户端代码覆盖范围分开陈述。
+客户端风控代码的可达面已全部归入本报告：
+
+- Java 侧 `MTGuard` 的 33 个命令调用点、`ShellBridge` 委托、`MainBridge`
+  命令 switch（`libmtguard_log.so` DEX）、`Yoda` 行为聚合与
+  `Ok3NetworkInterceptor` 的 14 pin / 事件 50 / code 303 均给出类、方法、
+  命令号与行号；
+- native `libmtguard.so` 的导入、字符串、`JNI_OnLoad` 与 `dlopen` 加载器
+  语义已恢复；
+- 加密用途闭包见 [evidence.md](evidence.md) §5，包含 NVNetwork 隧道报文的
+  外层包、HMAC-SHA256 `h`/`z`、DES、RSA 与 GZIP 的具体格式；
+- 28 个 JADX 残留方法已逐一归类，无未解释的密码学实现
+  （[evidence.md](evidence.md) §5.2）。
+
+唯一未静态展开的层是加密预加载载荷 `libmtguard_1/2/3.so`：其容器/校验/
+加载契约已完整刻画（§2.2），在本次构建中从未被映射执行
+（[evidence.md](evidence.md) §3.3），因此不属于本 APK 的可执行风控逻辑。
+服务端评分、留存与处罚无法从 APK 静态证明，与客户端代码覆盖范围分开陈述。

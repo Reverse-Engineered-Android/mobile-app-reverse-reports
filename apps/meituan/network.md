@@ -6,6 +6,9 @@
 支付、周边餐厅、到店项目和评价接口均未发送请求；URL 是反编译接口或调用点
 中的字面量，不表示本次验证过服务端可达性。
 
+边界确认：没有登录账号、没有构造或重放任何请求、没有做支付尝试、没有查询
+周边餐厅/项目/评价，也没有抓取真实响应。§5-§6 全部来自源码注解与调用点。
+
 ## 2. 客户端网络入口
 
 | 入口 | 用途 | 可见协议 |
@@ -116,6 +119,18 @@ if (gmtkby.jefswxstkc.booleanValue() && NVGlobal.isInit()) {
 
 ### 5.1 周边餐厅/POI
 
+静态源文件：`com/meituan/sankuai/map/unity/lib/network/api/MapUnityAPI.java`。
+
+| 行 | 方法 | 路径 |
+|---:|---|---|
+| 54-56 | GET | `mapchannel/dynamic_search` |
+| 58-59 | POST | `mapchannel/dynamic_search` |
+| 67-68 | GET | `mapchannel/shop_guide_info` |
+| 70-71 | POST | `mapchannel/geo_dynamic_search` |
+| 76-77 | POST | `mapchannel/map_area_search` |
+| 79-80 | GET | `mapchannel/poi_detail` |
+| 82-83 | GET | `mapchannel/poi_nearby` |
+
 `MapUnityAPI` 的 `GET mapchannel/poi_nearby` 精确 query：
 
 ```text
@@ -143,6 +158,14 @@ perimeterSearchFlag, locationOpenFlag, poiChannel
 
 ### 5.2 到店项目/团购
 
+静态源文件：`com/sankuai/meituan/search/network/client/SearchRetrofitService.java`。
+其中 POST `https://promotionapi.sankuai.com/content/collect`（30-32）、
+GET `comparePrice`（34-35）、`v4/poi/search/count/{cityId}`（41-42）、
+`v4/poi/search/history/{cityId}`（51-52）、`v4/poi/search/address`（58-59）、
+`v1/deal/searchpage/hotword/city/divide/{refreshType}/{cityId}`（61-62）、
+`v4/poi/search/extensioninfo`（76-77）、`v1/deal/search/suggest/{cityId}`（91-92），
+以及动态 `@Url` GET/POST 搜索（73-74 / 82-84 / 86-89）。
+
 搜索主请求是 `GET https://apimobile.meituan.com/group/v4/poi/search`，并支持
 同 URL 的 JSON `POST`。辅助接口：
 
@@ -162,6 +185,23 @@ HTTP 方法、命名字段和返回类型，不能从空 map 推断所有服务�
 
 ### 5.3 评价
 
+静态源文件：`com/maoyan/android/data/mc/ShortCommentService.java`（全部方法）
+与 `com/meituan/android/movie/tradebase/service/MovieOrderCommentApi.java`：
+
+| 方法 | 路径 | 字段 |
+|---|---|---|
+| GET | `review/v2/comments.json` | `movieId, level, userId, type, containSelfComment, tag, ts, offset, limit` |
+| GET | `review/v1/comments/info.json` | — |
+| GET | `review/v2/comments/movie/tag.json` | — |
+| POST | `review/v1/comments.json` | `movieId, content, score, spoiler, fingerprint, topicId` |
+| PUT | `review/v1/comments.json` | — |
+| POST | `review/v1/comments/approve.json` | `commentId, fingerprint` |
+| DELETE | `review/v1/comments/approve.json` | — |
+| DELETE | `review/v1/comments.json` | — |
+| POST | `review/v1/comment/spamreport.json` | token header + `userId, commentId, fingerprint` |
+| POST | `review/user/movie/{movieId}/viewed.json` | — |
+
+
 - `mapchannel/shop_guide_info` 返回门面与评论数据 `d`，query 包含
   `poiId`、`poiIdEncrypt`、用户位置和门店位置；
 - `group/v2/deal/xxx/comments` 被 `food` 模块登记为 `deal_comment`；
@@ -177,6 +217,10 @@ HTTP 方法、命名字段和返回类型，不能从空 map 推断所有服务�
 ## 6. 支付接口（静态）
 
 ### 6.1 核心表单
+
+静态源文件：
+`com/meituan/android/pay/retrofit/PayRequestService.java`（12-26）与
+`com/meituan/android/paybase/net/PayBaseSerivce.java`（17-31）。
 
 | 方法 | 路径 | 字段 |
 |---|---|---|

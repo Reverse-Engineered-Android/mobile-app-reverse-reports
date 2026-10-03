@@ -18,11 +18,17 @@
 | 未声明 exported 但含 intent-filter | 68 |
 | provider | 35，其中 5 个显式导出 |
 | ARM64 native 库 | 67 |
+| JITX/日志 DEX：`libmtguard_log.so` | 45 类，单独 JADX 成功还原 |
+| JADX 残留方法 | 26 文件 / 28 个唯一签名，全部归类 |
 
-JADX `--show-bad-code` 后仍有 50 个还原错误；其中 4 个安全关键方法以
-JADX 控制流 dump 形式逐行核对：`IIVTQYOSF`、`gmtkby`、`SecureTools`、
-passport 配置分支。报告不把这些残留等同于未知算法：每个加密用途均已归入
-[network.md](network.md) §7 和 [evidence.md](evidence.md) §5 的算法/输入/输出表。
+JADX `--show-bad-code` 后仍有 50 个还原错误，落在 26 个源文件、28 个唯一
+`Method not decompiled` 签名上。全部 28 个已逐一用 `--single-class
+--comments-level debug` dump 或源码上下文归类（[evidence.md](evidence.md) §5.2）：
+`SecureTools.compress` 是 GZIP，`sankuai.common.utils.b.a` 是 Base64+gzip，
+Cronet 拦截器是传输切换，passport `t0.l`、train `deviceinfo.a`、alipay
+device/base64、Harmony 元数据等均为埋点/编码/元数据/UI/解析，没有未解释的
+密码学实现。每个加密用途的算法/输入/输出见 [network.md](network.md) §7 与
+[evidence.md](evidence.md) §5。
 
 ### 1.2 网络与协议
 
@@ -98,6 +104,36 @@ Yoda 行为 token 不是单一 Root 位图，而是把这些结果和触摸/键�
 `isDebug`、`isProxy`、`isCameraHack`。因此“隐藏 su 路径”只能覆盖命令 15，
 不能覆盖其余信号。
 
+`MTGuard.java` 的 33 个命令调用点均给出方法声明行与 `ShellBridge.main3`
+调用行（[risk.md](risk.md) §2.1），例如 `isRoot` (629) → 636 → 15、
+`isSigCheckOK` (645) → 652 → 10、`isAccessibilityEnable` (500) → 508 → 101、
+`uiAutomatorClickCount` (1132) → 1140 → 11、`upload` (1148) → 1165 → 110、
+`prepareForSo` (759) → 820 → 64。`ShellBridge.java:64-75` 第 71 行委托 native
+`main`；`libmtguard_log.so`（实为 DEX）中的 `MainBridge.java:121` 是该 native
+方法声明，`main2` 的命令 switch 分别返回 `"6.7.15"`、传感器厂商/OAID/MITM 信息、
+`getRunningAppProcesses()` 等运行时数据。
+
+预加载层的封装与校验契约已完整刻画：16 字节版本头（`1.1.4`/`1.1.8`/`1.1.1`）+
+16 字节对齐不透明正文；Java `shell.IIVTQYOSF` 常量 `FLWMEVUMVC="6.7.15"`、
+`BRFI=6071500`、`FSGIUFGOU={libmtguard_1,2,3.so, libmtguard_log.so}`；
+`MTGuard.prepareForSo` (759-936) 经命令 64 后从 APK ZIP 复制这 4 个条目；
+`utils/mtguard.IIVTQYOSF.DNFBGIX` 用 `RSA/ECB/NoPadding`
+（模数 `D37E339A…72A6CB`、指数 `10001`）校验 MD5 与 ZIP comment；
+`libmtguard.so` 的 `dlopen@plt` 唯一调用点 `0x77f38` 以 `RTLD_NOW` 加载
+16 字节表项。只读设备检查（PID 34151 的 `/proc/<pid>/maps`）显示该进程只映射
+`libmtguard.so` 与 `libmtguard_log.so`，`libmtguard_1/2/3.so` 从未作为 ELF
+映射，guard 目标目录 `…/m/64` 为空，`files/.0852110f868f8a20` 不存在——
+这三个文件是加密预加载载荷，容器格式、校验与加载路径已完整描述，在本版本中
+不执行，故不作为本 APK 的可执行风控逻辑保留未分析代码
+（[evidence.md](evidence.md) §3.2-§3.3）。
+
+加密用途闭包（[evidence.md](evidence.md) §5）给出具体字节格式：NVNetwork
+外层包 `FF 01 00 <flag> <secure> <totalLength:int32> <noSecureLength:uint16> ||
+payload || encryptedBlock`，`encryptedBlock = prefixLength:int32 || prefix || source`；
+HMAC-SHA256 以 `encriptData.f12893b + secureProtocolData.id` 为密钥，
+Base64 写入 JSON `"h"`、`"z"` 写入 zip 模式；`tool/c.java` 用 `DES`，`tool/f.java`
+用 `SHA1WithRSA` 验签；`SecureTools.compress` 是 `GZIPOutputStream` 封装。
+
 ### 1.6 权限、越权、提权与告知
 
 - **越权（组件/IPC）**：发现 265 个显式导出组件和 68 个靠 intent-filter
@@ -122,8 +158,9 @@ Yoda 行为 token 不是单一 Root 位图，而是把这些结果和触摸/键�
 | 协议具体格式 | 闭环到客户端可见字节 | `mtgsig` 收集面、旧签名输入、DFP content-type、multipart |
 | 认证机制 | 接口/字段/挑战闭环 | `AccountApi`、`OpenApi`、`UserCenter` |
 | 上传下载范围 | 逐类别闭环 | `transfer.md` |
-| 风控代码 | Java 命令与调用方闭环；native 判定按信号/库枚举 | `risk.md` |
-| 加密用途 | 所有出现用途均有算法或封装边界 | `evidence.md` §5 |
+| 风控代码 | Java 33 个命令调用点 + `MainBridge` switch + Yoda + pin 全部闭环；预加载载荷契约与运行态边界闭环 | `risk.md` §2、§11 |
+| 加密用途 | 所有出现用途均有具体字节格式或算法边界；28 个 JADX 残留逐一归类 | `evidence.md` §5、§5.2 |
+| 只读设备数据库验证 | 实际 schema、落盘格式与运行态文件闭环 | `evidence.md` §8 |
 | 支付接口 | 静态字段闭环，未测试 | `network.md` §6 |
 | 周边餐厅/项目/评价 | 静态字段闭环，未测试 | `network.md` §5 |
 | 越权/提权 | 攻击面和权限保护闭环 | `permissions.md` |
