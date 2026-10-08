@@ -115,6 +115,19 @@
           "sha256": "57ae1b6963dadae25998b821c05e8fbc7e11cbb760ef23d8287f3934f185650a"
         }
       ]
+    },
+    {
+      "app": "DiDi",
+      "package": "com.sdu.didi.psnger",
+      "version_name": "8.0.14",
+      "version_code": 1208001404,
+      "files": [
+        {
+          "name": "didi-8.0.14-base.apk",
+          "size": 76989224,
+          "sha256": "e1b3752697f16fcad51688ce44b1a8dc5f336ab8569f226da0548df4059ab02e"
+        }
+      ]
     }
   ]
 }
