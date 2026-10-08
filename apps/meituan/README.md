@@ -4,8 +4,8 @@
 `com.sankuai.meituan` 的 ARM64 APK、DEX、资源、证书、随包分发的 native
 库和代码路径中的服务端接口定义。支付与周边餐厅、项目、评价接口全部采用
 **静态只读**调查；未构造请求，未登录账号，未读取库存、支付或个人信息。
-另对自有设备做**只读**运行态核对：只经 `/proc/1/root/data/user/0/com.sankuai.meituan`
-读取数据库 schema 与已落盘文件，未写入设备、未发起任何网络请求。
+另对自有 Android 设备做**只读**运行态核对：只经应用私有数据目录读取数据库
+schema 与已落盘文件，未写入设备、未发起任何网络请求。
 
 样本 SHA-256：
 `06df08431653502ef9988b7f951dfcfdcdc0758eccbb54aa0fe1cda4e423e8ef`，

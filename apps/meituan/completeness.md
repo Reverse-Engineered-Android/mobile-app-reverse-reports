@@ -19,7 +19,7 @@
 | 加密代码不留未知用途 | 完成 | `evidence.md` §5、§5.1-§5.2 | 报文字节格式已给出；28 个 JADX 残留逐一归类；不提取密钥 |
 | 支付接口 | 完成，静态 | `network.md` §6 | 未构造支付请求 |
 | 周边餐厅/项目/评价 | 完成，静态 | `network.md` §5 | 未构造查询请求 |
-| 只读 SSH 数据库验证 | 完成 | `evidence.md` §8、`privacy.md` §5.1、`transfer.md` §9 | 只读经 `/proc/1/root/data/user/0/com.sankuai.meituan`；未写入远端、未发请求 |
+| 只读 SSH 数据库验证 | 完成 | `evidence.md` §8、`privacy.md` §5.1、`transfer.md` §9 | 只读经 Android 应用私有数据目录；未写入远端、未发请求 |
 | 报告目录 | 完成 | `apps/meituan/` | 见下表 |
 
 ## 2. 文件清单

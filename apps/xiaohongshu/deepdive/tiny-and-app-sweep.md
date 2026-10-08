@@ -422,7 +422,7 @@ key_index(条目) = src_index(条目) mod 8        src_index ∈ [0, 416)
 #### (h) 复现
 
 ```bash
-cd /data/Sync/all/projects/2026-02-11-cc-work/telethon/downloads/rednote-9.37.0-re
+cd "$REDNOTE_ANALYSIS_ROOT"
 
 # 1) 跑 .init_array 构造子，得到每条被改写字节的 (密文, 明文) 与 325 条明文
 python3 re/tmfa_initarray.py            # -> re/tmfa_initarray.json
@@ -2368,7 +2368,7 @@ public static byte[] a(int i, byte[] bArr, byte[] bArr2) {
 ### 9.6 复现方式（本节）
 
 ```bash
-cd /data/Sync/all/projects/2026-02-11-cc-work/telethon/downloads/rednote-9.37.0-re
+cd "$REDNOTE_ANALYSIS_ROOT"
 
 # 519 个 @u5/@v5 站点逐条解码（XOR 闭式），校验 100% 合法标识符
 python3 re/u5_decode.py            # -> re/u5_decoded.json, re/u5_decode.txt

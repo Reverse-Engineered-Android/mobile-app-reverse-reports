@@ -102,6 +102,19 @@
           "sha256": "06df08431653502ef9988b7f951dfcfdcdc0758eccbb54aa0fe1cda4e423e8ef"
         }
       ]
+    },
+    {
+      "app": "Idlefish",
+      "package": "com.taobao.idlefish",
+      "version_name": "7.28.40",
+      "version_code": 521,
+      "files": [
+        {
+          "name": "idlefish-7.28.40-arm64.apk",
+          "size": 113545135,
+          "sha256": "57ae1b6963dadae25998b821c05e8fbc7e11cbb760ef23d8287f3934f185650a"
+        }
+      ]
     }
   ]
 }

@@ -1,6 +1,6 @@
 # Android App Reverse Reports
 
-本仓库公开五类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
+本仓库公开七类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储、美团网络与设备风控、闲鱼网络协议/认证/上传下载/风控与本地存储。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
 
 ## 样本清单
 
@@ -12,6 +12,7 @@
 | 微信 | `com.tencent.mm` | `8.0.68/8.0.78` | `3003/3180` | 数据库解密、登录/消息/支付协议、朋友圈/小程序缓存、设备风控 |
 | 拼多多 | `com.xunmeng.pinduoduo` | `8.26.0` | `82600` | anti-token/v1+v2 签名、登录 token 链、动态库分发、混淆闭包、22 个本地库 |
 | 美团 | `com.sankuai.meituan` | `12.66.404` | `1200660404` | mtgsig/DFP/Yoda、登录挑战、支付与 POI 静态接口、权限隐私、67 个 native 库 |
+| 闲鱼 | `com.taobao.idlefish` | `7.28.40` | `521` | MTOP 认证与签名、上传下载、四层风控、权限隐私、21 个明文 SQLite |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 
@@ -21,6 +22,7 @@
 - 微信：[概览](apps/wechat/README.md)、[主报告](apps/wechat/report.md)、[数据库清单](apps/wechat/database-inventory.md)、[协议](apps/wechat/protocol.md)、[风控](apps/wechat/risk-control.md)、[证据索引](apps/wechat/evidence.md)
 - 拼多多：[概览](apps/pinduoduo/README.md)、[报告](apps/pinduoduo/report.md)、[网络与协议](apps/pinduoduo/network.md)、[认证](apps/pinduoduo/auth.md)、[上传下载](apps/pinduoduo/transfer.md)、[风控](apps/pinduoduo/risk.md)、[混淆闭包](apps/pinduoduo/obfuscation.md)、[算法与 native](apps/pinduoduo/algorithm.md)、[本地存储](apps/pinduoduo/storage.md)、[证据](apps/pinduoduo/evidence.md)、[完成度](apps/pinduoduo/completeness.md)
 - 美团：[概览](apps/meituan/README.md)、[报告](apps/meituan/report.md)、[网络与协议](apps/meituan/network.md)、[认证](apps/meituan/auth.md)、[上传下载](apps/meituan/transfer.md)、[风控](apps/meituan/risk.md)、[权限](apps/meituan/permissions.md)、[隐私](apps/meituan/privacy.md)、[证据](apps/meituan/evidence.md)、[完成度](apps/meituan/completeness.md)
+- 闲鱼：[概览](apps/idlefish/README.md)、[报告](apps/idlefish/report.md)、[网络与协议](apps/idlefish/network.md)、[认证](apps/idlefish/auth.md)、[上传下载](apps/idlefish/transfer.md)、[风控](apps/idlefish/risk.md)、[权限](apps/idlefish/permissions.md)、[隐私](apps/idlefish/privacy.md)、[本地存储](apps/idlefish/storage.md)、[证据](apps/idlefish/evidence.md)、[完成度](apps/idlefish/completeness.md)
 - 通用：[逆向方法](docs/methodology.md)、[证据标准](docs/evidence-standard.md)、[脱敏规则](SECURITY.md)
 
 ## 公开范围

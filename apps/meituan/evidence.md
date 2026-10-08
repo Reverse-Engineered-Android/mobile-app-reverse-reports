@@ -415,10 +415,9 @@ HMAC（SecureTools.java:571-596）：
 
 ## 8. 设备端只读数据库验证
 
-在 `root@192.168.37.25`（Android 16，Redmi `23117RK66C`）上以只读方式检查
-运行中应用的真实落盘格式。SSH 命名空间与 init 不同，`/data/data` 与
-`/data/user` 不在该命名空间中，因此统一经
-`/proc/1/root/data/user/0/com.sankuai.meituan` 访问；应用进程 PID 34151。
+在自有 Android 16 设备（Redmi `23117RK66C`）上以只读方式检查运行中应用的真实
+落盘格式。SSH 命名空间与 init 不同，因此统一经应用私有数据目录访问；
+应用进程 PID 34151。
 设备无 `sqlite3` 二进制，改用 `/usr/bin/python3` 的 `sqlite3` 模块，先把文件
 复制到 `/tmp` 再读（直接以只读方式打开 `-wal`/`-journal` 相邻路径会失败）。
 
@@ -483,7 +482,7 @@ HMAC（SecureTools.java:571-596）：
 
 ### 8.5 与预加载块的交叉验证
 
-应用 native 库目录（`/proc/1/root/data/app/~~9M1LRfktFIoAWWqrQyqLVA==/com.sankuai.meituan-bmaxzYY-K6Ix4pnTatBadw==/lib/arm64`）
+应用 native 库目录（经设备私有数据目录下的 `lib/arm64`）
 含 67 个库、其中 5 个 mtguard（`libmtguard.so`、`_1`、`_2`、`_3`、
 `libmtguard_log.so`）；运行进程 maps 只映射前两者（§3.3）。
 `MtGuardVersionCode=6071500` 与 `IIVTQYOSF.BRFI = 6071500` 一致，
