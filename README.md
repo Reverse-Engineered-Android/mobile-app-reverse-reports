@@ -1,6 +1,6 @@
 # Android App Reverse Reports
 
-本仓库公开九类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储、美团网络与设备风控、闲鱼网络协议/认证/上传下载/风控与本地存储、滴滴出行网络/认证/上传下载/风控与权限隐私、知乎网络协议/认证/盐选与视频/风控与本地存储。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
+本仓库公开十类授权 Android 样本的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储、美团网络与设备风控、闲鱼网络协议/认证/上传下载/风控与本地存储、滴滴出行网络/认证/上传下载/风控与权限隐私、知乎网络协议/认证/盐选与视频/风控与本地存储、哔哩哔哩网络协议/认证/上传下载/风控/DRM 与本地存储。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
 
 ## 样本清单
 
@@ -15,6 +15,7 @@
 | 闲鱼 | `com.taobao.idlefish` | `7.28.40` | `521` | MTOP 认证与签名、上传下载、四层风控、权限隐私、21 个明文 SQLite |
 | 滴滴出行 | `com.sdu.didi.psnger` | `8.0.14` | `1208001404` | WSG 签名/wsgenv、WAF 522 挑战、接口 AES 加密、登录/AI 叫车、权限隐私、89 个 native 库 |
 | 知乎 | `com.zhihu.android` | `11.10.0` | `41012` | X-Zse 签名链、Bangcle 分组加密、RUID/ZST 指纹、盐选与 OGV、应用列表上报、42 个设备端 SQLite |
+| 哔哩哔哩 | `tv.danmaku.bili` | `9.13.0` | `9130500` | native appkey/MD5 签名、Gripper/GAIA 风控、36 判定器、121 字段码、Widevine/Bilibili DRM |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 
@@ -27,6 +28,7 @@
 - 闲鱼：[概览](apps/idlefish/README.md)、[报告](apps/idlefish/report.md)、[网络与协议](apps/idlefish/network.md)、[认证](apps/idlefish/auth.md)、[上传下载](apps/idlefish/transfer.md)、[风控](apps/idlefish/risk.md)、[权限](apps/idlefish/permissions.md)、[隐私](apps/idlefish/privacy.md)、[本地存储](apps/idlefish/storage.md)、[证据](apps/idlefish/evidence.md)、[完成度](apps/idlefish/completeness.md)
 - 滴滴出行：[概览](apps/com.sdu.didi.psnger/README.md)、[报告](apps/com.sdu.didi.psnger/report.md)、[网络与协议](apps/com.sdu.didi.psnger/network.md)、[认证](apps/com.sdu.didi.psnger/auth.md)、[上传下载](apps/com.sdu.didi.psnger/transfer.md)、[风控](apps/com.sdu.didi.psnger/risk.md)、[权限](apps/com.sdu.didi.psnger/permissions.md)、[隐私](apps/com.sdu.didi.psnger/privacy.md)、[证据](apps/com.sdu.didi.psnger/evidence.md)、[完成度](apps/com.sdu.didi.psnger/completeness.md)
 - 知乎：[概览](apps/com.zhihu.android/README.md)、[报告](apps/com.zhihu.android/report.md)、[网络与协议](apps/com.zhihu.android/network.md)、[认证](apps/com.zhihu.android/auth.md)、[上传下载](apps/com.zhihu.android/transfer.md)、[风控](apps/com.zhihu.android/risk.md)、[权限](apps/com.zhihu.android/permissions.md)、[隐私](apps/com.zhihu.android/privacy.md)、[本地存储](apps/com.zhihu.android/storage.md)、[证据](apps/com.zhihu.android/evidence.md)、[完成度](apps/com.zhihu.android/completeness.md)
+- 哔哩哔哩：[概览](apps/tv.danmaku.bili/README.md)、[报告](apps/tv.danmaku.bili/report.md)、[网络](apps/tv.danmaku.bili/network.md)、[协议](apps/tv.danmaku.bili/protocol.md)、[认证](apps/tv.danmaku.bili/auth.md)、[上传下载](apps/tv.danmaku.bili/transfer.md)、[风控](apps/tv.danmaku.bili/risk-control.md)、[权限与隐私](apps/tv.danmaku.bili/privacy.md)、[DRM](apps/tv.danmaku.bili/drm.md)、[数据库](apps/tv.danmaku.bili/database-inventory.md)、[证据](apps/tv.danmaku.bili/evidence.md)、[完成度](apps/tv.danmaku.bili/completeness.md)
 - 通用：[逆向方法](docs/methodology.md)、[证据标准](docs/evidence-standard.md)、[脱敏规则](SECURITY.md)
 
 ## 公开范围
