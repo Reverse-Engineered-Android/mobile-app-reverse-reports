@@ -241,33 +241,43 @@ derive key -> verify imgKeyHash -> decrypt bytes -> verify image MD5 -> decode b
 
 ### 5.2 native 闭包
 
-`libimage_decrypt.so` 和 `libsvg_decrypt.so` 保留 C++ JNI 符号，
-`JNI_OnLoad` 位于 `0x3458`；导出/PLT 符号可直接互相对应：
+`libimage_decrypt.so` 的构造器 `0x22d0` 初始化 28 字节 Base64 常量
+`ZGFtYWkgbml1YmlsaXR5IHNlYXQ=`，即 `damai niubility seat`；
+`buildKeyKey@0x29c4` 将它与调用方 `timestamp` 连成
+`damai niubility seat_<timestamp>`。`nativeDecryptKey@0x2dc0` 把该
+`timestamp` 传入 `buildKeyKey`，再调用 `str_decrypt@0x3b80`。
 
-| 地址 | 符号/用途 |
-|---:|---|
-| `0x2dc0` | `nativeDecryptKey(JNIEnv*, jclass, jstring, jstring, jstring)` |
-| `0x2ffc` | `nativeDecryptSvg(...)` |
-| `0x3240` | `nativeDecryptImage(...)` |
-| `0x29c4` | `buildKeyKey` |
-| `0x3b80` | `str_decrypt` |
-| `0x481c` | `svg_decrypt` |
-| `0x6d14` | `AES_CBC_decrypt_buffer` |
-| `0x6158` | `AES_ECB_encrypt_buffer` |
-| `0x656c` | `AES_ECB_decrypt_buffer` |
-| `0x6ea4` | `AES_CTR_xcrypt_buffer` |
-| `0xa05c` / `0xa1a0` | `SM4_set_key` / `SM4_cbc_decrypt` |
-| `0x98e8` | `SM3_Init` |
+`str_decrypt` 的输入规则固定为：移除字面量 `&#13;` 和空白，Base64
+解码，要求密文至少 16 字节，再读取前 16 字节算法标识：
 
-`nativeDecryptImage` 的 JNI 指针表调用依次是
-`GetStringUTFChars`（index 169）、`jstr2str`、`GetArrayLength`（171）、
-`GetByteArrayRegion`（200）、`img_decrypt`、`NewByteArray`（176）、
-`SetByteArrayRegion`（208）；算法字符串为 `.rodata` 中的
-`aes128-ctr` / `aes128-ecb`。`buildKeyKey` 读取 `.data` 中的 SSO
-字符串常量、追加 `.rodata+0xdc79` 的一个字节和调用方 `timeStamp`，
-再进入 `str_decrypt`；`str_decrypt` 的调用目标是 SHA-256、SM3、SM4、
-AES-CBC/ECB/CTR 和 Base64。密钥不是 APK 中可直接读取的固定值，
-且 `nativeDecryptKey` 成功才经 `NewStringUTF` 返回。
+- `e808de10020d15e2491cbd3e0acc80b9` 为 AES 标识；
+- AES-ECB/AES-CBC 均用
+  `SHA256(damai niubility seat | damai niubility seat_<timestamp>)`
+  派生 AES-128 key；ECB 解密其余密文，CBC 则以密文前 16 字节为 IV；
+- SM4-CBC 用
+  `SM3(damai niubility seat | damai niubility seat_<timestamp>)`
+  的前 16 字节作 key、密文前 16 字节作 IV，并校验追加的 SM3/tag；
+- 未知算法标识返回 `-100`。
+
+图像数据走 `img_decrypt@0x5e8c`，只接受 `aes128-ctr`：密钥摘要第
+0–15 字节是 AES key、第 16–31 字节是 IV，然后对整个缓冲区执行
+AES-128-CTR。`nativeDecryptImage@0x3240` 的 JNI 调用链是
+`GetStringUTFChars` → `jstr2str` → `GetArrayLength` →
+`GetByteArrayRegion` → `img_decrypt` → `NewByteArray` →
+`SetByteArrayRegion`。
+
+`libsvg_decrypt.so` 是独立地址空间，不能套用 image 库的地址表。其实际
+入口为 `buildKeyKey@0xe64c`、`nativeDecryptKey@0xe820`、
+`nativeDecryptSvg@0xe9c4`、`svg_decrypt@0x1409c`；库内还包含
+`aes128-ecb`、`aes128-cbc`、`sm4-cbc` 字符串以及
+`<xenc:EncryptedData>`、`</xenc:EncryptedData>`、
+`<xenc:CipherValue>`。`svg_decrypt@0x1409c` 定位上述 XML 区间，提取
+XML-EncryptedData 的 `Algorithm` 和 `CipherValue`，去掉空白及 `&#13;`
+后 Base64 解码，按算法分支执行与 `str_decrypt` 相同的 AES/SM4 派生，
+再把明文重新嵌回 XML。
+
+两库的算法、输入划分、密钥派生、输出回填和失败分支均已还原；密钥不是
+APK 中独立可读取的固定值，但其完整派生公式已明确。
 
 `libtb_crypto.so` 是 BoringSSL（AES-CBC/CFB/CTR/ECB/GCM/XTS、RC4、RSA、
 SHA、HMAC），源码路径字符串指向 `taobao-cxx/boringssl`；它是加密库
@@ -276,9 +286,9 @@ SHA、HMAC），源码路径字符串指向 `taobao-cxx/boringssl`；它是加�
 ### 5.3 结论
 
 图像、SVG、VR 座位和 SecurityGuard 动态数据的加密用途已经按
-“Java 调用点 → JNI 符号 → native 算法 → 输入输出字段”闭合；
-没有保留“待逆向”的加密函数。未复原的服务端密钥和评分结果不冒充
-客户端可读事实。
+“Java 调用点 → JNI 符号 → native 算法 → 输入输出字段”闭合；每个
+解密分支都有常量、长度、算法标识、key/IV 切分和回填规则。未复原的
+服务端密钥和评分结果不冒充客户端可读事实。
 
 ## 6. 静态调查边界
 

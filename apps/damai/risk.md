@@ -316,6 +316,67 @@ boolean iSApiLocked =
 这些字段能证明客户端会采集/发送设备与行为证据；不能由静态代码推出
 服务端如何评分、锁定或处罚。
 
+### 5.1 登录/绑定的 `riskControlInfo`
+
+登录、注册、实名扫描、passkey、UCC 绑定和会话验证还有一条独立的
+`riskControlInfo` 参数链。`UserLoginServiceImpl.getScanFaceWSecurityData()`
+（`:804-821`）构造 `ScanFaceWSecurityData`：
+
+```text
+apdId, t, umidToken, wua
+deviceBrand = Build.BRAND
+deviceModel = Build.MODEL
+deviceName  = "<brand>(<model>)"
+extRiskData.scanfaceWua = SecurityGuardManagerWraper.buildRPSecurityData().wua
+```
+
+该对象在登录、注册、实名核验、passkey 和推荐登录路径中序列化为
+`riskControlInfo`，调用点包括 `UserLoginServiceImpl:412/524/603`、
+`VerifyServiceImpl:115`、`LoginComponent:397`、`RegisterComponent:122/141/198`、
+`PasskeyDataRepository:74/88`。`UserLoginServiceImpl:824-840` 的
+`getAppLaunchInfo` 则直接把 `buildWSecurityData()` 序列化为同名参数。
+
+UCC 走另一份固定 JSON。`RiskControlInfoContext.buildRiskControlInfo()`
+（`:22-45`）依次写入：
+
+```json
+{
+  "wua": "...",
+  "t": "...",
+  "umidToken": "...",
+  "osName": "Android",
+  "osVersion": "...",
+  "deviceModel": "...",
+  "deviceName": "...",
+  "deviceBrand": "...",
+  "screenSize": "<width>x<height>",
+  "appStore": "...",
+  "extRiskData": {"utdid": "..."}
+}
+```
+
+其中 `wua` 与 `t` 只在本地 WUA 非空时写入；WUA 获取失败时
+`getRiskControlInfo()` 回退到不含这两个键的 `getCommon()`。`DataRepository`
+有 20 个调用点，覆盖 `mtop.alibaba.ucc.*` 的绑定、换绑、查询、OAuth、
+token login、解绑、授权更新和账号升级；Alipay 授权 URL 与 Havana cookie
+验证各再使用一次。`loginByIVToken` 是缩写分支，只传
+`{"umidToken":"..."}`。因此“风险上下文”不是一个统一信封，至少有
+UCC 通用 JSON、登录/扫描 JSON 和 IV-token 缩写 JSON 三种精确格式。
+
+### 5.2 其余显式风险面
+
+- `ILBSRiskComponent` 是 `@Deprecated` 的位置风险接口，只有
+  `initLBSManager/putLocationData/getLocationData/clearLocationData` 四个声明；
+  全包没有实现类或调用点，本版本没有静态可达的 LBS 风控采集路径。
+- 电影订单模块的 `OrderRiskAlertDialog` 不是设备风控，而是服务端
+  `EndorseRemindVO` 的退票/改签提示界面：按服务器时间比较
+  `modifiableTimeBeforeOpen` 与 `refundableTimeBeforeOpen`，把过期项显示为
+  “不可改签/不可退票”，两者都过期且 `showRemindFlag=1` 时才弹出
+  （`OrderRiskAlertDialog:242-283`）。
+- `HighRiskTipsMo` 的 `distance/time` 仅用于“临近开场且影院较远”的购票确认
+  提示，默认 30 分钟/10000 米（`CheckOrderAndLockedSeatsHelper:451-475`），
+  不构成设备封禁或账号风控算法。
+
 ## 6. 隐私双名单与调用采样
 
 `PrivacyDoubleListDelegate` 的 JSON 配置键为：

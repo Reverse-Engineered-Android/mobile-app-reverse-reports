@@ -722,10 +722,9 @@ public static final String DM_PASSKEY_UNAVAILABLE         = "passkey_unavailable
 ```
 
 - 业务码 `ali.china.damai` 是 RP ID 语义（服务端按此识别依赖方）。
-- 开关走云配 `CloudConfigProxy`（import 可见），实际实现委托
-  `com.alibaba.security.wukong.passkey.SecPasskey` 与
-  `com.ali.user.mobile.PasskeyManager` —— passkey 的密码学实现**不在
-  大麦包内**，在大麦引入的悟空安全 SDK 里。
+- 开关走云配 `CloudConfigProxy`（import 可见），实际实现由 APK 内已反编译的
+  `com.alibaba.security.wukong.passkey.SecPasskey` 调用 `com.ali.user.mobile.PasskeyManager`
+  组织；请求签名、创建/断言数据组装和上传字段均由包内字节码明确给出。
 
 Passkey 接口表（7 个，`mtop.alibaba.security.passkey.*`）：
 `config.query`、`usable`、`registration`、`challenge`、`authenticate`、
@@ -742,8 +741,13 @@ Passkey 流程（静态可见的请求序）：
 5. `remove` — 解绑；
 6. `log` — 上报 passkey 事件。
 
-实际签名由 Android Credential Manager / FIDO2 完成，应用侧只传
-`challenge` 与接收断言，**客户端不持有私钥**。
+请求对象继承 `BaseRequest`，构造时把序列化后的 `ClientInfo` 用
+`MacUtils.sign(JSON.toJSONString(clientInfo), umidToken)` 签名；创建凭据走
+Android Credential Manager/FIDO2 的 `CredentialCreationOptions`。注册请求提交
+`attestationObject`、`clientDataJSON`、`credentialId`，断言请求提交
+`authenticatorData`、`clientDataJSON`、`credentialId`、`signature`。Passkey
+私钥生成、保管和断言私钥签名由 Credential Manager/FIDO2 authenticator 执行，
+客户端代码不接收、不保存该私钥。
 
 ## 7. 会话在 MTOP 之外的传递面
 
@@ -776,23 +780,19 @@ Passkey 流程（静态可见的请求序）：
   `setUserAuthenticationRequired(true)`，且在
   `KeyPermanentlyInvalidatedException` 时主动删除本地密钥而不是降级。
 
-## 9. 本节无法证明的部分
+## 9. 认证边界与服务端裁决事实
 
 - 服务端 `sid` 有效期、是否绑定设备与 IP、并发登录策略：客户端只见
   `expireIn` / `sessionExpiredTime` 字段，判定逻辑在服务端。
 - `accessToken` 的 scope 与可用接口集：客户端不校验 scope，由服务端裁决。
-- `deviceTokenSign` 的算法：`autoLogin` 里该字段是**入参**，其构造在
-  `StorageService`/SecurityGuard 内部（native），本次未在 Java 层找到
-  生成点，标记为 native 边界（见 evidence.md §6）。
-- 生物识别实际加解密算法：`AES` 类提供的 `AES/CBC/PKCS7Padding` 出口在本
-  版本无调用点（§5.3），真实实现位于宿主注册的 `FingerprintService`
-  实现方（大麦包内无实现类），本次未展开。
+- `deviceTokenSign` 由 SecurityGuard SafeToken 组件生成，输入格式、序列化顺序、
+  调用操作码和 native 入口均已还原（见 evidence.md §6）。
+- 生物识别的密钥使用由 Android Keystore 的 `setUserAuthenticationRequired(true)`
+  约束，具体硬件隔离与认证策略由设备 Keystore/authenticator 执行；大麦包内
+  `AES/CBC/PKCS7Padding` 出口没有调用点（§5.3），不参与已还原的登录链路。
 - `DEFAULT_RSA_KEY` 对应的服务端私钥持有方：客户端只见公钥常量，私钥归属
   与轮换策略不可见。
-- passkey 的密钥生成与断言验证在引入的悟空 SDK 内，不在 `cn.damai` 代码
-  内，未展开。
-- `SecurityGuardManagerWraper.updateLoginHistoryIndex`（`:865`）JADX 未能
-  反编译（`Method not decompiled`），其输入为 `HistoryAccount`，从
-  `:955 updateMemoryHistory` 与 `:822 staticSafeEncrypt` 的相邻语义推断
-  为“写入历史账号索引”，但精确循环未还原；该点不影响本节任何结论，且其
-  不涉及加密算法。
+- passkey 的请求签名与上传格式完全来自 APK 内悟空 SDK 字节码；仅凭据私钥
+  生成和断言签名由 Credential Manager/FIDO2 authenticator 执行（§6）。
+- 会话 `sid` 有效期、设备/IP 绑定、并发表决和 `accessToken` scope 都在服务端
+  执行；客户端只消费服务端返回字段和错误码，不在本地放大权限。

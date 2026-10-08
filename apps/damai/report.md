@@ -11,6 +11,8 @@
 | minSdk / targetSdk | `23` / `35` |
 | APK SHA-256 | `dd33ae183903fb37b9761266d892f34767b3dd4b493fcf5efec0ae169969c87f` |
 | APK 字节数 | `113,422,261` |
+| 2026-10-08 Android 元数据 | `versionName=9.0.35`，下载文件名 `cn.damai_9.0.35.apk` |
+| 签名证书 SHA-256 | `4ACD9A208AF31123608CF1355AC63D53E27547387E4E254BCD232E72EFE2E3C9` |
 | 加固 | 阿里 mobisecenhance / alijtca `3.35.2`，载荷在 `assets/data.png` |
 | 载荷 DEX | 25 个，解压后 `126,199,536` 字节 |
 | 业务源文件 | JADX 还原 `37,487` 个 `.java` |
@@ -100,6 +102,10 @@ miniAppKey & reqAppKey & accessToken & openBizData`，其中 `MD5(data)` 是
   `com.ali.security.RuntimeProtector`（native `libsecurity-wrapper.so`）
   的 `checkHook / checkRoot / checkDebug / checkInject / checkEmulator /
   checkMem`，结果写入 `isHook/isRoot/isDebug/isInject/isEmulator/isMem`。
+- 风险上下文：登录/扫描、UCC、Alipay、Havana 分别把
+  `wua/t/umidToken/设备型号与屏幕/utdid/scanfaceWua` 按三种不同的
+  `riskControlInfo` JSON 格式发送，精确字段和调用点见
+  [risk.md](risk.md) §5.1。
 - 反爬惩罚队列：`mtopsdk.mtop.antiattack.AntiAttackHandlerImpl` 与
   `ApiLockHelper`，错误码 `ANDROID_SYS_API_41X_ANTI_ATTACK`。
 

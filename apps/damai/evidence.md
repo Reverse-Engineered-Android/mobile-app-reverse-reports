@@ -12,6 +12,14 @@
 | `assets/data.png` | 34,310,723 | `708a11bd77669dd762fa37ee94994b5bedffde2fab84870a66bd95a2be30bfcc` |
 | 解码载荷 ZIP | 126,199,536 | `7d4645849071f560e632d072cbdb6f19a4397d6221f61f3042f34bcef03999a2` |
 
+APK 签名证书来自 `keytool -printcert -jarfile`：
+
+```text
+owner          O=大麦娱乐, L=北京, C=86
+SHA-1          D4AB8A20491ED0FACD815A822A2ED3629557997C
+SHA-256        4ACD9A208AF31123608CF1355AC63D53E27547387E4E254BCD232E72EFE2E3C9
+```
+
 清单解析结果：
 
 ```text
@@ -44,6 +52,12 @@ native libs    75
 
 整个过程没有发送任何业务 HTTP/MTOP 请求，没有登录、搜索、下单、
 购买、票夹刷新或真实测试。
+
+版本新鲜度以 2026-10-08 的 Android 应用详情页静态元数据复核：
+`https://a.app.qq.com/o/simple.jsp?pkgname=cn.damai` 的 APK 元数据给出
+`versionName: 9.0.35`，主下载名给出 `cn.damai_9.0.35.apk`。这与本地 manifest
+的 `versionName=9.0.35`、`versionCode=109003500` 一致；同一 URL 中用于应用宝
+渠道包装的版本字段不替代 APK manifest 的 `versionName`。
 
 ## 2. 加固外壳的可重放解码
 
@@ -95,32 +109,63 @@ PRGA：i/j 双游标、S[i]/S[j] 交换、输出 S[(S[i]+S[j]) & 0xff]
 
 ### 3.1 图像与 SVG
 
-Java 桥：
+Java 桥的调用合约是：
 
 ```java
 // com/real/image/decrypt/ImageDecrypt.java
-nativeDecryptImage(bytes, key, "aes128-ctr");
+nativeDecryptImage(bytes, safeKey, "aes128-ctr");
+nativeDecryptKey(safeKey, timestamp, "aes128-ecb");
+
+// com/real/svg/decrypt/SvgDecrypt.java
 nativeDecryptKey(safeKey, timestamp, "aes128-ecb");
 nativeDecryptSvg(svg, key);
 ```
 
-`com/real/svg/decrypt/SvgDecrypt` 使用同一把
-`nativeDecryptKey(..., "aes128-ecb")` 派生 key，再调用 SVG 解密。
+两个 native 库都在构造器中初始化 28 字节 Base64 常量
+`ZGFtYWkgbml1YmlsaXR5IHNlYXQ=`，解码为
+`damai niubility seat`。`buildKeyKey(timestamp)` 的返回值恒为
+`damai niubility seat_<timestamp>`。
 
-符号化 native：
+`libimage_decrypt.so` 的关键地址与数据流如下：
 
-| 符号 | 地址 |
-|---|---:|
-| `buildKeyKey` | `0x29c4` |
-| `nativeDecryptKey` | `0x2dc0` |
-| `nativeDecryptSvg` | `0x2ffc` |
-| `nativeDecryptImage` | `0x3240` |
-| `str_decrypt` | `0x3b80` |
-| `svg_decrypt` | `0x481c` |
+| 地址 | 符号/用途 |
+|---:|---|
+| `0x22d0` | 构造器初始化 Base64 常量 |
+| `0x29c4` | `buildKeyKey(timestamp)` |
+| `0x2dc0` | `nativeDecryptKey`，算法参数为 `aes128-ecb` |
+| `0x3b80` | `str_decrypt` |
+| `0x5e8c` | `img_decrypt`，只接受 `aes128-ctr` |
 
-实现依赖 SHA-256、SM3、SM4、AES-CBC/ECB/CTR 和 Base64；每个算法
-都有对应输入/输出或调用链，未发现只以常量名伪装、无法说明用途的
-算法实现。
+`str_decrypt` 先移除字面量 `&#13;` 和空白，再做 Base64 解码并要求
+解码长度至少为 16。其密文前 16 字节是算法标识：
+
+| 前缀 | 输入字节划分 | 派生与解密 |
+|---|---|---|
+| `e808de10020d15e2491cbd3e0acc80b9` | AES-ECB：其余字节为密文 | `SHA256(常量 \\| buildKeyKey(timestamp))`，AES-128-ECB，逐块 PKCS#7 检查 |
+| 同一标识 | AES-CBC：前 16 字节为 IV，其余为密文 | 同一 SHA-256 派生，AES-128-CBC |
+| 同一标识 | SM4-CBC：前 16 字节为 IV，其余为密文 | `SM3(常量 \\| buildKeyKey(timestamp))`，取前 16 字节为 SM4 key，按 SM4-CBC 解密并校验追加的 SM3/tag |
+| 未知标识 | 不处理 | 返回 `-100` |
+
+`nativeDecryptKey(..., "aes128-ecb")` 将 `aes128-ecb` 与
+`buildKeyKey(timestamp)` 作为 `str_decrypt` 的输入，因此合法入口是先得到
+Base64 密文，再返回解密后的 key 字符串。图像入口
+`img_decrypt@0x5e8c` 是独立分支：只接受 `aes128-ctr`，以输入密钥摘要的
+第 0–15 字节为 AES key、第 16–31 字节为 IV，对整个图像缓冲区做
+AES-128-CTR。
+
+`libsvg_decrypt.so` 使用相同常量和密钥派生，具体入口为
+`buildKeyKey@0xe64c`、`nativeDecryptKey@0xe820`、
+`nativeDecryptSvg@0xe9c4`、`svg_decrypt@0x1409c`。`svg_decrypt` 定位
+`<xenc:EncryptedData ` 与 `</xenc:EncryptedData>`，从
+`Algorithm="http://www.w3.org/2001/04/xmlenc#..."` 取算法，从
+`<xenc:CipherValue>…</xenc:CipherValue>` 取 Base64 密文，移除空白和
+`&#13;` 后按 `aes128-ecb`、`aes128-cbc` 或 `sm4-cbc` 分支解密，最后把
+明文放回 XML。三条分支分别复用 AES-ECB、AES-CBC 与 SM4-CBC，密钥派生
+与 `str_decrypt` 一致。
+
+因此，图像与 SVG 的常量、密钥派生、算法选择、分组方式、IV/key 切分、
+XML 容器解析和错误分支均已落到具体地址或字节规则，没有保留只知名称而
+不知算法的加密点。
 
 ### 3.2 UT/Audid RC4
 

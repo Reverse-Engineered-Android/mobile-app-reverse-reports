@@ -19,7 +19,7 @@
 
 | 要求 | 覆盖位置 | 结论 |
 |---|---|---|
-| 最新 `cn.damai` APK | [report.md](report.md) §1.1 | `9.0.35`、versionCode `109003500`、APK 哈希已记录 |
+| 最新 `cn.damai` APK | [README.md](README.md)、[evidence.md](evidence.md) §1.1 | 2026-10-08 Android 元数据、`9.0.35`、versionCode `109003500`、APK 与签名证书哈希已记录 |
 | 主要网络交互流程 | [network.md](network.md)、[auth.md](auth.md)、[transfer.md](transfer.md) | 搜索、活动浏览、购票、票夹、认证、上传下载均有静态链路 |
 | 协议具体格式 | [report.md](report.md) §1.3、[network.md](network.md) | URL、入口、参数、头、查询串、响应/错误字段均给出 |
 | 认证机制 | [auth.md](auth.md) | MTOP 签名、Havana/mlogin/UCC、cookie、token、passkey/生物识别均覆盖 |
@@ -64,6 +64,8 @@
 - 419/420 的 SESSION/ANTI/普通错误分流、20 秒验证窗口、重试/失败。
 - 流控错误码、`ApiLockHelper` 的 10 秒回退锁。
 - `wua`、`umidToken`、`Dm-token`、设备等级评分的客户端传输边界。
+- 登录/扫描、UCC、Alipay、Havana 三条 `riskControlInfo` 的精确 JSON 与调用点。
+- 已弃用 LBS 风控接口、电影订单风险提示与高风险场次提示的可达性/语义归类。
 - `PrivacyDoubleList` 的方法集合、JSON 结构、`lmt/crt/dh` 类型。
 - 每个加密/混淆 surface 均有算法、参数、调用点或未使用证明。
 
