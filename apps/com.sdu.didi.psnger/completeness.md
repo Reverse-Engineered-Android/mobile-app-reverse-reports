@@ -14,11 +14,11 @@
 | 提权 | 完成 | `permissions.md` §6 | 22 个 `Runtime.exec` 点与 3 个 `ProcessBuilder` 点已逐项枚举；未发现 `su`、`sh -c`、`pm grant` 或系统 UID 闭环 |
 | 未经告知 | 完成 | `privacy.md` §1-6 | 服务端保存期限与二次用途不可见 |
 | 超范围获取 | 完成 | `permissions.md` §3、§7；`privacy.md` | 按“代码可采集 / 条件触发 / 未证实”分层 |
-| 完整风控代码 | 完成，静态闭包 | `risk.md` §1-12 | 服务端评分、处罚与配置下发结果不可见；native 内部按接口和输入输出边界描述 |
+| 完整风控代码 | 完成，静态闭包 | `risk.md` §1-14 | 服务端评分、处罚与配置下发结果不可见；客户端 native 判定、状态机与调用链已定位 |
 | 精确判定代码 | 完成 | `risk.md` §2、§3、§6-8、§11 | 每项机制给出 `file:line`、调用点或命令参数 |
-| 加密/混淆不留未知用途 | 完成 | `evidence.md` §4-7 | Java 层字符串、算法用途与报文格式已还原；52 个残留签名全部归类且无密码学实现 |
-| 打车功能链路 | 完成，静态 | `network.md` §8、`report.md` §1.5 | 未登录、未估价、未下单、未支付 |
-| AI 叫车开启条件与功能 | 完成，静态 | `report.md` §1.6、`network.md` §9、`evidence.md` §1 | 未开启功能、未发送 SSE 请求、未实际叫车 |
+| 加密/混淆不留未知用途 | 完成 | `evidence.md` §4-7、`risk.md` §14 | DES 密钥、AES/SM3/SQLCipher/Conceal 用途及 native 数据段与 CFF 还原均给出精确位置 |
+| 打车功能链路 | 完成，静态 | `network.md` §4.4、`report.md` §1.2 | 未登录、未估价、未下单、未支付 |
+| AI 叫车开启条件与功能 | 完成，静态 | `report.md` §1.7、`network.md` §4.6、`evidence.md` §2 | 未开启功能、未发送 SSE 请求、未实际叫车 |
 | 只读 SSH 数据库验证 | 完成 | `evidence.md` §9、`privacy.md` §5、`transfer.md` §9 | 只读读取 schema 与聚合行数；未写入设备、未下载库文件到报告 |
 | 报告目录 | 完成 | `apps/com.sdu.didi.psnger/` | 文件清单见 §2 |
 
@@ -59,5 +59,5 @@
 JADX 在 `--show-bad-code` 模式下记录 73 个解码错误；输出中 47 个文件包含 52 个
 唯一 `Method not decompiled` 签名，已逐项归类到协程、框架回调、地图与生物活体
 逻辑。52 个签名中没有密码学实现，也没有落在 WSG、接口加密或基础安全库的加密
-路径中。因此报告没有保留未解释的加密实现；native 不透明部分只陈述接口、输入
-输出、调用点、哈希与可复现字符串，不推断未被静态证据支持的算法。
+路径中。`libsignkey.so` 的密钥、`libdidiwsg.so` 的数据段解码和 CFF 状态机已按
+反汇编逐条给出；native 签名网关与两种 Base64 字母表也以实际执行轨迹定位。

@@ -154,10 +154,14 @@ cipher.init(1, SecretKeyFactory.getInstance("DES")
 ```
 
 密钥由 `libsignkey.so` 的 native `getPhoneSignKey()` 提供
-（`com/didi/sdk/signkylib/SignKey.java:8`），实现不透明。读写受开关
-`enohp_encrypt` 控制（`:205`）。
+（`com/didi/sdk/signkylib/SignKey.java:8`）。该函数唯一导出
+`Java_com_didi_sdk_signkylib_SignKey_getPhoneSignKey`，在 `0x618` 处通过 JNI
+`NewStringUTF` 返回 `.rodata@0x4d8` 的固定 8 字节字符串
+`*&^%$#@!`；随后 `LoginStore.java:211-213,338-340` 以
+`DES/ECB/PKCS5Padding` 完成本地手机号加解密。读写受 `enohp_encrypt` 控制
+（`:205`）。
 
-### 6.2 上报哈希
+### 6.2 手机号上报编码
 
 `com/didi/common/map/adapter/didiadapter/g.java:32-50` 用同一密钥对手机号做
 DES 加密后 Base64（`n.b(...)`）：

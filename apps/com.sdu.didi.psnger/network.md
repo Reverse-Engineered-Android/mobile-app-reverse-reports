@@ -176,7 +176,56 @@ pOrderMatch -> pOrderStatus -> /inservice -> /endservice
 /ocgo/public/v1/passenger/qq_music/decrypt
 ```
 
-### 4.6 安全与客服
+### 4.6 AI 叫车（静态）
+
+入口条件与完整调用链见 [report.md](report.md) §1.7。一次新查询的静态顺序是：
+
+1. 当前 `sid` 为空时先 `POST /asst/w/sid/new/v1`，无请求体，从响应
+   `data.sid` 取得会话号；
+2. `GET /asst/w/qid/create/v1`，从响应 `data` 取得字符串 `qid`；
+3. `POST /asst/w/stream/v1` 发送 JSON：
+
+```json
+{
+  "payload": {
+    "box_id": "",
+    "display_text": "",
+    "extra": "",
+    "extra_list": [],
+    "from_button": false,
+    "map_history_info_list": [],
+    "msg_id": 0,
+    "order_id": "",
+    "text_related_audio_id": ""
+  },
+  "r": 0,
+  "sid": "<session>",
+  "qid": 123,
+  "user_input_type": 1001,
+  "app_version": "8.0.14"
+}
+```
+
+实际字段值来自 `HomeRequestBody.java:12-25` 与
+`InputMessageBody.java:13-36`；JSON 由 `c7/c.java:89-100` 序列化。请求使用
+`POST`，默认 `Accept: text/event-stream`、`Content-Type: application/json`，
+并追加 `asst-source`、`timestamp`、`deviceid`、`devicemodel`、`osversion`、
+`token`、`callerId`、`LLab-API-Key` 名称、`native`、`net-type`、`uid`、
+`user-type`、`app-version`、`Cache-Control`、`countryCode`、可选经纬度与
+`cityId`、`lang`、`wsgsig`；构造点为 `d7/b.java:70-95`、
+`HeadersInterceptor.java:46-111`、`SSEHeadersInterceptor.java:60` 与
+`SignInterceptorRabbit.java:113-141`。
+
+SSE 解析器接受 `id:`、`event:`、`data:`、`retry:` 与空行分帧
+（`f7/d.java:41,51-100`）。`data` 为 JSON，模型字段为
+`{qid,r,type,inner_seq,seq,data,sid,card_type,cmd,support_regenerate,
+support_toolbar,end_by,matching_state}`
+（`SseMessageSource.java:20-67`）；客户端按 `type=card/start/stop/final_end`
+分派，`card` 再按 `card_type` 解码下单、订单取消、文本、组件与工具结果
+（`com/didi/assistant/main/ssestream/d.java:38-136`）。地图查询另走
+`POST /asst/w/map/query/sse/stream`，使用同一请求与分帧机制。
+
+### 4.7 安全与客服
 
 | 路径 | 用途 |
 |---|---|
@@ -189,7 +238,7 @@ pOrderMatch -> pOrderStatus -> /inservice -> /endservice
 | `/api/report/reportPassengerSecuritySetting` | 安全设置上报 |
 | `/usernotice.xiaojukeji.com/notice/passenger` | 通知 |
 
-### 4.7 DRN / Hummer 动态包
+### 4.8 DRN / Hummer 动态包
 
 ```text
 /bundle/api/pre/query
@@ -202,7 +251,7 @@ pOrderMatch -> pOrderStatus -> /inservice -> /endservice
 /bundle/info
 ```
 
-### 4.8 主机分布
+### 4.9 主机分布
 
 静态提取 211 个主机。业务主机集中在：
 

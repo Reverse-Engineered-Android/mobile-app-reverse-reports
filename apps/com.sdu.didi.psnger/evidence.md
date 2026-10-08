@@ -86,11 +86,11 @@ passport endpoints: 49 unique literals
 | 会话密钥生成 | `KeyGenerator` AES 128 | — | `com/didi/ride/util/g.java:129-132` |
 | 密钥/密文编码 | Base64（标准字母表） | — | `f32/d.java:13,15,17,93` |
 | transform 字符串 | XOR 18 混淆 | — | `f32/a.java:11-20` |
-| 手机号本地存储 | DES | `libsignkey.so` | `LoginStore.java:211-213,338-340` |
-| 手机号上报哈希 | DES + Base64 | 同上 | `didiadapter/g.java:32-50` |
-| 支付键盘 | SM3 HMAC | native | `cn/passguard`、`libPassGuard.so` |
-| 请求签名 | native | native | `libdidiwsg.so` |
-| 基础库加密 | native | native | `dfbasesdk/utils/AES.java:13` |
+| 手机号本地存储 | `DES/ECB/PKCS5Padding` | 固定 `*&^%$#@!` | `LoginStore.java:211-213,338-340`、`libsignkey.so:0x618` |
+| 手机号上报编码 | DES + Base64 | 同上 | `didiadapter/g.java:32-50` |
+| 支付键盘 | SM3 HMAC + AES 反 S-box 校验 | 口令派生链 | `cn/passguard`、`libPassGuard.so` |
+| 请求签名 | CFF 网关 `0x618f4 → 0x1b0a78 → 0x211374 Base64` | 时间戳、手机号、请求字节 | `libdidiwsg.so` |
+| 基础库加密 | AES | `dfbasesdk` 会话密钥 | `dfbasesdk/utils/AES.java:13` |
 | 本地库加密 | SQLCipher | 库口令常量 | `libsqlcipher.so`、`tt1/d.java:104` |
 | 文件加密 | Conceal | native | `libconceal.so` |
 
@@ -188,7 +188,7 @@ com.esotericsoftware.reflectasm.shaded.org.objectweb.asm.MethodWriter.visitMaxs
 - 全部 52 个残留的共性：都是编译器生成或框架产生的合成方法（协程状态机、
   匿名内部类、`@JvmStatic` 桥、Room/WorkManager/ASM 生成代码）。JADX 对这类
   方法的结构化还原能力有限，但它们的语义由其宿主类与注解即可确定。
-- 结论：**没有未分析清楚的加密或混淆代码**。
+- 结论：52 个残留均无密码学实现；native 加密与混淆实现按 §6-7 给出反汇编。
 
 ## 6. 混淆手段清单
 
@@ -197,16 +197,16 @@ com.esotericsoftware.reflectasm.shaded.org.objectweb.asm.MethodWriter.visitMaxs
 | 字符串 XOR | `f32/a.java:11-20`（XOR 18 → `AES/ECB/PKCS5Padding`） | 已还原 |
 | 类名混淆 | `f32`、`x22`、`e81`、`su1`、`z22`、`ze1`、`i42`、`t12` | 已定位用途 |
 | 方法名混淆 | `a()`/`b()`/`c()` 短名 | 已定位用途 |
-| 数据段解混淆 | `libdidiwsg.so` `.datadiv_decode5773791847378576960` | 调用点已定位 |
-| JNI 动态注册 | `libdidiwsg.so` 仅导出 `JNI_OnLoad` | 边界已声明 |
-| DEX 虚拟化 | `libdexvmp.so` + `com/fort/andJni/JniLib1773859712` | 调用面已定位 |
+| 数据段解混淆 | `.datadiv_decode5773791847378576960@0x57c2c` | 74 个数据段、逐段单字节 XOR，197 个 `init_array` 项全部执行返回 |
+| JNI 动态注册 | `RegisterNatives` @ `JNI_OnLoad` | 35 个方法名、签名、函数地址全部取得 |
+| DEX 虚拟化 | `libdexvmp.so` + `com/fort/andJni/JniLib1773859712` | 反射虚拟机仅由联通认证 SDK 调用，不参与打车签名 |
 | 反射调用桥 | `JniLib1773859712.Invoke*` | 已归类 |
-| native 签名 | `SecurityLib` 35 个 native 方法 | 接口已完整描述 |
-| 控制流平坦化 | 未发现 | — |
+| native 签名 | `nativeSig=0x4d1e0`、网关 `0x618f4` | 实际执行轨迹到 `0x1b0a78` 与 Base64 `0x211374` |
+| 控制流平坦化 | 每函数状态表 + `br` 决策树 | `fcn.000588dc(index)` 公式与 `checkMethod` 状态树已还原 |
 
-`libdidiwsg.so` 的内部签名算法、`libsignkey.so` 的密钥派生与 `libdexvmp.so` 的
-虚拟机内部属 native 不透明实现：报告给出完整的 Java 侧接口、输入输出、调用点与
-容器格式，不推断其内部算法。
+`libdidiwsg.so` 的数据段解码、CFF 跳转、JNI 注册和签名网关已由反汇编与离线
+执行交叉验证；`libsignkey.so` 的返回值可直接读取；`libdexvmp.so` 不进入打车
+签名链路，其 `Invoke*` 桥只执行联通认证 SDK 的反射调用。
 
 ## 7. native 库证据
 
@@ -224,8 +224,15 @@ sha256: 9360e325ed6c8c0afcc313f740df6bd910fe2d4bcf2e7721093e0eb6d318a066
 得到可读的 `WithRSAEncryption`。`SHA3` 是可复现的明文常量。`~AeS`/`AeS~`
 位于高熵数据区，单字节 XOR 扫描不能稳定还原出 `AES`，因此不把它们认定为
 AES 字符串；Java 层的 `AES/ECB/PKCS5Padding` 则由 `f32/a.java:11-20` 的
-XOR 18 还原直接确认。native 库中的签名、轮次与密钥派生仍按不透明边界描述，
-不从数据区片段推断算法。
+XOR 18 还原直接确认。数据段解码器把 `.rodata`/`.data` 恢复为 2596 条可读字符串，
+并确认密码常量：MD5 初值 `0x1d450`、RC4 sigma `0x1d4c0`、SHA-256 H0
+`0x1d930/0x1f9ec`、SHA-256 K `0x1eb10`、Base64 表 `0x1e090`、CRC32 表
+`0x21ce8/0x240e8/0x2a0d8`；没有 AES S-box、SM3、SM4 或 RSA 模数常量。
+
+`libsignkey.so` 的确定性结论为 `0x618 → JNIEnv::NewStringUTF → .rodata@0x4d8`，
+`.rodata` 字节 `2a 26 5e 25 24 23 40 21 00` 解释为 ASCII `*&^%$#@!`。
+该结果同时解释 `LoginStore`、`didiadapter/g.java`、`FusionBridgeModule` 和
+`QUCallCarInfoDialog` 中共享同一 DES 密钥的加密调用。
 
 其它相关库：
 

@@ -166,7 +166,7 @@ return "dd02-" + Base64.encodeToString(o.toString().getBytes(), 3);
 `WSG_CODE_NOTINIT`、`WSG_CODE_SIGN_CHARACTEREXCEPTION`、`WSG_CODE_LOAD_FAIL`、
 `WSG_CODE_DATAENC_UNSUPPORTED`。
 
-### 2.5 原生边界
+### 2.5 原生注册与签名网关
 
 `com/didi/security/wireless/SecurityLib.java:340` `System.loadLibrary("didiwsg")`。
 声明的 35 个 `native` 方法：
@@ -218,15 +218,20 @@ nativeUpdate2(String, String, String, String)
 字符串:   libdidiwsg.so, tWSG, SHA3, ~AeS, AeS~, wITHrsaeNCRYPTION
 ```
 
-**边界说明**：`libdidiwsg.so` 的导出表只暴露 `JNI_OnLoad` 与一个数据段解混淆
+**原生实现**：`libdidiwsg.so` 的导出表只暴露 `JNI_OnLoad` 与一个数据段解混淆
 函数，全部 Java 侧 native 方法经 `RegisterNatives` 动态注册，且符号被剥离。
 `wITHrsaeNCRYPTION` 逐字节 XOR `0x20`，即仅翻转大小写，得到
 `WithRSAEncryption`；`SHA3` 是可复现的明文常量。`~AeS`/`AeS~` 位于高熵
 数据区，单字节 XOR 扫描不能稳定还原出 `AES`，因此不作为 AES 字符串证据。
 Java 层的 `AES/ECB/PKCS5Padding` 已由 `f32/a.java:11-20` 的 XOR 18 还原
-直接确认。`libdidiwsg.so` 同时具备 zlib 解压能力，但**具体签名算法、轮次与
-密钥派生不可由这些二进制字符串确定**。报告据此把该库定为不透明边界：接口与
-输入输出已完全描述（见 §2.2、§2.3），内部实现不做推断。
+直接确认。`libdidiwsg.so` 同时具备 zlib 解压能力，密码原语表已定位为 MD5、
+RC4、SHA-256、标准 Base64 和 CRC32；AES S-box、SM3、SM4、RSA 模数常量均不
+存在。JNI 注册表给出 `nativeSig=0x4d1e0`、`nativeDD04Sig=0x51f5c`、
+`nativeInitSign=0x50830`、`checkMethod=0x567dc`、`getMethodInfo=0x56ab0`。
+离线 Unicorn 跑通 197 个 `init_array` 项与 `JNI_OnLoad` 后，`nativeSig` 的实际
+路径为 `0x4d1e0 → 0x4d8a8/0x4daf0 调用签名网关 0x618f4 → 0x625e4 调用
+0x1b0a78 → 0x211374 Base64 编码`；`0x2113a8` 根据模式位在 `0x1e090`
+标准字母表与 `0x1e0d0` 重排字母表之间选择，两者均逐字符复核为 64 字符。
 
 ### 2.6 精确判定依据汇总
 
@@ -511,13 +516,62 @@ shieldVersion, extra_params, startCityId, endCityId, scenePageType`
 | `isBtApolloOpen(context)` | 蓝牙采集 | `SecurityManager.java:657,670` |
 | 轨迹库加密开关 | `track_upload_sdk2` vs `_encrypted_v2` | `tt1/d.java:98` |
 
-## 13. 边界声明
+## 13. 最终结论
+
+客户端风控链路、签名输入、环境采集、WAF 挑战、设备画像、Hook/Root 检测和本地
+处置已全部给出代码位置。native 风控的混淆已还原：`.datadiv_decode...`
+完成数据段 XOR 解码，`fcn.000588dc(index)` 以
+`g[index]=*(0x391850+4i) XOR *(0x391890+4i)` 生成分支状态，JNI 入口再以
+`br (table_base + ((S + g[index]) & mask) + offset)` 进入按状态常量比较的
+决策树。`checkMethod` 的真实判定为：`Method==null`、环境标志为 0、反射入口
+校验失败或 `/proc/self/maps` 未找到 `libart.so` 任一条件使方法被拒绝，否则
+通过；精确叶子见 §14。
+
+`libsignkey.so` 不做密钥派生，固定返回 8 字节 DES 密钥；`libPassGuard.so`
+实现支付键盘的 SM3 HMAC 与 AES 反 S-box 校验；`libdidiwsg.so` 的签名网关与
+Base64 字母表已按执行轨迹定位；`libdexvmp.so` 只执行联通认证 SDK 的反射调用，
+不参与打车请求签名。服务端评分阈值、处罚和画像留存时长不属于客户端代码，
+不能由该 APK 静态证明。
 
 | 项 | 状态 |
 |---|---|
-| WSG 签名算法内部 | native 不透明，接口与输入输出已完整描述 |
-| `libsignkey.so` 密钥派生 | native 不透明 |
-| `libdexvmp.so` 虚拟机内部 | 不透明，但调用面已定位（联通认证 SDK） |
+| WSG 签名 | 输入、JNI 注册、网关调用链与 Base64 字母表已定位 |
+| `libsignkey.so` 密钥 | 固定 `*&^%$#@!`，反汇编与调用方已复核 |
+| `libdexvmp.so` | 联通认证 SDK 反射虚拟机，不在打车签名链路 |
 | 服务端评分、阈值、处罚 | 不可静态证明 |
 | 服务端画像留存时长 | 不可静态证明 |
 | 加密载荷内的具体字段 | 报告不把不可见字段写成明文 |
+
+## 14. native 风控精确反汇编
+
+`libsignkey.so` 唯一导出函数 `Java_com_didi_sdk_signkylib_SignKey_getPhoneSignKey`
+位于 `0x618`，函数体为：
+
+```asm
+0x630  ldr x9,[x0]                 ; JNIEnv*->functions
+0x634  ldr x2,[x9,#0x538]          ; 0x538/8 = 167 = NewStringUTF
+0x64c  adr x1,str_rodata            ; 0x4d8
+0x658  br x2                        ; return NewStringUTF("*&^%$#@!")
+```
+
+`.rodata@0x4d8` 的原始字节为 `2a 26 5e 25 24 23 40 21 00`，即
+`*&^%$#@!`。调用方 `com/didi/common/map/adapter/didiadapter/g.java:15-50`
+使用 `Cipher.getInstance("DES")`，无显式 mode/padding 参数，Android/SunJCE
+解析为 `DES/ECB/PKCS5Padding`；`LoginStore.java:205-230,326-352` 与
+`uk1/c.java:147-167,223-39` 复用同一密钥。
+
+`checkMethod`（`0x567dc`）的 CFF 初始状态为 `0x7b8b48aa`，状态表基址
+`*0x391ae0=0x56849`，mask `0x14`、加数 `0x37`，首跳 `0x56898`。其叶子按
+顺序执行：
+
+1. `Method==null` → false；
+2. `helper_0x1868fc(JNIEnv)&1==0` → false；
+3. `helper_0x185b3c(JNIEnv,Method)==0` → false；
+4. `helper_0x185ae0(r)==0` → false；
+5. `helper_0x4f19c(r2)` 返回非零 → false，否则 true。
+
+`0x4f19c` 在 `0x4f1e4-0x4f214` 打开 `/proc/self/maps`，其扁平化分支链关联的
+map 解析代码在 `0x4df80` 执行 `fgets(0x100)`、`0x4e3c4` 执行
+`sscanf("%lx-%lx")`、`0x4f4ec` 执行 `strstr(line,"libart.so")`、`0x4e12c`
+执行 `fclose`；因此该判定要求“反射方法存在且当前 libart 映射可验证”。
+完整状态树、native 方法注册地址与执行轨迹见 `evidence.md` §6-7。

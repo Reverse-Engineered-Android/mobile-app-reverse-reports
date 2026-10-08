@@ -243,7 +243,7 @@ if (HomeContainer.a.a() || l.b(1, "llm_assistant_main", "llm_ut_ai_callcar_switc
 
 ## 2. 加密与混淆闭包
 
-“不允许保留未分析清楚的加密或混淆代码”一项的闭环结论：
+加密与混淆的最终结论如下：
 
 | 用途 | 算法 | 位置 |
 |---|---|---|
@@ -251,10 +251,10 @@ if (HomeContainer.a.a() || l.b(1, "llm_assistant_main", "llm_ut_ai_callcar_switc
 | 接口加密响应 | 同上，解密后 GZIP 解压 | `x22/a.java:24-37,43` |
 | 会话密钥 | `KeyGenerator.getInstance("AES").init(128)` | `com/didi/ride/util/g.java:129-132` |
 | 密钥编码 | Base64（自实现表） | `f32/d.java:13,93-130` |
-| 手机号本地存储 | DES | `LoginStore.java:211-213,338-340` |
-| 手机号上报哈希 | `libsignkey.so` `getPhoneSignKey()` | `SignKey.java:8`、`didiadapter/g.java:32-50` |
+| 手机号本地存储 | `DES/ECB/PKCS5Padding`，密钥固定 `*&^%$#@!` | `LoginStore.java:211-213,338-340`、`libsignkey.so:0x618` |
+| 手机号上报 | 同一 DES 密钥 + Base64 | `SignKey.java:8`、`didiadapter/g.java:32-50` |
 | 支付键盘 | SM3 HMAC | `cn/passguard`、`libPassGuard.so` |
-| 请求签名 | native | `libdidiwsg.so` |
+| 请求签名 | `0x4d1e0 → 0x618f4 → 0x1b0a78 → 0x211374 Base64` | `libdidiwsg.so` |
 | 基础库 AES | native | `libdfbasenative.so`（`dfbasesdk/utils/AES.java:13`） |
 | 本地库加密 | SQLCipher | `libsqlcipher.so` |
 
@@ -263,8 +263,11 @@ if (HomeContainer.a.a() || l.b(1, "llm_assistant_main", "llm_ut_ai_callcar_switc
 `AES/ECB/PKCS5Padding`——这是混淆而非未知算法。`e81/a.java:101,105,111` 生成
 每请求随机密钥后调用 `g.c(...)`，`e81/a.java:50-55,85-86` 用 `x22.a.a(...)`
 解密响应，`SgConstants.KEY = "key"` 与 `"enReq"`/`"enRes"` 构成密文容器。
-`libdidiwsg.so` 与 `libdexvmp.so` 的内部实现属 native 不透明边界，报告描述其
-导出接口、输入输出与调用点，不臆测内部算法。
+`libdidiwsg.so` 的 `.datadiv_decode...@0x57c2c` 完成 74 段 XOR 解码；
+`fcn.000588dc(index)` 以两张 32 位表 XOR 得到状态值，JNI 入口再按
+`br (基址 + (状态 + g[index]) & mask + offset)` 进入平坦化决策树。
+`checkMethod@0x567dc` 的五个判定叶子已逐条还原，签名网关的实际执行轨迹
+覆盖 `0x618f4`、`0x1b0a78` 和使用两种 64 字符字母表的 `0x211374`。
 
 `libdexvmp.so` 由 `com/fort/andJni/JniLib1773859712.java:13` 加载，其
 `Invoke*` 反射桥被 `cn/wh/auth/*`（联通认证 SDK）使用，作用是把 Java 反射调用
@@ -293,7 +296,8 @@ if (HomeContainer.a.a() || l.b(1, "llm_assistant_main", "llm_ut_ai_callcar_switc
 
 ## 4. 报告边界
 
-本报告的“完成”指：对固定 APK 的 DEX/XML/native 字符串可读证据完成枚举，并把
-每个结论限定到代码能证明的层级。不包含登录真实账号、发起下单或支付、抓取账号
-数据、绕过风控、验证服务端响应与留存、写入设备端任何数据。这些行为按要求保持
-未执行。
+本报告固定 APK 的 DEX/XML/native 结论，客户端代码可证明的网络流程、协议、认证、
+上传下载、权限、隐私、风控和打车/AI 叫车静态链路均已形成最终结论。服务端评分
+阈值、处罚和画像留存时长不在 APK 内，不能静态证明。按静态只读要求，未登录、
+未发请求、未估价、未下单、未支付、未开启 AI 叫车、未抓取账号数据、未绕过风控，
+也未写入或修改设备端数据。
