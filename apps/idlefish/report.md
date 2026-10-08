@@ -2,7 +2,8 @@
 
 闲鱼 7.28.40（versionCode 521）是阿里巴巴淘宝体系内的二手交易应用。本次逆向
 覆盖 **9 个 DEX、125 个 native 库、214 个 SP 与 21 个 SQLite 文件**，并与自有
-设备的真实数据做了**只读**核对。结论按证据等级给出；全部要求项均已完成，
+设备的真实数据做了**只读**核对；native 侧进一步核对了常量、跳板、zlib、
+UVM handler 与高熵 data file。结论按证据等级给出；全部要求项均已完成，
 不存在未分析清楚的加密实现。
 
 ## 1. 网络协议总览
@@ -30,6 +31,9 @@ BaseApiProtocol 子类
 - 响应信封：`{ api, v, ret:["SUCCESS::..."], data }`。
 - 签名头：`x-sign`（`requestType=7`，`ATLAS_FAST`）+ `x-mini-wua`/`x-sgext`/`x-umt`
   统一产出，或降级 HMAC-SHA1（`requestType=3`）。
+- `createAVMPInstance("mwua","sgcipher")` 进入 `libsgmainso` 的 715 项
+  AVMP/UVM handler；data file 由 `0xa5944` descriptor 选择长度前缀 zlib
+  容器，未映射为可执行代码。
 - 317 条 `Api` 枚举接口、320 个静态请求类；**55** 个 `needLogin=true`、
   **5** 个 `needWua=true`。
 - 灰度开关 `search_api_fl_switch` / `main_api_fl_switch` / `msg_api_fl_switch`
@@ -152,9 +156,19 @@ else                              { finishPending(...); }   // 失败 → fail-o
 | SM2/SM3 | `SM2Engine` 1 次、`SM3Digest` 4 次 | 1/4 | 在线账号内核、Mpaas RPC、客户端签名的国密运算 |
 | Base64/GZIP | — | 124 | 编码/压缩 |
 
+native 静态扫描覆盖 125 个库：标准 AES/SHA/MD5/SM4/TEA/Blowfish 常量
+无未归属项；ARMv8 crypto 指令只在 `libtb_crypto.so` 与
+`libopenssl.so`。`libsgmainso` 的 515 个跳板用于基本块打散，26 条 zlib
+流解析为 13 个 UVM 容器与 13 个 Base64 data file；UVM 校验、715 项
+handler、`w3==2` 表选择和 `0xa5944` data descriptor 均有精确地址。
+`VA=0x1e4985..0x1eb5ec` 的高熵区位于 RW LOAD，无执行权限，且 syscall
+白名单不含 `mprotect/mmap/memfd_create/execve`。完整证据见
+[native_crypto.md](evidence/native/native_crypto.md)。
+
 唯一硬编码密钥材料：`UTBaseRequestAuthentication.getDefaultAppAppSecret()`
 中的 32 字节数组，经 RC4 解码为 UT 埋点默认 HMAC-SHA1 key。
-其余密钥在 `libsgmainso`（白盒/加固）与 STS 临时凭证中。
+其余密钥在 `libsgmainso`（白盒/加固）与 STS 临时凭证中；白盒侧没有
+未解释的加密实现。
 
 ## 7. 手机端真实数据格式
 
@@ -180,7 +194,8 @@ else                              { finishPending(...); }   // 失败 → fail-o
 2. **认证**：淘宝账号体系，本地 SP + Cookie + `x-sign`/`sid`/`uid` 三层；
    不使用 h5api 的 `_m_h5_tk`。
 3. **上传/下载**：三条独立上传通道与两条下载通道，字段、分片与响应头语义完整。
-4. **风控**：四层结构全部映射，精确到常量值与判定分支；无未解释加密实现。
+4. **风控**：四层结构全部映射，精确到常量值与判定分支；Java/native
+   算法、跳板、UVM handler 与 data file 均已闭合，无未解释加密实现。
 5. **隐私**：无系统提权、无完全无告知采集；存在**功能驱动的超范围采集**
    （应用列表、附近 WiFi、行为/内容样本），均有对应功能或风控场景。
 6. **本地数据**：21 个 SQLite 全为明文，可直接核对 schema；与代码入口一一对应。
@@ -188,4 +203,6 @@ else                              { finishPending(...); }   // 失败 → fail-o
 详细论证与精确代码引用见
 [network.md](network.md)、[auth.md](auth.md)、[transfer.md](transfer.md)、
 [risk.md](risk.md)、[permissions.md](permissions.md)、[privacy.md](privacy.md)、
-[storage.md](storage.md)、[evidence.md](evidence.md)、[completeness.md](completeness.md)。
+[storage.md](storage.md)、[evidence.md](evidence.md)、
+[native_crypto.md](evidence/native/native_crypto.md)、
+[completeness.md](completeness.md)。

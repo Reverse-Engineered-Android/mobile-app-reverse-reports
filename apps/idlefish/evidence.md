@@ -49,10 +49,29 @@ jadx 反编译：**48,234** 个 Java 文件（127 个不可反编译方法已用
 
 **关键观察**：
 - `libsgmainso-6.7.260202.so`（SecurityGuard 主库）的 ELF 头字段被破坏，
-  无法直接 `readelf`，是阿里加固层。
+  但 PT_PHDR、9 个 program header、动态重定位和 RX/RW LOAD 边界完整，
+  可绕过损坏的 section header 直接做原生静态分析。
 - `libsgmisc.so` 名为 `.so` 实为 APK，内含独立 AndroidManifest 与签名，
   运行时解压/解密后加载，承载 SecurityGuard 的配置与证书。
 - `libwukong_native.so` 为明文 ELF，含 MFE 引擎与 KFC 检索符号。
+
+### 2.1 native 加密与混淆核对
+
+完整地址、反汇编片段与 blob 清单见
+[native_crypto.md](evidence/native/native_crypto.md)。关键结果：
+
+- 125 个库的标准 AES/SHA/MD5/SM4/TEA/Blowfish 常量扫描无未归属项；
+  ARMv8 crypto 指令仅在 `libtb_crypto.so` 与 `libopenssl.so`。
+- 515 个计算跳板只用于基本块打散，静态求解 360 个，其中 358 个位于同一
+  函数 ±0x10000 内；没有跳板把数据段变成可执行代码。
+- `libsgmainso` 的 26 条 zlib 流分为 13 条 UVM 容器与 13 条 Base64
+  辅助数据；`liblrc_core` 另有 1+1 条。
+- AVMP/UVM handler table 位于 `0x2adc60..0x2af2b0`，共 715 项；Java
+  的 `createAVMPInstance("mwua","sgcipher")` 直接进入该表。
+- `VA=0x1e4985..0x1eb5ec` 的 27,751 字节高熵区位于 RW LOAD，不是代码；
+  `0xa5510` 只写入一个状态字节，`0xa5944` 选择末端长度前缀 UVM 容器。
+- 原生库没有 `mprotect`/`mmap`/`memfd_create`/`execve` 调用把解压或
+  data file 转为可执行代码；加密实现不存在未解释项。
 
 ## 3. 代码证据索引（evidence/java/）
 
@@ -132,7 +151,7 @@ jadx 反编译：**48,234** 个 Java 文件（127 个不可反编译方法已用
 | 反编译 | `jadx 1.5.x`（`--threads-count 16`，`--no-src` 仅资源） |
 | 字符串 | `strings -n 6` + sort/uniq，产出 `dexstrings.txt`（734,447 行） |
 | 哈希 | `sha256sum` |
-| ELF | `readelf` / `objdump`（明文库）；加固库仅做文件头/内嵌 ZIP 检查 |
+| ELF | `readelf`/`objdump` + PHDR/REL/RELA 解析、Capstone 反汇编、常量与跳板扫描；加固库反汇编到 handler、zlib、UVM 和 data descriptor |
 | DB | Python `sqlite3`（`file:...?mode=ro&immutable=1`，URI 只读） |
 | 设备 | SSH（只读 cat，无写入） |
 
@@ -140,6 +159,7 @@ jadx 反编译：**48,234** 个 Java 文件（127 个不可反编译方法已用
 
 - **已验证**：APK/库哈希、DEX 规模、反编译产物行数、设备端文件头与
   `integrity_check`、全部表结构、SP 键值。
-- **结构已证实**：加固库的入口契约（SecurityGuard 组件名与加载方式），
-  Wukong MFE 的表语义。
-- **不可证**：加固库内部算法、服务端对签名/风控的具体校验逻辑。
+- **结构已证实**：加固库的入口契约、AVMP/UVM handler、zlib 解压链、
+  data file descriptor 与 Wukong MFE 的表语义。
+- **不可证**：服务端对签名/风控的具体校验逻辑、远端模型与阈值；
+  客户端侧没有未解释的加密实现。

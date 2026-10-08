@@ -2,7 +2,7 @@
 
 闲鱼的风控是**四层叠加**：MTOP 传输层反攻击、SecurityGuard 设备签名、业务返回码
 拦截、Wukong/CCRC 内容与行为风控。本文件逐层给出精确的判定代码、触发条件与动作，
-并给出密码学全量清单，确认不存在未分析清楚的加密实现。
+并给出 Java 与 native 的密码学全量清单，确认不存在未分析清楚的加密实现。
 
 ## 0. 分层总览
 
@@ -56,8 +56,9 @@ public static boolean iSApiLocked(long j, String str) {
   `ILBSRiskComponent`、`IStaticKeyEncryptComponent`、`ISafeTokenComponent`。
 - 统一安全因子：`IUnifiedSecurityComponent.getSecurityFactors()` 一次性产出
   `x-sign`、`x-mini-wua`、`x-sgext`、`x-umt`、`wua`。
-- 白盒签名：`createAVMPInstance("mwua", "sgcipher")`，由 `libsgmainso-6.7.260202.so`
-  与 `libsgmiscso-6.5.9.so` 承载。
+- 白盒签名：`createAVMPInstance("mwua", "sgcipher")`，由
+  `libsgmainso-6.7.260202.so` 的 AVMP/UVM handler 执行；精确表项、
+  调度分支与 data descriptor 见 §6。
 
 **判定依据**：服务端用 UMID/WUA 与 `x-sign` 关联设备与请求完整性；客户端侧仅见
 采集与签名调用点，评分逻辑不可见（见 §7）。
@@ -302,6 +303,31 @@ apiLBSLocationUpdateRequest.wifis = arrayList;
 | SM2 | `SM2Engine` / `sm2p256v1` | 1 次实例化 | 在线账号内核的国密非对称运算；Mpaas RPC 按配置选择 `SM2` |
 | SM3 | `SM3Digest` | 4 次实例化 | 在线账号、Mpaas 安全组件与客户端签名摘要 |
 
+### 6.1 native 静态加密与混淆核对
+
+完整地址、反汇编和 blob 清单见
+[native_crypto.md](evidence/native/native_crypto.md)。
+
+| 检查项 | 精确结果 | 判定依据 |
+| --- | --- | --- |
+| 125 库标准常量 | AES S-box、SHA-1/SHA-256/MD5/SM4、TEA delta、Blowfish P 均无未归属命中 | 全库常量扫描 |
+| ARMv8 crypto 指令 | `libtb_crypto.so` 的 `aese/sha/pmull`；`libopenssl.so` 的 SM3 指令 | 指令级扫描；`libsgmainso` 的 `sm4ekey@0x2e548` 在 `.byte` 数据区 |
+| 计算跳板 | 共 515 个：366/59/42/41/7；静态求解 360 个，358 个同函数 ±0x10000 | PC 相对与间接跳转解析 |
+| zlib | 26 条流 = 13 UVM + 13 Base64；`liblrc_core` 另有 1+1 条 | `inflateInit_@0x11cf7c`、`inflate@0x11d080,0x14df84` |
+| UVM 校验 | magic `0xb225081a`、版本字段 `0x00010002`、`+0x48==2` | `0x16ac28..0x16ac84` |
+| handler table | `0x2adc60..0x2af2b0`，715 项，16 字节指令 | RELATIVE relocation 恢复后逐项解析 |
+| 调度入口 | `w3==2` 选表，`ldr x9,[x12,w10,sxtw#3]; blr x9` | `0xbfbf8..0xbfc30` |
+| data file descriptor | `w19==1` 写入 `ptr=0x1eb5e8,len=0x4f5` | `0xa5944..0xa59e8` |
+| 高熵原始区 | `VA=0x1e4985..0x1eb5ec`，27,751 字节，H≈7.9915，RW 无执行权限 | PHDR flags=6；`0xa5510` 仅写状态字节 `0x22` |
+| 可执行映射 | 无 `mprotect/mmap/memfd_create/execve` | syscall 白名单仅 `fcntl/openat/close/lseek/read/write/renameat/set_tid_address/getpid` |
+
+14 个 Base64 产物均为 16 倍数尺寸，紧接对应 UVM 容器；Java 侧错误码
+`SEC_ERROR_GENERIC_AVMP_NO_DATA_FILE(1905)`、
+`SEC_ERROR_GENERIC_AVMP_INCORRECT_JPG_FILE(1903)`、
+`SEC_ERROR_GENERIC_AVMP_INVLIAD_MWUA_DATA_FILE(1916)` 将其明确归为
+AVMP/UVM data file。`0x1eb5e8` 的长度前缀 zlib 流解压为 1,272 字节
+UVM 容器；该区域没有代码权限，也没有映射为可执行代码的路径。
+
 **UT 默认密钥的具体解密**（`UTBaseRequestAuthentication`）：
 
 ```java
@@ -318,7 +344,10 @@ private byte[] getDefaultAppAppSecret() {
 **白盒/加固算法**：全部落在
 `libsgmainso-6.7.260202.so`、`libsgmiscso-6.5.9.so`、`libwukong_native.so`、
 `libtb_crypto.so`、`libopenssl.so`、`libcrypto.1.0.2.so`
-（见 [evidence.md](evidence.md) 的哈希与符号），静态边界已确认。
+（见 [evidence.md](evidence.md) 的哈希与符号、
+[native_crypto.md](evidence/native/native_crypto.md) 的反汇编证据）。
+Java 侧可枚举算法与 native 侧常量/指令/handler/data file 已全部闭合，
+没有未分析清楚的加密实现。
 
 ## 7. 精确判定依据汇总表
 
@@ -341,8 +370,9 @@ private byte[] getDefaultAppAppSecret() {
 ## 8. 证据等级
 
 - **已验证**：返回码常量、判定函数、超时默认值、放行分支、结果码数值、
-  四个场景 ccrcCode、`mfe_basic` 表结构、算法清单与调用次数、UT 静态密钥材料。
-- **结构已证实**：Wukong 引擎调用契约（install/search/t2s）、样本类型与上报字段、
-  统一签名返回头集合。
+  四个场景 ccrcCode、`mfe_basic` 表结构、Java/native 算法清单、zlib/UVM
+  校验、715 项 handler、data descriptor 与 syscall 白名单。
+- **结构已证实**：Wukong 引擎调用契约（install/search/t2s）、样本类型与
+  上报字段、AVMP/UVM data file 结构、统一签名返回头集合。
 - **不可证（服务端）**：风险评分的权重与阈值、封禁时长、模型下发内容、
   STS 与 OSS 的权限边界。报告不推测这部分。

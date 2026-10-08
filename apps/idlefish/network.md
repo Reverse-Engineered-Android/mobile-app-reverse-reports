@@ -151,6 +151,11 @@ SSR 请求改用 `convertSsrBaseStrMap`（含 `ssr-pv` 分支）。
 - `getMiniWua` → 追加 `extend_paras = { "api_name": api }`，返回 `x-mini-wua`。
 - `getSecBodyDataEx` → `ISecurityBodyComponent.getSecurityBodyDataEx(...)`，产生设备安全体。
 - `getAvmpSign` → `AVMPGenericComponent.createAVMPInstance("mwua", "sgcipher")`。
+  native 侧由 `w3==2` 选择表，再以 `ldr x9,[x12,w10,sxtw#3]; blr x9`
+  索引执行；handler table 位于 `0x2adc60..0x2af2b0`，共 715 项。
+  `0xa5944` 在 `w19==1` 时写入 `ptr=0x1eb5e8,len=0x4f5`，该指针指向
+  长度前缀 zlib 流，解压为 UVM 容器。调用点与反汇编见
+  [native_crypto.md](evidence/native/native_crypto.md)。
 
 ### 5.4 签名降级
 
@@ -204,5 +209,6 @@ AB 实验 `mtop_sign_degraded*` 时，该 API 跳过 SecurityGuard 签名，
 - **已验证**：URL 结构、转换头名、待签名串字段顺序、三条签名路径、请求/响应信封、
   317 条 API 注册、55 个 `needLogin`、5 个 `needWua`、灰度重定向表。
 - **结构已证实**：SecurityGuard 中间层返回的 `x-sign`/`x-mini-wua`/`x-sgext`/`x-umt`
-  字节格式与生成入口，但算法在加固 ELF 内。
-- **不可证**：服务端如何用 `wua`/`umid`/`x-sign` 做风控打分；MTOP 网关的实际路由与限流阈值。
+  字节格式与生成入口，以及 AVMP/UVM 调度、zlib 解压、data descriptor。
+- **不可证**：服务端如何用 `wua`/`umid`/`x-sign` 做风控打分；MTOP 网关的
+  实际路由与限流阈值。客户端静态侧没有未解释的加密实现。
