@@ -180,6 +180,34 @@
           "sha256": "b00ea747c55ad39b4075745577e97d8d0ce6cc1f068a9bf4b11dc68eb7c9063e"
         }
       ]
+    },
+    {
+      "app": "GenshinImpact",
+      "package": "com.miHoYo.GenshinImpact",
+      "version_name": "7.1.0_48052158_48145775",
+      "version_code": 1242,
+      "files": [
+        {
+          "name": "com.miHoYo.GenshinImpact_7.1.0_48052158_48145775.apkm",
+          "size": 494033581,
+          "sha256": "29d51069aec72cb75e363caa713333aba145b379a39583c7de429715a42c5928"
+        },
+        {
+          "name": "base.apk",
+          "size": 35121130,
+          "sha256": "43e1d64940ab767c078330fb5ecb4155a61501a5f20a1828f9306e6f4769583c"
+        },
+        {
+          "name": "split_config.arm64_v8a.apk",
+          "size": 153843887,
+          "sha256": "4c51b596a746c251ca6483616901a20cb872bf2bc8c3b40db34df4f36b4a5bd5"
+        },
+        {
+          "name": "split_AssetBundles.apk",
+          "size": 532442797,
+          "sha256": "41b58d9504c9a497ffefabbb89a7829352758bcb65f57266b671531dba35338a"
+        }
+      ]
     }
   ]
 }
