@@ -117,6 +117,19 @@
       ]
     },
     {
+      "app": "Damai",
+      "package": "cn.damai",
+      "version_name": "9.0.35",
+      "version_code": 109003500,
+      "files": [
+        {
+          "name": "damai-9.0.35-arm64.apk",
+          "size": 113422261,
+          "sha256": "dd33ae183903fb37b9761266d892f34767b3dd4b493fcf5efec0ae169969c87f"
+        }
+      ]
+    },
+    {
       "app": "DiDi",
       "package": "com.sdu.didi.psnger",
       "version_name": "8.0.14",
