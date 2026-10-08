@@ -94,12 +94,12 @@ token 字符串本身不进入报告。
 
 | 符号 | VA |
 | --- | --- |
-| `kcp_client_create` | `0x5d7e9c8` |
-| `kcp_client_connect` | `0x5d7ea50` |
-| `kcp_packet_create` | `0x5d7ec9c` |
-| `kcp_client_send_packet` | `0x5d7ecec` |
-| `kcp_client_reconnect` | `0x5d7ec68` |
-| `kcp_client_network_thread` | `0x5d7ed4c` |
+| `kcp_client_create` | `0x5d7dd78` |
+| `kcp_client_connect` | `0x5d7de00` |
+| `kcp_packet_create` | `0x5d7e04c` |
+| `kcp_client_send_packet` | `0x5d7e09c` |
+| `kcp_client_reconnect` | `0x5d7e018` |
+| `kcp_client_network_thread` | `0x5d7e0fc` |
 
 `kcp_client_connect` 根据 IPv6 标志写入 sockaddr，IP 模式使用
 `AF_INET`、网络序端口和 16 字节地址；IPv6 分支写入 `AF_INET6` 与
@@ -107,29 +107,52 @@ token 字符串本身不进入报告。
 `poll/epoll_ctl/epoll_wait`，字符串包含 `do_recv_udp_packet_in_loop`、
 `handle_udp_packet`、`ikcp_send/ikcp_recv` 和 reconnect 日志。
 
-### 3.2 帧与加密
+KCP 导出证明客户端具备 UDP 可靠传输实现，但静态调用图没有给出
+“KCP send/recv 直接调用下述 record helper”的调用边；本报告因此把
+KCP 与 TLS/DTLS record 层作为两个已确认组件，不臆断二者在生产会话中的
+固定串联顺序。
 
-接收入口的静态控制流在 `0x5cfe004`：
+### 3.2 Record 头与认证加密
+
+record 层来自内嵌 mbedTLS。接收侧 `0x5d001a4-0x5d001bc` 按上下文标志
+选择完整 record 头长度 `5` 或 `13`：
 
 ```text
-frame_header = 4 bytes or 12 bytes
-declared_payload_length = header[1..3] big-endian + header_size
-payload_length <= 0x4000
+TLS 头:  content_type(1) + version(2) + length(2)
+DTLS 头: content_type(1) + version(2) + epoch(2) + sequence(6) + length(2)
 ```
 
-发送侧 `0x5cff2bc` 写入第一字节状态、第二字节条件状态、第三字节类型，
-并在另一个两字节区写入长度的高/低字节。`0x5cff39c` 打印
-`before encrypt: output payload`，随后调用认证加密路径；`0x5cffbc4`
-打印 `after encrypt: tag`，`0x5d01eb4` 在解密后检查
-`input payload after decrypt`。认证加密调用入口是 `0x4a8802c`，
-它先校验 context 和长度，再把 payload/tag 指针交给 16 字节块处理
-helper（`0x4be5b74`/`0x4be5ee4`/`0x4be6078`）。
+`0x5d0032c-0x5d00344` 分别读取首字节 content type 和由 `in_len`
+指针指向的大端长度；`0x5d0039c-0x5d003a8` 对 `content_type & ~3`
+执行 `0x14` 分支，覆盖 ChangeCipherSpec、Alert、Handshake、
+Application Data。发送与接收路径都把 record 明文长度限制为
+`0x4000`（`0x5cfe76c`、`0x5cff5cc`、`0x5d01278`）。
 
-静态证据支持“帧头 + payload + 认证 tag”的 AEAD 包，而不是单纯 XOR。
-帧头选择 4 或 12 字节对应加密上下文标志位；接收侧
-`0x5d00000` 明确用 4/12 两个候选值做最小长度检查。业务 payload 的
-protobuf schema、命令号映射、服务端 key exchange 未在包内以可读
-`.proto` 出现，因此不伪造命令表。
+AAD 是 13 字节的 record 元数据：发送侧 `0x5cfea48-0x5cfeacc` 构造
+版本/epoch/sequence/length 等字段并传入 `x6=0xd`，接收侧
+`0x5d00a10-0x5d00a84` 对称构造。`0x5cfebb8` 调用认证加密分派
+`0x4a87400`，`0x5d00b28` 调用认证解密分派 `0x4a8750c`。分派读取
+`cipher_info->mode`：
+
+| mode | 实现 | 算法与结构 |
+| --- | --- | --- |
+| `6` | encrypt `0x4be4e30`，decrypt `0x4be4e30` + tag/finish | AES-GCM；`0x4be507c` 是 4-bit 表驱动的 128-bit GHASH，`0x4be51a0`/`0x4be5334` 完成认证状态与 tag |
+| `8` | `0x4a59228` | AES-CCM；nonce 长度限制 `7..13`，tag 长度必须为偶数 `4..16`，构造 CCM flags/counter 后执行 CBC-MAC 与 CTR |
+| 其他 | encrypt 返回 `-0x6080`，decrypt 返回 `-0x6080` | 不支持的 mode 拒绝 |
+
+两种 mode 共用 96-bit nonce：session key derivation 将 12 字节 nonce
+拆为 4 字节固定部分与 8 字节显式部分；`0x5cfeb90-0x5cfebb8` 和
+`0x5d00afc-0x5d00b28` 把 `iv_len`、AAD、输入、输出与 tag 长度一起传入。
+tag 长度为 16 字节，启用 short-tag 的 CCM suite 为 8 字节；解密侧
+`0x4a87614-0x4a8764c` 逐字节累加 XOR 做常量时间比较，失败时清零输出。
+
+发送与接收日志分别引用 `before encrypt: output payload`、
+`mbedtls_cipher_auth_encrypt`、`after encrypt: tag`、
+`mbedtls_cipher_auth_decrypt` 和 `input payload after decrypt`。
+静态证据因此闭合为“record 头 + 8 字节显式 IV + 密文 + AEAD tag”，
+算法是 AES-GCM 或 AES-CCM，而不是未知 XOR。业务 payload 的 protobuf
+schema、命令号映射和实际服务器选择的 suite 需要握手/业务消息才能确定，
+包内没有可读 `.proto`，因此不伪造命令表。
 
 ### 3.3 Protobuf 与状态机边界
 

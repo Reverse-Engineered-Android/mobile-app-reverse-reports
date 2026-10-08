@@ -9,7 +9,7 @@ asset 文件、80.75 MB IL2CPP metadata 和二次反编译结果进行静态调�
 
 | 主题 | 静态结论 |
 | --- | --- |
-| 网络 | 账号/配置/上报走 HTTPS JSON；游戏实时链路为 UDP socket、KCP 与带 4/12 字节头部、4/12 字节 nonce 和认证标签的 AEAD 帧；未发送网络流量 |
+| 网络 | 账号/配置/上报走 HTTPS JSON；实时面静态上存在 UDP/KCP 导出与 mbedTLS TLS/DTLS record 层，record 头 5/13 字节、nonce 12 字节、AAD 13 字节、AES-GCM/AES-CCM tag 16/8 字节；未发送网络流量 |
 | 认证 | Retrofit JSON + `DS` 签名，签名格式为 `t,r,MD5(salt=&t=&r=&b=&q=)`；cookie 按 SToken/CToken/LToken v1/v2 组装 |
 | 风控 | SmartCaptcha/Aigis、`x-rpc-risky`、risk ticket、年龄门、设备指纹、Root/模拟器/ADB/代理/Xposed、黑名单与设备限制 |
 | 上传 | 登录诊断、设备基础数据、设备指纹、归因/遥测/日志；具体字段和哈希/HMAC 方式见 `transfer.md` |

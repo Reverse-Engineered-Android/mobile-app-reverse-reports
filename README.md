@@ -18,7 +18,7 @@
 | 知乎 | `com.zhihu.android` | `11.10.0` | `41012` | X-Zse 签名链、Bangcle 分组加密、RUID/ZST 指纹、盐选与 OGV、应用列表上报、42 个设备端 SQLite |
 | 哔哩哔哩 | `tv.danmaku.bili` | `9.13.0` | `9130500` | native appkey/MD5 签名、Gripper/GAIA 风控、36 判定器、121 字段码、Widevine/Bilibili DRM |
 | 纷玩岛 | `cn.com.livelab` | `3.42.0` | `362` | Flutter HTTP 协议、Geetest 风控、`.datadiv_decode*` 还原、SharedPreferences 流密码结构、权限隐私 |
-| 原神 | `com.miHoYo.GenshinImpact` | `7.1.0_48052158_48145775` | `1242` | DS/HMAC 签名、Aigis/Geetest4、KCP+AEAD 实时帧、无权限 exported 状态服务、Unity IL2CPP/Animage/Vulkan-GLES |
+| 原神 | `com.miHoYo.GenshinImpact` | `7.1.0_48052158_48145775` | `1242` | DS/HMAC 签名、Aigis/Geetest4、KCP/UDP 与 mbedTLS AES-GCM/CCM record、无权限 exported 状态服务、Unity IL2CPP/Animage/Vulkan-GLES |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 

@@ -34,8 +34,8 @@ DEX：
 
 ## 2. 反编译证据
 
-第一轮 JADX：14,357 个 Java 文件，567 个文件含 838 处
-`Method not decompiled`。第二轮 `--show-bad-code --deobf` 后同一输出
+JADX 输出包含 14,357 个 Java 文件，其中 567 个文件含 838 处
+`Method not decompiled`。`--show-bad-code --deobf` 后同一输出
 规模下残留降到 14 个文件 15 处：
 
 ```text
@@ -140,18 +140,30 @@ Retrofit，走 `NetEngine`），合计 41 个静态端点。
 KCP 导出符号（VA）：
 
 ```text
-kcp_client_create          0x5d7e9c8
-kcp_client_connect         0x5d7ea50
-kcp_packet_create          0x5d7ec9c
-kcp_client_send_packet     0x5d7ecec
-kcp_client_reconnect       0x5d7ec68
-kcp_client_network_thread  0x5d7ed4c
+kcp_client_create          0x5d7dd78
+kcp_client_connect         0x5d7de00
+kcp_packet_create          0x5d7e04c
+kcp_client_send_packet     0x5d7e09c
+kcp_client_reconnect       0x5d7e018
+kcp_client_network_thread  0x5d7e0fc
 ```
 
-游戏帧加解密 AArch64 位置：接收路径 `0x5cfe004`、4/12 字节头判定
-`0x5d00000`、payload 上限 `0x4000` 检查 `0x5cff3b8`、加密前日志
-`0x5cff39c`、tag 日志 `0x5cffbc4`、解密后 payload 检查 `0x5d01eb4`、
-AEAD 分派 `0x4a8802c`、发送帧头写入 `0x5cff2bc`。
+KCP 导出与 mbedTLS record 代码之间没有可复现的直接 `bl` 调用边；
+两者分别作为静态已确认组件记录。
+
+游戏 record 加解密 AArch64 位置：完整 5/13 字节头选择
+`0x5d001a4-0x5d001bc`、content type/长度解析
+`0x5d0032c-0x5d00344`、`0x4000` 长度检查 `0x5cfe76c`/
+`0x5cff5cc`/`0x5d01278`、13 字节 AAD `0x5cfea48-0x5cfeacc` /
+`0x5d00a10-0x5d00a84`、加密分派 `0x4a87400`、解密分派
+`0x4a8750c`、GCM `0x4be4e30`、CCM `0x4a59228`、常量时间 tag 比较
+`0x4a87614-0x4a8764c`、`after encrypt: tag` `0x5cfef7c`、
+`input payload after decrypt` `0x5d0126c`。
+
+关键 log/string 交叉引用还包括 `mbedtls_cipher_auth_encrypt`
+`0x5cfebcc`、`mbedtls_cipher_auth_decrypt` `0x5d00b48`、
+`mbedtls_ssl_derive_keys` `0x5cf11bc`/`0x5cf2c2c`/`0x5cf64d0`/`0x5cf8528`
+以及 `key block` `0x5cfaf38`。
 
 加密实现符号（`libMHYComboCrypto.so` / `libastrolabe-crypto.so` 同名同构）：
 
@@ -194,5 +206,23 @@ Unity 版本常量 `2017.4.30f1` 在 `libyuanshen.so` 中三处出现，另有
 目标包 com.miHoYo.GenshinImpact：无私有数据目录、无 SQLite 文件
 ```
 
-因此没有可公开的真实行级 schema，本报告不虚构数据库结构；检查为只读，
-未写入远端，未发起任何网络请求。
+目标包没有私有数据目录。同公司国服包 `com.miHoYo.Yuanshen` 的
+versionCode 为 `1241`、versionName 与目标样本同为
+`7.1.0_48052158_48145775`；其只读 DDL 仅作为国服旁证，不能冒充目标包
+的运行时 schema。未读取任何行值、账号、设备 ID 或带哈希的数据库文件名。
+
+```text
+report_module_record(_id, event)
+porte_account_table(mid, aid, type, timestamp, data)
+porte_event_report(_id, event)
+cl_jm_device(i4, i8, i1, i7, i9)
+cl_jm_behavior(id, i4, bk, bp, bm, b2, bc, bh, ba, b7, bi, b8, bg, bj, bb, bl, b5, b1, b4, be, b3, b6, bd, b9, bf)
+plat_h5log_table(id, data, is_aes)
+t_localnotification(_id, ln_id, ln_count, ln_remove, ln_type, ln_extra, ln_trigger_time, ln_add_time)
+shenhe_local_monitor(id, content, createTime, priority, isSensitive)
+shenhe_common(id, content, createTime, priority, isSensitive)
+telemetry report_data(id, date_created, content, priority, is_sensitive)
+telemetry meta(key, value)
+```
+
+检查为只读，未写入远端，未发起任何网络请求。

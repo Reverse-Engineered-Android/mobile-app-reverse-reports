@@ -13,10 +13,9 @@ AssetBundles split 为
 APKM、base、两个 split 的 ZIP 完整性通过；签名证书 SHA-256 为
 `68842530E0C7F9D42B021E148BEE247FA741A063BE39440CC8DAECC9A05F669C`。
 
-第一轮 JADX 生成 14,357 个 Java 文件，567 个文件含 838 个
-`Method not decompiled`。第二轮使用 `--show-bad-code --deobf` 后，
+JADX 使用 `--show-bad-code --deobf` 完成 14,357 个 Java 文件的结构恢复；
 第一方 `com.miHoYo`/`com.mihoyo`/`com.hoyoverse`/`com.astrolabe`/
-`com.combosdk` 关键路径已可读；残留告警主要来自结构恢复而不是未知算法。
+`com.combosdk` 关键路径可读，残留告警来自结构恢复而不是未知算法。
 native 使用 ELF 动态符号、AArch64 反汇编、字符串交叉引用和 Java JNI
 调用链闭合。调查全程静态只读，没有发包、登录、抓包、绕过或游戏运行。
 
@@ -31,14 +30,13 @@ native 使用 ELF 动态符号、AArch64 反汇编、字符串交叉引用和 Ja
    `/loginsdk/dataUpload`。请求体由 Gson 生成
    `application/json; charset=utf-8`，`DS`、cookie 和公共 header 在
    `RequestUtils.createHeaders` 组装。
-2. **游戏实时数据面**。`libyuanshen.so` 导出
-   `kcp_client_create/connect/send_packet/packet_create` 等入口，并导入
-   `socket/sendto/recvfrom/connect/getaddrinfo/epoll_*`。发送函数在
-   `0x5cff2bc` 写入 4 字节基础帧头，在 `0x5cfe004` 接收路径接受 4 或
-   12 字节头；认证加密调用位于 `0x4a8802c`，明文长度检查
-   `0x5cff3b8`，加密 tag 日志 `0x5cffbc4`，解密后 payload 检查
-   `0x5d01eb4`。协议闭合为“KCP 分段 → 4/12 字节帧头 → payload →
-   AEAD tag”，不是未知的裸二进制加密。
+2. **游戏实时数据面**。`libyuanshen.so` 同时导出 UDP/KCP 入口并包含
+   mbedTLS TLS/DTLS record 层。record 头为 5 或 13 字节，明文上限
+   `0x4000`，认证加密/解密分派位于 `0x4a87400`/`0x4a8750c`，AAD 为
+   13 字节，nonce 为 12 字节（4 字节固定 + 8 字节显式）。mode `6`
+   走 `0x4be4e30` 的 AES-GCM，mode `8` 走 `0x4a59228` 的 AES-CCM，
+   tag 为 16 或 8 字节。静态证据没有证明 KCP send/recv 与该 record
+   helper 之间存在直接调用边。
 
 未公开命令号到业务消息的映射；静态包中没有明文 `.proto` 业务 schema，
 只有 Google protobuf runtime 和 `report/sec_channel_packet.proto` 等
@@ -129,20 +127,21 @@ SystemProperties；`hasOpenDebugMode` 读取 `adb_enabled`；
 
 | 问题 | 结论 | 证据等级 |
 | --- | --- | --- |
-| 主要网络流程 | HTTPS JSON 控制面 + KCP/UDP 实时数据面 | 高（Java/native 符号与反汇编） |
-| 协议具体格式 | JSON/Gson、DS 头、KCP 帧、4/12 字节帧头、AEAD tag | 高（本地代码）/业务 schema 未公开 |
-| 认证机制 | 密码、auth ticket、第三方、SToken/CToken/LToken 链 | 高 |
+| 主要网络流程 | HTTPS JSON 控制面 + KCP/UDP 与 mbedTLS record 两个实时面组件 | 高（Java/native 符号与反汇编） |
+| 协议具体格式 | JSON/Gson、DS 头、5/13 字节 TLS/DTLS record、12-byte nonce、13-byte AAD、16/8-byte AEAD tag | 高（本地代码）/业务 schema 与实际 suite 需会话 |
+| 认证机制 | 密码、auth ticket、第三方、SToken/CToken/LToken 链；实时面 TLS/DTLS 握手派生 key block | 高 |
 | 风控机制 | 签名、Aigis、risk ticket、年龄门、设备环境、黑名单/限制 | 高 |
 | 上传下载范围 | 上述报告与配置/CDN 下载；游戏实时字段不在静态范围 | 高/服务器未知 |
 | 越权 | exported `GameStateService` 无权限保护 | 高（Manifest+Binder） |
 | 提权 | 未发现 Android UID/系统权限提升链 | 中（静态未发现） |
 | 未经告知/超范围 | 设备环境和设备指纹采集路径明确，consent 默认拒绝但存在 skip 路径 | 高（客户端路径），服务端未观测 |
-| 加密是否留盲区 | MD5、HMAC-SHA1、AES/RC4 JNI、DS、KCP/AEAD 均已映射到用途和调用点；无未命名的未知加密闭包 | 高 |
+| 加密是否留盲区 | MD5、HMAC-SHA1、AES-128-OFB、ARC4、Tink AES-256-GCM、SaltSign、AES-GCM/AES-CCM 均已映射到用途、算法和调用点；密钥不公开 | 高 |
 
 ## 4. 最终判断
 
-原神 7.1.0 Android 客户端的账号面是标准 HTTPS JSON + DS/cookie 链，
-游戏面是 KCP/UDP + 定长头部 + AEAD 的会话协议。客户端具备较完整的
+原神 7.1.0 Android 客户端的账号面是标准 HTTPS JSON + DS/cookie 链；
+实时面静态上同时存在 UDP/KCP 导出和 mbedTLS TLS/DTLS AEAD record 层。
+客户端具备较完整的
 设备风险采集与上报代码，并把一个无权限 exported Binder 暴露给本机应用；
 这是明确的本地授权缺口，但不是已证明的系统提权。隐私上存在“设备指纹
 和环境状态可在 consent 默认拒绝路径下被组装”的超范围风险，是否实际

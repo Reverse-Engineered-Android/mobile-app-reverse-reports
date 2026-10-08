@@ -98,21 +98,24 @@ GeeTest SDK 内还包含 Hook 框架检测（`C1708v.java:17-50`：`Substrate`
 | MD5 | `CryptoExtendKt.java:30-51`、`MD5Utils.java:56-255` | `DS` 签名、`CONTENT-MD5`、白名单 MD5 比较 |
 | HMAC-SHA1 | `ReportWorker.java:269-316,349-360`、`HmacSHA1Signature.java:10-54` | 上报 `Authorization` 与 `cms-signature`；HMAC 字面 key 已脱敏 |
 | HMAC-SHA256 | Tink `AesCtrHmacAeadKeyManager`、`HmacKey` 等 | Google Tink 依赖自带；未发现第一方业务调用点 |
-| AES | `CryptoUtils.java:54-69` → JNI `AESEncryptNative/AESDecryptNative` | 本地敏感字符串与配置保护；实现在 `libMHYComboCrypto.so`、`libastrolabe-crypto.so` |
-| RC4 | `CryptoUtils.java:36-47` → JNI `RC4EncryptNative/RC4DecryptNative` | 同上，历史兼容路径 |
-| 盐签名 | `astrolabe CryptoUtils.java:14` → `SaltSignNative` | Astrolabe 上报签名 |
-| 游戏面 AEAD | `libyuanshen.so` 加解密调用与 tag 日志 | KCP 实时帧的认证加密 |
+| AES-128-OFB | `CryptoUtils.java:54-69` → JNI `AESEncryptNative/AESDecryptNative` | Combo/Astrolabe 本地敏感字符串与配置；`set_mode(2)` 的实现是 OFB，固定 16-byte key，无 KDF，IV 位于 `.bss` 且初始为全零 |
+| ARC4 | `CryptoUtils.java:36-47` → JNI `RC4EncryptNative/RC4DecryptNative` | 固定 32-byte key，调用 `ARC4::setKey(key,32)`，用于历史兼容路径 |
+| 本地存储 AES-256-GCM | Tink `AesGcmKeyManager`、Android Keystore | keyset URI 为 `android-keystore://mhy_plat_porte_master_key`，SharedPreferences 为 `mhy_plat_porte_crypto`，keyset 名为 `mhy_plat_porte_keyset` |
+| `SaltSign` | `astrolabe CryptoUtils.java:14` → `SaltSignNative` | canonical query 为 `salt=<固定32字节盐>&t=<Unix秒>&r=<6字符随机串>&b=<参数1>&q=<参数2>`，结果为 `MD5(canonical_query)` 的 32 位十六进制摘要 |
+| 上报 HMAC | `ReportWorker.java:269-316,349-360` | JSON body 的 `CONTENT-MD5` 与 HMAC-SHA1 `Authorization`/`cms-signature` |
+| 实时面 AES-GCM | `libyuanshen.so` `0x4a87400`/`0x4a8750c` → `0x4be4e30` | mbedTLS mode `6`；12-byte nonce、13-byte AAD、16-byte tag（short-tag suite 为 8） |
+| 实时面 AES-CCM | `libyuanshen.so` `0x4a87400`/`0x4a8750c` → `0x4a59228` | mbedTLS mode `8`；nonce `7..13`、偶数 tag `4..16`、CBC-MAC + CTR |
 
-native 侧符号可逐一定位：`_ZN12combo_crypto3AES6CipherEPhS1_`、
+native 侧第一方符号可逐一定位：`_ZN12combo_crypto3AES6CipherEPhS1_`、
 `_ZN12combo_crypto4ARC44prgaEPKcPci`、
 `Java_com_combosdk_support_base_utils_CryptoUtils_AESEncryptNative`，
-`libastrolabe-crypto.so` 为同一套实现的平行副本。密钥与初始向量由
-调用方在运行时提供，静态样本不导出明文密钥；算法、模式、调用点均已
-映射，没有用途不明的加密闭包。
+`libastrolabe-crypto.so` 为同一套实现的平行副本。TLS/DTLS record key
+由握手 key block 派生，本地 AES key/盐/HMAC key 按用途固定或由调用方
+提供；公开报告只记录长度、URI、性质与算法，不导出任何真实密钥。
 
 ## 8. 覆盖率与边界
 
-- 第一方风控代码在 `--show-bad-code --deobf` 后仅剩 1 个残留
+- 第一方风控代码可读部分中仅剩 1 个反编译残留
   （`PassportLoginManager.java:673` 的 `authLoginAfterRegister` 回调），
   该处为 UI 回调转发，其余逻辑与相邻 lambda 可读，不构成未知算法。
 - 其余 13 个残留全部位于 AndroidX、Kotlin 协程、GMS、AppsFlyer、
@@ -120,4 +123,3 @@ native 侧符号可逐一定位：`_ZN12combo_crypto3AES6CipherEPhS1_`、
 - **可确认**：客户端具备上述采集、签名、挑战、票据、环境判定和设备
   限制代码。**不能确认**：服务端阈值、评分模型、封禁时长、设备指纹
   留存期限，以及风险码到具体处罚的映射。
-

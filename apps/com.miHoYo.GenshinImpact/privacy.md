@@ -88,11 +88,12 @@ channel/subchannel。
 
 ## 5. 设备端验证边界
 
-对一台自有 Android 设备做只读检查，发现已安装同公司包名
-`com.miHoYo.Yuanshen`，**没有**目标包 `com.miHoYo.GenshinImpact` 的私有
-数据目录或 SQLite 文件。因此本次没有可公开的真实行级 schema，也没有
-运行时落盘证据；`transfer.md` 与 `evidence.md` 记录了这一限制。检查过程
-只读、未写入远端、未发起任何网络请求。
+对一台自有 Android 设备做只读检查，**没有**目标包
+`com.miHoYo.GenshinImpact` 的私有数据目录或 SQLite 文件。已安装的
+同公司包 `com.miHoYo.Yuanshen` 为 versionCode `1241`、同 versionName，
+其 DDL 见 `transfer.md` §6 与 `evidence.md` §8，仅作为国服旁证，不能
+证明目标包会在运行时生成相同结构。公开报告不含行值、账号、设备 ID 或
+带哈希的数据库文件名。检查过程只读、未写入远端、未发起任何网络请求。
 
 ## 6. 最终隐私判断
 

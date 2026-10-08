@@ -98,10 +98,27 @@ appUpdateTimeDiff, deviceName, packageName, packageVersion
 
 Java 侧存在 `ReportRecordDbHelper`、Room DAO、`DeviceFingerprintSharedPreferences`
 和加密 `OSParamsEncryptedStore`；这些是缓存/队列，不等同于公开数据库。
-对一台自有 Android 设备的只读检查（经应用私有数据目录访问）发现已安装
-同公司包名 `com.miHoYo.Yuanshen`，没有目标包
-`com.miHoYo.GenshinImpact` 的私有数据目录或 SQLite 文件，因此没有可以
-公开的真实行级 schema。
+只读检查发现目标包 `com.miHoYo.GenshinImpact` 没有私有数据目录或
+SQLite 文件。同公司国服包 `com.miHoYo.Yuanshen` 已安装，versionCode
+`1241`、versionName 与目标样本同为 `7.1.0_48052158_48145775`；其 DDL
+仅作为国服旁证，不冒充目标包的运行时 schema，也不读取行值。
+
+```text
+report_module_record(_id, event)
+porte_account_table(mid, aid, type, timestamp, data)
+porte_event_report(_id, event)
+cl_jm_device(i4, i8, i1, i7, i9)
+cl_jm_behavior(id, i4, bk, bp, bm, b2, bc, bh, ba, b7, bi, b8, bg, bj, bb, bl, b5, b1, b4, be, b3, b6, bd, b9, bf)
+plat_h5log_table(id, data, is_aes)
+t_localnotification(_id, ln_id, ln_count, ln_remove, ln_type, ln_extra, ln_trigger_time, ln_add_time)
+shenhe_local_monitor(id, content, createTime, priority, isSensitive)
+shenhe_common(id, content, createTime, priority, isSensitive)
+report_data(id, date_created, content, priority, is_sensitive)
+meta(key, value)
+```
+
+设备检查只读、未写入远端、未发起网络请求；公开报告不包含真实行值、
+账号、设备 ID 或带哈希的数据库文件名。
 
 ## 7. 数据范围判断
 

@@ -60,7 +60,21 @@ age gate 接口使用 `birthday`、`parent_email`、`status`、`ticket_id`
 等字段。年龄门不是一个客户端布尔开关：它依赖服务端 ticket 和
 header 重新进入认证链。
 
-## 6. 未测试声明
+## 6. 实时面握手与记录密钥
+
+实时面使用内嵌 mbedTLS 的 TLS/DTLS 状态机：`mbedtls_ssl_handshake`、
+`mbedtls_ssl_derive_keys`、`master secret`、`key block`、
+`premaster secret` 和 extended master secret 均有静态字符串与调用位置。
+握手完成后，per-direction record key 与 4 字节固定 nonce 由 key block
+派生；每个 record 再拼接 8 字节显式 nonce，并把 13 字节 record 元数据
+作为 AAD。AES-GCM/AES-CCM 的 tag 为 16 字节，short-tag suite 为 8 字节。
+
+suite 名称由握手动态协商，包内没有实际流量可证明某台服务器固定选择
+哪一个 suite；但 record 分派已确定只接受 GCM/CCM 两种 AEAD mode。
+账号面的 cookie/DS/Aigis 链与实时面的 TLS/DTLS 握手是两条不同认证链，
+不能把 `DS` 当作游戏 wire 密钥或服务端授权凭据。
+
+## 7. 未测试声明
 
 本报告没有验证密码、第三方 OAuth、token 有效期、服务端是否接受伪造
 签名、验证码是否可重放，也没有提供绕过认证或风险验证的方法。签名和

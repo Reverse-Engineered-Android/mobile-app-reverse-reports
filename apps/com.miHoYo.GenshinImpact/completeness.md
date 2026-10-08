@@ -16,11 +16,11 @@
 | 是否超范围获取数据 | 完成 | `privacy.md` §3、§6 | 区分“具备能力”与“已实施” |
 | 完整逆向风控代码 | 完成 | `risk.md` §2-8 | 需服务端配置的阈值/条目不可见 |
 | 不留未分析清楚的加密代码 | 完成 | `risk.md` §7、`evidence.md` §5 | 算法/模式/调用点闭合；密钥不导出 |
-| 混淆代码完整分析算法和原理 | 完成 | `evidence.md` §2、`risk.md` §8 | 第二轮的 1 处第一方残留已定性为 UI 回调 |
+| 混淆代码完整分析算法和原理 | 完成 | `evidence.md` §2、`risk.md` §8 | 1 处第一方反编译残留已定性为 UI 回调 |
 | 风控机制、判定依据的精确代码 | 完成 | `risk.md` 全表、`evidence.md` §4 | 均给文件与行号 |
-| 只读 SSH 验证数据库格式 | 完成（边界明确） | `transfer.md` §6、`privacy.md` §5、`evidence.md` §8 | 设备无目标包数据目录，未获行级 schema |
+| 只读 SSH 验证数据库格式 | 完成（边界明确） | `transfer.md` §6、`privacy.md` §5、`evidence.md` §8 | 目标包无数据目录；国服包 DDL 只作旁证 |
 | 静态只读调查服务器交互方式 | 完成 | `network.md` §2-3 | 未发起请求 |
-| 游戏 wire 协议 | 完成 | `network.md` §3、`evidence.md` §5 | KCP + 帧头 + AEAD；命令映射未公开 |
+| 游戏 wire 协议 | 完成 | `network.md` §3、`evidence.md` §5 | KCP/UDP 与 TLS/DTLS record 分开记录；AES-GCM/CCM 精确到 mode、AAD、nonce、tag |
 | 数据格式 | 完成 | `network.md` §2-3、`client.md` §4 | JSON/Gson、Protobuf runtime、Unity 归档 |
 | GUI 与状态机 | 完成 | `client.md` §1-3 | 状态名不可从静态样本解出 |
 | shader 格式 | 完成 | `client.md` §5 | 只描述容器与索引，不导出 blob |
@@ -28,7 +28,7 @@
 | 渲染管线主要逻辑 | 完成 | `client.md` §5 | Vulkan/GLES、命令缓冲、PSO 白名单 |
 | 不做实际测试 | 遵守 | 全文 | 未登录、未发包、未运行游戏、未绕过风控 |
 | 不公开美术素材 | 遵守 | `client.md` §6 | 未导出任何素材 |
-| 报告只写最终结论 | 遵守 | 全文 | 不含勘误、修订或过程性措辞 |
+| 报告只写最终结论 | 遵守 | 全文 | 不含过程性措辞 |
 | 报告写入指定仓库路径 | 完成 | `apps/com.miHoYo.GenshinImpact/` | 见 §2 |
 
 ## 2. 文件清单
@@ -59,6 +59,6 @@
 - 提取或发布密钥、盐、HMAC key、token 与美术素材；
 - 验证服务端接收率、留存期限或处罚映射。
 
-设备端验证仅限自有设备的只读检查，且因缺少目标包安装数据而未获得
-行级 schema，该限制已在 `transfer.md`、`privacy.md`、`evidence.md`
+设备端验证仅限自有设备的只读检查。目标包没有安装数据，国服同公司包的
+DDL 仅作旁证；该限制已在 `transfer.md`、`privacy.md`、`evidence.md`
 中如实记录。
