@@ -181,7 +181,27 @@ XML 容器解析和错误分支均已落到具体地址或字节规则，没有�
   契约在静态分析中已归入安全/遥测 surface；它不改变 HTTP 请求报文
   格式。
 
-### 3.4 密码学结论
+### 3.4 SafeToken 与 deviceTokenSign 的 native 闭包
+
+Java 合同固定为：操作码 `1/2/3/4/5/6` 分别对应 `saveToken`、`isTokenExisted`、`removeToken`、`encryptWithToken`、`decryptWithToken`、`signWithToken`；`getOtp` 走命令 `12102`。空 key 抛出 `SecException("", 1601)`，`saveToken` 用 UTF-8 编码 salt 后把参数交给命令 `12101`。命令映射为 `(1,21,1) → 0xb6594`、`(1,21,2) → 0xb7448`、`(1,21,3) → 0xb5f88`、`(1,21,4) → 0xb671c`、`(1,21,5) → 0xb7160`。
+
+`deviceTokenSign` 的直接生成点也闭合：`AlibabaSecurityTokenService.sign(String, TreeMap<String,String>)` 遍历 `TreeMap` 后拼接 `key=value` 并以 `&` 分隔，用 UTF-8 字节调用 `signWithToken(key, bytes, 0)`。全字段存在时的字典序为 `actionType, appKey, appVersion, autoLoginToken, havanaId, sdkVersion, timestamp`；自动登录与登录控制流直接使用该签名。
+
+native 侧执行链是 `0xb6594 → 0xb7448 → 0xb9a40 → singleton@0x2c7030 → vtable+0x38 → 0xb8588`。单例由 nested `0xbd2cc`、main `0xba834` 与 extra `0xbbf90` 组装；main 对象 +0/+8 为 `0x145724(0xbab84)` 返回的两侧资源，+16/+24 为运行时字符串，+40/+48/+56 分别指向 `0xbac88`、`0xbae6c`、`0xbb17c`。这些入口执行表格/对象查找、字段遍历和结果分发，非 AES/HMAC 原语。
+
+混淆字符串恢复的三条可重放公式：
+
+| 地址/函数指针 | 输出与长度 | 公式 |
+|---|---|---|
+| `0x53854`，`[0x219920]` | `0x2c6fda`，3 字节 | `out[i] = (key[i % keylen] XOR src[i]) + code`，key=`0x2a0a10`，keylen=2，code=0xa3 |
+| `0x538f0`，`[0x219928]` | `0x2c6fdd`，14 字节 | `out[i] = key[i % keylen] XOR (src[i] - code)`，key=`0x230ce4`，keylen=4，code=0x81 |
+| `0x5398c`，`[0x219930]` | `0x2c6feb`，5 字节 | `out[i] = (src[i] XOR code) - key[i % keylen]`，key=`0x2a0a23`，keylen=2，code=0xa7 |
+
+`0xb7984` 是 `__vsnprintf_chk`，先按 20 或 60 字节目标格式化，再把 `_` 替换为 `~`，最终得到身份串 `SGSAFETOKEN`。错误常量 `0x186ad=100013`、`0x186ae=100014`；`-3/-4` 是结果序列化值，不是加密输出。
+
+SafeToken 核心链的 21 个首个块 opaque branch 已用 Unicorn 求值并修补为直接跳转后反编译，函数边界为 `0xb5f88/0xb6488`、`0xb6594/0xb663c`、`0xb671c/0xb67c0`、`0xb7160/0xb7444`、`0xb7448/0xb7984`、`0xb8588/0xb929c`、`0xb9a40/0xb9cf0`、`0xba834/0xbab84`、`0xbac88/0xbae6c`、`0xbae6c/0xbb17c`、`0xbb17c/0xbb300`、`0xbb400/0xbb81c`、`0xbb81c/0xbba94`、`0xbba94/0xbbf90`、`0xb80e4/0xb8588`、`0xbd2cc/0xbd3cc`、`0xbd3cc/0xbd91c`、`0xbd91c/0xbdccc`、`0xbdccc/0xbe11c`、`0xbe11c/0xbe428`、`0xbea34/0xbec50`。该 ELF 无 AES S-box、SM3 IV 或 OpenSSL/crypto 动态符号；文件偏移 `0x24410` 存在 SHA-256 初始状态，但未在上述链中发现直接引用。结论是 SafeToken 使用封装在对象/表格序列化与结果分发中的自定义引擎，不写成 AES/HMAC。
+
+### 3.5 密码学结论
 
 报告涉及的加密/混淆 surface 均有以下之一：
 
@@ -263,6 +283,7 @@ SecurityGuard/安全框架，27 个落入“签名/摘要/加密用途”，两�
 | 419/420 | `AntiAttackAfterFilter:32-75` / `AntiAttackHandlerImpl` |
 | 接口锁 | `ApiLockHelper.LOCK_PERIOD = 10` |
 | 调用采样 | `PrivacyDoubleListDelegate` JSON `pn/rid/act/lmt/crt/dh` |
+| SafeToken native 闭包 | §3.4 命令映射、执行链、对象布局、字符串公式与函数边界 |
 
 ### 5.3 隐私与权限
 
@@ -326,5 +347,5 @@ yk_gaiax.db
   公式、Java/native 方法地址、静态阈值、schema、导出组件数。
 - **结构已证实**：native 风控 wrapper 转发关系、Java/native 评分
   对拍、外壳解码后 ZIP 结构、调用链与参数映射。
-- **不可证**：服务端实际校验、评分权重、封禁动作、隐私政策服务端
-  版本、真实请求内容；本报告未做任何实际测试。
+- **服务端裁决**：服务端实际校验、评分权重、封禁动作、隐私政策服务端
+  版本和真实请求内容由服务端执行；本报告未做任何实际测试。

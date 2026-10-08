@@ -590,7 +590,7 @@ public interface FingerprintService {
 （`com/ali/user/mobile/service/FingerprintService.java`）实现方由宿主应用
 注册（`ServiceFactory.getService(FingerprintService.class)`），大麦包内
 **没有该接口的实现类**；`ERROR_CRYPTO_NOT_INIT = 100` 表明密码学初始化
-在实现方内部，本次静态分析无法进入，标记为宿主/外部边界。
+在实现方内部，静态结论停在宿主/外部服务边界；大麦包内只保留接口与调用面。
 
 ### 5.4 RSA 密码上行
 

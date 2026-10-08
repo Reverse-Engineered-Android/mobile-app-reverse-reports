@@ -128,5 +128,5 @@ miniAppKey & reqAppKey & accessToken & openBizData`，其中 `MD5(data)` 是
 
 ### 1.8 完成度
 
-逐项核对见 [completeness.md](completeness.md)。全部结论限定在“客户端能证明
-什么”的层级；服务端评分、留存与处罚不写入事实断言。
+逐项核对见 [completeness.md](completeness.md)。全部结论限定在客户端代码证据层级；服务端评分、留存与处罚由服务端执行，
+不写入客户端事实断言。

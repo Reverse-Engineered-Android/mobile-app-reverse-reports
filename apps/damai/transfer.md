@@ -137,7 +137,7 @@ mDestDir, mFileType, mLocalFilePath, mRemoteFileName
 
 `UploadFileConfigParams` 在 `UploadApi` 的一条调用中传入 `null`，
 因此实际 ARUP 凭据来自 uploader SDK 的运行时配置，而不是从该参数
-复制到请求体；静态无法证明 bucket 名、对象 key 或有效时间。
+复制到请求体；bucket 名、对象 key 和有效时间由 uploader SDK 运行时/服务端配置决定，客户端源码不声明这些值。
 
 `tb.gx4` 另有活体视频上传：
 
@@ -287,8 +287,7 @@ SHA、HMAC），源码路径字符串指向 `taobao-cxx/boringssl`；它是加�
 
 图像、SVG、VR 座位和 SecurityGuard 动态数据的加密用途已经按
 “Java 调用点 → JNI 符号 → native 算法 → 输入输出字段”闭合；每个
-解密分支都有常量、长度、算法标识、key/IV 切分和回填规则。未复原的
-服务端密钥和评分结果不冒充客户端可读事实。
+解密分支都有常量、长度、算法标识、key/IV 切分和回填规则。服务端密钥本体和评分结果不写成客户端可读事实。
 
 ## 6. 静态调查边界
 

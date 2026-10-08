@@ -147,8 +147,8 @@ Java 层不实现这些插件的密码算法，而是把 `requestType`、数据�
 SecurityGuard native/plugin；MTOP 的 `requestType=7`、AVMP
 `mwua/sgcipher` 与 body 数据入口见 [auth.md](auth.md)。涉及的
 `libsgmainso-6.8.260704.so` / `libsgmisc.so` 作为安全插件载荷存在，
-但接口、状态码和输入输出合同已由 Java 层闭合，不把其内部黑盒结果当作
-未知算法写入业务协议。
+但接口、状态码和输入输出合同已由 Java 层闭合；SafeToken 的 native 链与自定义
+引擎已单列，业务协议不再引入额外未知算法面。
 
 ## 3. BehaviX 行为评分
 
