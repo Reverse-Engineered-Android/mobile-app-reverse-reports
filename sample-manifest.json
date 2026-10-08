@@ -167,6 +167,19 @@
           "sha256": "d8e74cf3ce4e4332af75920035590979e4347938c65a6d2fc73627b0c132d98e"
         }
       ]
+    },
+    {
+      "app": "LiveLab",
+      "package": "cn.com.livelab",
+      "version_name": "3.42.0",
+      "version_code": 362,
+      "files": [
+        {
+          "name": "livelab-3.42.0-arm64.apk",
+          "size": 84046532,
+          "sha256": "b00ea747c55ad39b4075745577e97d8d0ce6cc1f068a9bf4b11dc68eb7c9063e"
+        }
+      ]
     }
   ]
 }
