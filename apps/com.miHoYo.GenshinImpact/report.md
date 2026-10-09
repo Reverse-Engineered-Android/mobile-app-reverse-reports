@@ -17,7 +17,9 @@ JADX 使用 `--show-bad-code --deobf` 完成 14,357 个 Java 文件的结构恢�
 第一方 `com.miHoYo`/`com.mihoyo`/`com.hoyoverse`/`com.astrolabe`/
 `com.combosdk` 关键路径可读，残留告警来自结构恢复而不是未知算法。
 native 使用 ELF 动态符号、AArch64 反汇编、字符串交叉引用和 Java JNI
-调用链闭合。调查全程静态只读，没有发包、登录、抓包、绕过或游戏运行。
+调用链闭合；IL2CPP 还核对了可执行段、FDE 函数边界、私有元数据容器、
+BuildSettings 场景和 GC/线程状态桥。调查全程静态只读，没有发包、
+登录、抓包、绕过或游戏运行。
 
 ## 2. 最终结论
 
@@ -136,6 +138,7 @@ SystemProperties；`hasOpenDebugMode` 读取 `adb_enabled`；
 | 提权 | 未发现 Android UID/系统权限提升链 | 中（静态未发现） |
 | 未经告知/超范围 | 设备环境和设备指纹采集路径明确，consent 默认拒绝但存在 skip 路径 | 高（客户端路径），服务端未观测 |
 | 加密是否留盲区 | MD5、HMAC-SHA1、AES-128-OFB、ARC4、Tink AES-256-GCM、SaltSign、AES-GCM/AES-CCM 均已映射到用途、算法和调用点；密钥不公开 | 高 |
+| IL2CPP 与 GUI 状态机 | `libyuanshen.so` 含 207,612,312 字节可执行 `il2cpp` 段；BuildSettings 含 6 个应用场景，Animage/Animator 并存，`GameStateService` 桥接 IL2CPP GC/线程状态 | 高（ELF、元数据、Unity 文件、JNI），私有类型/方法名表不可读 |
 
 ## 4. 最终判断
 
@@ -146,4 +149,7 @@ SystemProperties；`hasOpenDebugMode` 读取 `adb_enabled`；
 这是明确的本地授权缺口，但不是已证明的系统提权。隐私上存在“设备指纹
 和环境状态可在 consent 默认拒绝路径下被组装”的超范围风险，是否实际
 上传及服务端保存范围必须由授权服务器日志或流量验证，本次静态任务不作
-该项声称。
+该项声称。客户端状态面由 `BundleDownload`/`PSPrepare`、`Login`、
+`Home`、`Level`/`Game` 场景与 Animage/Animator 状态机分层承载；具体
+托管转移条件受私有 `MHY` 元数据 schema 限制，报告只给出可复现的
+结构、字符串和运行时桥，不虚构转移边。

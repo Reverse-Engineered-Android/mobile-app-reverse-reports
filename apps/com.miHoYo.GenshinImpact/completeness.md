@@ -22,7 +22,8 @@
 | 静态只读调查服务器交互方式 | 完成 | `network.md` §2-3 | 未发起请求 |
 | 游戏 wire 协议 | 完成 | `network.md` §3、`evidence.md` §5 | KCP/UDP 与 TLS/DTLS record 分开记录；AES-GCM/CCM 精确到 mode、AAD、nonce、tag |
 | 数据格式 | 完成 | `network.md` §2-3、`client.md` §4 | JSON/Gson、Protobuf runtime、Unity 归档 |
-| GUI 与状态机 | 完成 | `client.md` §1-3 | 状态名不可从静态样本解出 |
+| GUI 与状态机 | 完成 | `client.md` §1-3、`il2cpp.md` §5 | BuildSettings/Animage/GUI 层级可读；私有托管方法名表不可读 |
+| IL2CPP 代码 | 完成 | `il2cpp.md` §1-4 | 静态链接段与 FDE 已索引；不声称私有元数据已解密 |
 | shader 格式 | 完成 | `client.md` §5 | 只描述容器与索引，不导出 blob |
 | 美术素材格式 | 完成 | `client.md` §4 | 只描述容器格式，不发布素材 |
 | 渲染管线主要逻辑 | 完成 | `client.md` §5 | Vulkan/GLES、命令缓冲、PSO 白名单 |
@@ -44,6 +45,7 @@
 | `permissions.md` | 27 权限、13 导出组件、越权/提权 |
 | `privacy.md` | consent 闸门、采集面、超范围判断 |
 | `client.md` | GUI、状态机、shader、素材格式、渲染管线 |
+| `il2cpp.md` | IL2CPP 代码布局、元数据边界、GUI/应用状态机 |
 | `evidence.md` | 哈希、源码位置、native 地址、证据等级 |
 | `completeness.md` | 本矩阵 |
 

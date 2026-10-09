@@ -72,13 +72,18 @@ Animage 状态机共存。实体状态（角色/场景/UI）由 IL2CPP 托管代
 没有可读的 `.proto` 或状态转移表被解出，因此只描述机制层级，不虚构
 具体状态名。
 
+BuildSettings 的应用级场景为 `BundleDownload`、`Game`、`Home`、
+`Level`、`Login`、`PSPrepare`，另有 `cloud`/`zxing` 辅助字符串；GUI
+层级、IL2CPP 容器和 `GameStateService` JNI 桥的精确证据见
+[`il2cpp.md`](il2cpp.md)。
+
 ## 4. 资源格式
 
 | 层 | 格式 | 证据 |
 | --- | --- | --- |
 | IL2CPP 元数据 | `global-metadata.dat`，80,748,928 字节 + `global-metadata.md5` | `assets/bin/Data/Managed/Metadata/` |
 | Unity 数据 | `level0`、6 个 `sharedassets*.assets` | `assets/bin/Data/` |
-| 资源块 | `AssetBundles/blocks/<NN>/<id>.blk`，含 `data/res/silence_revision` | `assets/AssetBundles/` |
+| 资源块 | 29 个 `AssetBundles/blocks/<NN>/<id>.blk`，magic `Blb\x03` + 两个 u32 头字段 | `assets/AssetBundles/` |
 | 音频 | `AudioAssets/Minimum.pck`（CRI）、`VideoAssets/*.blk` | `assets/` |
 | 清单 | `svc_catalog`（175,628 字节，`Assets/Standard Assets/ShaderVars/...` 列表） | `assets/` |
 | 配置 | `asb_settings.json`、`hardware_model_config.json`、`vulkan_gpu_list_config.txt` | `assets/` |
@@ -87,11 +92,14 @@ Animage 状态机共存。实体状态（角色/场景/UI）由 IL2CPP 托管代
 `asb_settings.json` 给出 `variance: 7.1_rel` 与
 `ysdownload.mihoyo.com/bh4/GenshinDownloads/` 下的 `game_res`、
 `design_data` 两个下载根，说明资源按“包内基础 + 远端增量”分层，
-`AssetBundles/data_revision` 等文件是版本锚点。
+`AssetBundles/data_revision`、`res_revision`、`silence_revision` 是
+8 字节版本锚点。
 
 Unity 版本由 `libyuanshen.so` 常量确认为 `2017.4.30f1`；AssetBundle 头
 `CAB-<hash>`、`SerializedFile` 版本校验与 `AssetBundleManifest`
-字符串说明资源为标准 Unity 归档，其中 `ETC2` 等表示 Android 纹理编码。
+字符串说明包内 Unity 序列化资源具备标准字段；外层 `Blb` 资源块仍按
+私有封装记录，不能把整个块标为 UnityFS。`ETC2` 等表示 Android 纹理
+编码。
 
 ## 5. Shader 与渲染管线
 
@@ -141,4 +149,3 @@ HK4EUpload: Vulkan PSO / [SetVulkanDeviceConfig] / vkAcquireNextImageKHR / Swapc
 AssetBundle、纹理、模型、动画、音频、shader blob 或美术素材，也不提供
 解包/还原工具。`blocks/*.blk` 仅作为格式证据被计数，其内容未在公开
 文档中展示。
-

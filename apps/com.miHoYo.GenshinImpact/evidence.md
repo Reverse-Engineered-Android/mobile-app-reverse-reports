@@ -189,6 +189,20 @@ _ZN12combo_crypto18AESModeOfOperation7EncryptEPhiS1_i / Decrypt
 Unity 版本常量 `2017.4.30f1` 在 `libyuanshen.so` 中三处出现，另有
 `Invalid serialized file version. ... Expected version: 2017.4.30f1`。
 
+IL2CPP 与 GUI 状态机的可复现证据：
+
+| 证据 | 结果 |
+| --- | --- |
+| `libyuanshen.so` `il2cpp` ELF 段 | VA `0x7a9490c`，size `0xc5fe998`，AX |
+| IL2CPP 段边界 | `__start_il2cpp=0x7a9490c`、`__stop_il2cpp=0x140932a4` |
+| `.eh_frame_hdr` | version 1、`fde_count=1268337`、table encoding `0x3b` |
+| 元数据头 | `4d48590000000000`，无 `0xFAB11BAF` |
+| BuildSettings 场景 | `BundleDownload`、`Game`、`Home`、`Level`、`Login`、`PSPrepare` |
+| `GameStateService` JNI | GC 事件指针、共享内存 fd/ptr、直接 ByteBuffer、线程时间线 |
+| 资源块头 | 29/29 为 `Blb\x03`，随后 u32 变长字段与常量 `5` |
+
+详细地址、字符串偏移、可读/不可读边界见 `il2cpp.md`。
+
 ## 7. 证据等级
 
 | 等级 | 含义 |

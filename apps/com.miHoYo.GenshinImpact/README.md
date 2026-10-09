@@ -16,7 +16,7 @@ asset 文件、80.75 MB IL2CPP metadata 和二次反编译结果进行静态调�
 | 下载 | 配置、ABTest、语言包、字体、热修、资源 CDN、活动配置和设备指纹扩展配置 |
 | 越权/提权 | `GameStateService` 为无权限保护的 exported Binder；10 个命令可被本机任意应用调用，其中 OEM 通知命令另有白名单，其余无调用方身份校验。未证明 Android UID/系统权限提升 |
 | 告知 | Firebase analytics/ad consent 默认拒绝，`skipConsent()` 例外自动授予；设备指纹字段明显超出最小统计范围，是否实际发送仍需服务器侧确认 |
-| 客户端 | Unity/IL2CPP 游戏进程、Combo SDK Activity、AIDL `GameStateService`、Animage StateMachine、AssetBundle/SerializedFile、Vulkan/GLES 与 GXM/Filament 类命令缓冲渲染链 |
+| 客户端 | 静态链接 IL2CPP 主库、BuildSettings 六场景状态面、Animage/Animator 双状态机、Combo SDK Activity、AIDL `GameStateService`、`Blb` 资源块与 Vulkan/GLES/GXM/Filament 渲染链 |
 
 ## 文件
 
@@ -28,6 +28,7 @@ asset 文件、80.75 MB IL2CPP metadata 和二次反编译结果进行静态调�
 - [权限与导出面](permissions.md)
 - [隐私与告知](privacy.md)
 - [客户端、GUI、状态机与渲染](client.md)
+- [IL2CPP 与 GUI 状态机](il2cpp.md)
 - [证据索引](evidence.md)
 - [完成度](completeness.md)
 
