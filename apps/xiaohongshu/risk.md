@@ -99,7 +99,7 @@ protobuf schema 字符串按以下命名空间出现：
 
 ## 4. JS 指纹与伴随组件
 
-- 隐藏 WebView/独立服务运行 `fpjs2.min.js`。
+- `XhsJsService` / `XhsJsJobService` 在 manifest 中声明于 `:jsfp`，但 21 个 DEX 的全量引用扫描未找到启动路径；`fpjs2.min.js` 只是 Java 字符串，不是样本资产。
 - 结果使用 AES-CBC 加密写入本地 JS 指纹缓存，任务结束后清理。
 - WebView monitor context 的 Java 模型可携带用户 ID/token、hash 过期信息、用户/track session、设备、屏幕、网络和 App build 字段。
 - `libtinyd.so` 和 `com.xingin.tiny.daemon` 具备伴随/守护特征。

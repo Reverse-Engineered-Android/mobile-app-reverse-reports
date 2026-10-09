@@ -38,7 +38,7 @@ userInfo.setIdToken(str3);
 - 掉线原因走独立端点 `api/sns/v1/user/login/sid_reason`（`IDeviceService`，`@o` + `@d Map<String,String>` 表单体）。
 - 设备管理走 `api/sns/v1/user/login/devices/history` 与 `api/sns/v1/user/login/devices/remove/history`（同服务）。
 
-**关于 Cookie：API 主链路不使用 Cookie（已证，非“未闭环”）**
+**关于 Cookie：API 主链路不使用 Cookie**
 
 “静态检索 0 命中”不足以成为结论。本节给出可复核的结构性证据：
 
@@ -63,7 +63,7 @@ userInfo.setIdToken(str3);
 | `com.hpplay.nanohttpd...Cookie`、`okhttp3.CookieJar`（`classes19`）、`io.ktor.http` | 投屏 HTTP 服务端 / 其他库 |
 | `com.alipay`、`com.google.android.gms.auth.CookieUtil` | 支付宝、GMS 第三方 |
 
-**结论**：Cookie 的作用域是 **WebView/H5 与第三方 SDK**，**不参与 API 请求签名或鉴权**。因此 Cookie 作用**无需运行时抓包即可确定**；剩余运行时未知项只有服务端 `http_range_size` 取值与 CDN `Accept-Ranges`。
+**结论**：Cookie 的作用域是 **WebView/H5 与第三方 SDK**，**不参与 API 请求签名或鉴权**。该结论由客户端拦截器链和 `CookieJar` 构造点直接确定。服务端 `http_range_size` 取值与 CDN `Accept-Ranges` 是下载运行期输入/响应属性，不影响本节的认证结论。
 
 ## 4. 设备层：`deviceId` / `fid` / `smid`
 

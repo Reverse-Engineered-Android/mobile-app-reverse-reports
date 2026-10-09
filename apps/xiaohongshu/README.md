@@ -11,9 +11,9 @@
 - 请求签名、设备指纹、环境完整性、人机验证、账号风控与推送 SDK 策略。
 - 权限清单与弹框链路、内部隐私合规框架、声明与实际采集对照、隐私协议措辞与上传范围对照。
 
-入口：
+唯一最终结论入口：
 
-- [综合报告](report.md)
+- [综合报告（唯一最终报告）](report.md)
 - [网络与认证](network.md)
 - [上传下载范围](transfer.md)
 - [本地存储与解密](storage.md)
@@ -23,14 +23,14 @@
 - [分析完成度矩阵](completeness.md)
 - [权限弹框、数据采集与隐私协议对照](privacy-and-permissions.md)
 
-## 原生加密与传输深挖（独立补充）
+## 原生加密与传输证据附录
 
-另有独立的深挖批次，覆盖原生加密算法的逐字节恢复与传输链路逐点定位，入口为 [deepdive/](deepdive/README.md)：
+证据附录覆盖原生加密算法的逐字节恢复与传输链路逐点定位，入口为 [deepdive/](deepdive/README.md)。这些文件提供地址、反汇编、测试向量和审计依据，不构成第二份最终结论：
 
 - `libxyass.so` RC4 外层、定制 HMAC-H（含 64 轮调度）、`0x50010` type 6/7 会话变换的常量池/依赖矩阵/确定性向量，以及 CFF 转移图的饱和枚举（412 site / 767 边 / 417 目标）与选择层分类（FIXED/BASE/DATA）。
 - `libtiny.so` 内联 X25519 域运算、两个字符串解码器的闭式还原（320 调用点解出 312 条明文）、内嵌 Lua 解释器标识符；以及**全应用 164 个 `.so` 的混淆形态普查**（重度 CFF 仅 `libtiny.so` / `libtinyd.so` / `libxyass.so` 三个）。
 - 上传 permit/去重/分块/云厂商分支与令牌全字段；下载 Range 构造点与总长解析。
 - 原生请求的拦截器链、协议映射与认证字段来源。
-- 该批次与上述文件集**互补而非替代**，口径差异见 [deepdive/README.md](deepdive/README.md)。
+- 证据口径与索引见 [deepdive/README.md](deepdive/README.md)；所有最终结论集中在 [report.md](report.md)。
 
 base APK SHA-256：`0de5ed7daf838bf379d5c069b225910128109e8af132e63b13fc6765c0f7991c`。

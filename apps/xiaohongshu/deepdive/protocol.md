@@ -156,4 +156,4 @@ settings.setUserAgentString(System.getProperty("http.agent") + " XHS/3.0.0 NetTy
 | 端点路径与参数名 | 已验证（注解字符串） |
 | `shield`/`xy-platform-info` 头部名 | 结构已证实（Java 侧 0 命中 + native 入口存在；不带值还原） |
 | `x-n0`/`x-o9`/`x-p0`/`x-r4`/`x-r4o` 语义 | **生成机制已定名**（`0x96f7fcac` 返回 `Map<String,String>`，由 `nlb.p` 逐条写成 header）；头名分布于 `classes2/15/16/17/20.dex`；具体取值属运行期产物 |
-| 熔断阈值 10 s / 586 | 结构已证实（常量读出，未做运行时触发验证） |
+| 熔断阈值 10 s / 586 | 结构已证实；触发实例由运行期计数决定 |

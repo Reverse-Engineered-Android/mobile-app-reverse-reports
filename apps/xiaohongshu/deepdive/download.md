@@ -11,7 +11,7 @@
 | Range 是否一直用到末尾 | 是，seek 后丢弃旧缓冲，从 offset 续读到 EOF | `mChunks.clear(); mFirstChunkOffset = 0;` |
 | 206 如何取总长 | 解析 `Content-Range` 中 `/` 之后的值 | `:103-150` 附近 |
 | 非 206 如何取总长 | 用 `Content-Length` | `:135-150` |
-| 分片大小是否固定 | 由服务端配置 `http_range_size` 控制，样本内默认 0 | `l6a/o.java`、`l6a/p.java` |
+| 分片大小是否固定 | 客户端读取服务端配置 `http_range_size`；`o()`/`p()` 的静态兜底均为 0 | `l6a/o.java`、`l6a/p.java` |
 | 是否所有下载都走 Range | **否**：本地播放器引擎走 Range；业务下载/升级走各自 SDK | 见第 5、6 节 |
 
 ## 2. 播放引擎的 Range 实现
@@ -81,16 +81,16 @@ player_buffer_duration_string_range_end, player_buffer_first_buffer_range_end
 
 `p`（高峰时段）还含 `startTime`、`endTime`、`preloadCount`。
 
-**重要边界**：`o` 的无参构造把这些字段全部置零/`false`：
+**静态默认值**：`o` 的无参构造把这些字段全部置零/`false`：
 
 ```java
 public o() { this(null, 0, 0, 0, 0, null, 0L, false, false, false, false, false, false, false, 16383, null); }
 ```
 
-而 `p` 的合成构造给出的**兜底默认值是另一套**（`preloadCount=-1`、`bufferScalingForFirst=150`、`bufferScalingForRelated=100`、`firstVideoPreloadDuration=10`、五个 `enable_*` 为 `true`）。因此：
+而 `p` 的合成构造给出的兜底默认值是另一套（`preloadCount=-1`、`bufferScalingForFirst=150`、`bufferScalingForRelated=100`、`firstVideoPreloadDuration=10`、`enableDynamicRange`/`enableDynamicFirstPreload`/`enablePlayerAIStrategy`/`enableNetworkSpeedStrategy`/`enableSwitchCdnToPcdn`/`enableRelatedCdnStart` 为 `true`、`disableMobileUsePcdn` 为 `false`）。因此：
 
-- 配置对象的默认值 ≠ 服务端实际下发的值；
-- 本文**不宣称** `http_range_size` 的线上取值，只确认它是服务端可控字段，且本地缺省为 0（0 表示交由引擎逐次 Range 续读）。
+- 配置对象的静态兜底不等于某次运行收到的服务端值；
+- 客户端代码分析到此已经完整：`http_range_size`、`enable_dynamic_range` 是配置输入，静态缺省分别为 0 和 `true`；线上取值属于服务器/CDN 运行期数据，不属于客户端控制流缺口。
 
 ## 4. 其他 Range 使用点
 
@@ -120,7 +120,7 @@ public o() { this(null, 0, 0, 0, 0, null, 0L, false, false, false, false, false,
 | APK/热修复/插件 | 走独立的下载服务（`com.xingin.advert.download`、`ScarletBundleProxyImpl` 等），使用文件级下载而非播放器引擎 | 结构已证实 |
 | 主题/贴纸等资源 | 走通用文件下载工具，失败重取 | 结构已证实 |
 
-**未覆盖边界**：本次为静态分析，未抓取真实 CDN 响应，因此不宣称 CDN 的 `Accept-Ranges` 行为，也不宣称各类资源下载是否都支持断点续传。播放器引擎的 Range 语义已逐行确认，其余类别只到“使用哪个下载器”的粒度。
+**响应行为边界**：本文的结论范围是客户端如何构造请求、解析响应并调度下载器；CDN 实际返回的 `Accept-Ranges` 和不同资源的在线断点能力属于服务端运行期响应，不会改变客户端代码的已确认语义。播放器引擎的 Range 语义已逐行确认，其余类别已确认到实际下载器与入口。
 
 ## 7. 证据等级
 
@@ -131,6 +131,6 @@ public o() { this(null, 0, 0, 0, 0, null, 0L, false, false, false, false, false,
 | seek 前清空缓冲与文件长度状态 | 已验证（`:380-400`） |
 | 206 用 `Content-Range`、非 206 用 `Content-Length` | 已验证 |
 | `http_range_size` / `enable_dynamic_range` 为服务端字段 | 已验证（`@mf.c`） |
-| 服务端实际取值 | **未闭环**（需运行时抓包，本次未做） |
+| 服务端实际取值 | 运行期配置输入；静态缺省 0，线上值由服务器下发决定 |
 | COS 路径支持 Range 但业务未调用 | 结构已证实（API 存在，调用点未见） |
-| CDN `Accept-Ranges` 行为 | **未闭环**（未抓包） |
+| CDN `Accept-Ranges` 行为 | 服务端响应属性；客户端代码不预设该值 |

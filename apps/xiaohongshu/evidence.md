@@ -172,7 +172,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | --- | --- |
 | 设备指纹 | `pt.a`、Java collectors、`libxyasf.so` |
 | 环境检测 | native strings/imports：root、ptrace、maps、Xposed、VirtualApp、Widevine |
-| JS 指纹 | `XhsJsService`、`fpjs2.min.js`、AES-CBC 缓存 |
+| JS 指纹 | `XhsJsService`/`XhsJsJobService` manifest 声明、AES-CBC 缓存读写；服务启动路径与 `fpjs2.min.js` 文件体均未出现 |
 | 守护/混淆 | `libtinyd.so`、`com.xingin.tiny.daemon`、`@u5`/`@v5` 加密字段名（519 站点已解）、字符串解密 811/811 调用点已解（daemon dex 三层混淆另见 §9.7）、Tiny opcode 分发 |
 | 账号风险 | `IRiskService`、登录风险状态、self-resolve |
 | 验证码 | Walify、ValidateActivity |
@@ -200,13 +200,13 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 定制摘要压缩轮 | 行为级闭环；字节级实现不公开 |
 | 会话 token 派生/type 6-7 | 调用/长度/状态边界闭环；秘密变换不公开 |
 | Tiny 加密 blob | loader/opcode 边界闭环；payload 不作为公开代码 |
-| `user_token` Java 使用点 | 已枚举；native/反射路径可能仍有遗漏 |
-| `device_password` 普通 API/持久化调用点 | 未找到；模型/开关/设备注册风格 body 已确认 |
+| `user_token` Java 使用点 | 全 22 dex 的直接调用、反射字符串与生成模型已枚举 |
+| `device_password` 普通 API/持久化调用点 | 全样本静态扫描为零；模型/开关/设备注册风格 body 已确认 |
 | XHS native 风控 URL/transport/上传容器 | 已闭环 |
 | native protobuf 字段号与变换算法 | 字段名/上传容器闭环；私有变换不公开 |
 | 长连接 protobuf 字段号和 wire 类型 | 已闭环 |
 | 长连接 key/IV 派生和外层 frame 头 | 协商边界闭环；运行时秘密派生不公开 |
-| 隐私协议正文 | 9 条 H5 URL 已知；正文不在样本内，需网络侧获取 |
+| 隐私协议正文 | 9 条 H5 URL 已知；本研究保持只读静态边界，不把远端网页正文计入样本证据 |
 | 基础模式上报签名 salt | 结构 `MD5(deviceUuid+timestamp+salt)` 已确认；32 位十六进制 salt 不公开 |
 
 所有地址均相对于对应 ARM64 SO；仓库不包含 APK/DEX/SO、数据库或反汇编全量文件。

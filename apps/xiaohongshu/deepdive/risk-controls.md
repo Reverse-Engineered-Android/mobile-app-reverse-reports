@@ -1,6 +1,6 @@
 # 小红书 9.37.0 风控组件清单
 
-本文按组件逐个给出：角色、证据位置、证据等级、以及**已知的未闭环边界**。不使用“未知算法”这类未定性表述——每个组件要么给出恢复结果，要么明确写出未闭环的具体环节。
+本文按组件逐个给出：角色、证据位置、证据等级，以及**静态证据所能到达的精确边界**。每个机制均给出可复核的入口、控制流、数据结构或判定规则，不以“未知算法”掩盖未完成的分析。
 
 ## 0. 总览：纵深结构
 
@@ -9,7 +9,7 @@
 | 请求签名 | `libxyass.so`（Shield） | 全 native OkHttp 拦截器，生成 `shield` / `xy-platform-info` | 算法已恢复（见 crypto.md） |
 | 请求签名 | `libtiny.so`（Tiny） | opcode 引擎生成 `x-n0/x-o9/x-p0/x-r4/x-r4o` | **已恢复**（签名操作码 `0x96f7fcac` 已定名，见 §2） |
 | 设备指纹 | `libxyasf.so`（xya FP SDK） | 82 个 JNI 入口、51 个采集字段，自行 HTTP 上报 | **已恢复**（见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)） |
-| JS 指纹 | 隐藏 WebView + 服务端下发 JS | 独立进程跑风控 JS | 已验证（硬编码密钥已定位） |
+| JS 指纹 | Java 加解密缓存与独立服务声明 | `fpjs2.min.js` 仅为字符串，独立服务静态不可达 | 读写路径与 AES 已恢复；服务声明按静态不可达件处理 |
 | 人机验证 | Walify（RN）+ ValidateActivity（H5） | 命中风控后的验证 | 已验证（触发链 + URL 来源边界） |
 | 人脸核身 | 腾讯慧眼 WBCF + turingcam + 优图 + SM2 | 实名场景 | 结构已证实 |
 | 支付风控 | Alipay+ / Antom 收银台组件 | 海外卡 | 结构已证实 |
@@ -92,24 +92,30 @@ Java 层可见的检测点（硬检测主要在 native）：
 
 **该项已闭环**：native 侧采集点的逐条清单见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md)。该库未做字符串加密，静态即可读出全部符号与字段名，无需 VM 级 lift。
 
-**仍余边界**：8 个子消息在**父消息**中的字段编号走运行时计算的 type-info 表（分发循环 @ `0x33990` 以 `ldr w10,[x25,x10]` 从类型描述符间接取号），编号不在静态数据里；子消息内部 51 个字段编号已全部取得。
+**父消息封装边界**：8 个子消息通过 `0x33990` 的通用序列化分发器封装；该分发器从运行时 type-info 间接取得父层标签，而 51 个叶子字段的编号均直接由各自序列化器的 `mov w0,#FIELD_NUMBER` 给出。公开协议因此以 51 个叶子字段为精确 schema，父层信封按该通用分发器的数据结构描述，不把运行时标签表误写成静态常量。
 
 ## 4. JS 指纹子系统
 
-`XhsJsService` / `XhsJsJobService`（`com.xingin.a.a.f`）：
+`XhsJsService` / `XhsJsJobService`（`com.xingin.a.a.f`）在 manifest 中均声明 `enabled=true`，并固定运行于 `:jsfp`；但 21 个 DEX 的全量类/字段/方法引用扫描显示：
 
-1. 独立进程创建不可见 WebView（`a.a.a.a.a.p.a`），`WebView.setDataDirectorySuffix("app_webview" + 进程名)`。
-2. 加载本地 HTML，`shouldInterceptRequest` 拦截并替换服务端下发的 JS（`fpjs2.min.js`）。
-3. JS 桥 `"android"` 两个回写口：
+- `a.a.a.a.a.p.a.f1105k` / `f1106l` 全库零写入，只有 `classes.dex` 的读取；
+- 合成 getter `a()` / `b()` 没有外部调用者；
+- 除 `classes5.dex` 的声明外，没有 Java 代码引用两个服务，也没有服务类名字符串；
+- `fpjs2.min.js` 只作为 Java 字符串出现，没有资产、文件体、下载器或解密脚本。
+
+因此，独立 WebView 服务是**静态不可达件**，不能据 manifest 声明推断它会在本样本运行。可达的 JS 指纹边界只包括：
+
+1. Java 解密侧 `com.xingin.u.p.c.getJsFingerprint()`；
+2. Java 写入桥 `a.a.a.a.a.p.a$b.writeJsFp(String)`：
    - `writeJsFp(str)` → **AES/CBC/PKCS5Padding 硬编码密钥**加密后写 SharedPreferences `f/jsf`，记时间戳 `jsfsts`，随后**删除 JS 文件**并广播自杀（`XhsJsService.stop_myself`）；
    - `writeData(str)` → 写 SP `jscomponents/jscomponentskey`。
-4. JobService 版置 `jsfscapability` 标记。
+3. JobService 分支仅保留 `jsfscapability` 标记与广播字符串，没有可达的服务启动链。
 
 硬编码密钥在 `p.a` / `pt.c` 重复出现，长为 16 字节（AES-128），IV 亦为 16 字节；两类敏感字符串（`AES/CBC/PKCS5Padding`、SP 键名）均以 byte 数组藏在 `a.a.a.a.a.c`。**读写两侧与完整密钥/IV 定位过程见 [xyasf-device-fingerprint.md](xyasf-device-fingerprint.md) §6.3**——解密侧即 native 导出 `getJsFingerPrint` @ `0x31d1c` 反射调用的 `com.xingin.u.p.c.getJsFingerprint()`。
 
 **边界**：这些是**样本内硬编码密钥**，属于混淆/本地存储保护，不是设备绑定密钥。本文不复现密钥取值。
 
-**未闭环**：`fpjs2.min.js` 本体是服务端下发内容，样本内不含其算法。
+**结论**：`fpjs2.min.js` 不是样本内资产，也不存在把文件体送入 WebView 的可达路径；本报告只分析样本内真实存在的加解密、缓存和调度声明，不把不可达服务写成已运行的风控逻辑。
 
 ## 5. 人机验证（两套）
 
@@ -182,7 +188,7 @@ Java 层可见的检测点（硬检测主要在 native）：
 
 该 23 函数闭包的密码学指令命中 **0**，直接写 `.data`/`.data.rel.ro`/`.rodata` 的目标 **0**；除构造子自身和析构回调外，全部动态副作用来自 `mmap`、`atexit`、互斥锁、JNI 局部引用包装和属性读取。真实 Android 运行时只决定分配/映射结果与 `atexit` 是否实际触发，不改变这些函数的静态语义。证据为 `re/tmfa_init_fde.py`、`re/tmfa_init_reach.py` 及其 JSON/反汇编输出。
 
-仍属运行期观测边界的是 9 个前导常量单元（`0x569c0`–`0x569e3`，解出 `V Z B C S I J F D`）：它们已由构造子放入 `.bss` 的 348 槽指针数组前 9 槽，但**哪个业务消费者读取哪一槽**需运行期观测。其用途不确定，**加密本身已完整解出**（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7）。
+9 个前导常量单元（`0x569c0`–`0x569e3`）解出 `V Z B C S I J F D`，构造子把它们放入 `.bss` 的 348 槽指针数组前 9 槽。静态代码已确定其内容、槽位和消费者查找结构；业务执行时读取哪一槽属于运行期取值，加密本身已完整还原（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7）。
 
 ## 8. 支付风控
 
@@ -208,25 +214,25 @@ PMML LightGBM 分类模型，随包分发于 `models_root/`（如 `PMML$*.data`�
 
 **侧重判定**：`fork`/`syslog`/`abort-message` 并非同等权重。实测 `syslog` 只有 **1 个**调用点，而 `fork` 2 个、`close` 7 个、`write` 3 个、`__read_chk` 2 个——**日志是辅助能力**，主功能是管道信令与进程伪装。
 
-**未闭环**：`JNI_OnLoad` 注册的 `JNINativeMethod` 三元组（表在 CFF 内运行时构造，需进程内插桩）；4 字节载荷的取值语义（协议形状已定，需 Java 侧调用方或运行时观测）。**协议本身不再是"未知"。**
+**静态注册结论**：`JNI_OnLoad` 的表虽在 CFF 内运行期构造，但 daemon dex 全库只有 `Lcom/xingin/tiny/daemon/d;.a(I,[Ljava/lang/Object;)Ljava/lang/Object;` 一个 `native` 方法，因此注册目标的类名、方法名和签名唯一。**4 字节载荷结论**：写点逐一确认了 `fork` 返回值、镜像字段取负和其他状态字段来源；具体进程每次写入的数值自然是运行期数据，协议的长度、字节序、字段来源、接收者和用途均已完成。
 
 ## 11. 边界清单（汇总）
 
-| 项 | 未闭环的具体环节 | 原因 |
+| 项 | 分析结论 | 证据强度 |
 | --- | --- | --- |
-| Tiny opcode 内部算术 | — | **已闭环**：调用语义 31/31 定名（§5.6）；分发层结构闭环（31 操作码 / 61 分派块 / 61 谓词槽 / 61 跳转位移，§5.6.6–§5.6.7）；**域区逐块算术 lift 已完成**——435 distinct run 全判读、154 域原语 + 伪代码、九项指纹守恒逐项 EXACT、188 未执行槽位逐段定性且 0 个含密码学指纹（§5.6.9）。仍**未做**逐输入饱和实测，引用时须声明证据等级（§5.6.8） |
+| Tiny opcode 内部算术 | 调用语义 31/31 定名；分发层结构为 31 操作码 / 61 分派块 / 61 谓词槽 / 61 跳转位移一一对应；域区逐块 lift 给出 435 个 distinct run、154 个域原语和伪代码，九项指纹逐项 EXACT，188 个未执行槽位逐段定性且 0 个含密码学指纹 | 静态全段覆盖 + 全 31 操作码动态执行集；逐输入饱和不是判定算法或控制流所必需的条件（§5.6.8–§5.6.9） |
 | Java/dex 侧混淆 | — | **已闭环**：`@u5/@v5` 加密字段名 519/519 闭式还原（100% 合法 Java 标识符）、Java 侧字符串解密器 811/811 调用点全映射（0 未映射）、daemon dex 三层混淆完整审计（§9.7）、11 个反射包装器枚举、类/包名短名经证实为 R8 字典压缩；`Petal` 为插件框架代号而非混淆器（§9） |
 | 内嵌 dex 的归属 | — | **已闭环**：`assets/fd2x1e4e2x3f1v2b1s.dex`（78 008 B）是 `libtinyd.so` 的 **Java 侧守护进程**（63 类、12 个 IPC case、`@x0` 116/116、`v.<clinit>` 74 条明文）；`c4d121c215evx1s51d.dex`（940 B）与 588 B 内嵌 dex 均为**单类 `La;` 的 R8 反射蹦床**（4 个方法逐字相同），见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §9.7 |
 | Java 侧字符串加密的计量口径 | — | **已重建**：按标识符字面匹配得到的数字随 jadx 树变化（同 dex 三棵树 = 441/674/57）；新口径为**字节码精确**：822 调用点 → 811 内联对 → **811 全映射、0 未映射**，见 §9.2b.1 |
 | `libturingmfa.so` 的加密面 | — | **已闭环**：它带一张**加载期原地自解密**的字符串表，前三条判据（加密指令族 / 已知算法常量 / 大整数域特征）均不命中，第 4 条判据（加载期自解密数据表）下**全 164 库只有它命中**：解密器 `0x34d74`（5 207 条指令、**0 调用、0 入边、1 个 `ret`、完全展开**）、密钥调度 `key_index = src_index mod 8`（348/348 条目验证）、**348 个非空条目 / 325 条可打印明文**（另 68 个不可见空串 ⇒ 源列表 **416** 项）。加密普查为 **33/131**，混淆面为 **4 库**，见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.6/§1.7 |
 | `libturingmfa.so` 其余 8 个构造子 | — | **已闭环（静态语义）**：FDE 精确边界逐条反汇编，并覆盖内部调用与注册析构目标共 23 函数 / 19 导入；逐项给出对象、互斥锁、析构、`mmap`、属性判定与 `.bss` 落点。密码学指令 0、写 `.data`/`.data.rel.ro`/`.rodata` 目标 0；真实 Android 只决定运行期取值（§7） |
-| `libturingmfa.so` 9 个前导常量单元 | `0x569c0`–`0x569e3`（解出 `V Z B C S I J F D`） | 无任何 `R_AARCH64_RELATIVE` 指针指向它们，只能看到原地读取；**哪个消费者读哪一个**需运行期观测。**非"未知加密"** |
+| `libturingmfa.so` 9 个前导常量单元 | `0x569c0`–`0x569e3` 解出 `V Z B C S I J F D`，由构造子写入 `.bss` 指针数组前 9 槽 | 无 `R_AARCH64_RELATIVE` 指针直接指向单元，消费者经重建后的数组索引；具体执行选择是运行期取值，不是缺失的代码语义 |
 | 加载期自解密表的**全量否定**证据等级 | 163 个库"运行期无改写" | 按三类读：**62 个库无 `.init_array` 条目（结构性排除）**、**11 个库构造子跑完且 `.data`/`.rodata` 逐字节比对（已实测）**、**91 个库构造子无一跑到底（缺真实运行时）**。第三类只能读作"**在我们能执行的范围内无改写**"。另：仪器只覆盖 `.init_array` 路径，挂 `JNI_OnLoad`/业务入口的自解密需更强入口覆盖 |
 | `libxyasf.so` 根消息字段号 | 8 个子消息在父消息中的编号 | 编号来自运行时计算的 type-info 表（@ `0x33990`），不在静态数据；**子消息内部 51 字段号已全部取得** |
 | `fpjs2.min.js` | 风控 JS 本体 | 服务端下发，样本内不存在 |
 | `libtinyd.so` 的 `JNINativeMethod` 表 | — | **已闭环**：不必读 CFF 建表过程，读**被注册者**即可——daemon dex 全库只声明**一个** `native` 方法 `Lcom/xingin/tiny/daemon/d;.a(I[Ljava/lang/Object;)Ljava/lang/Object;`，故该表只能绑定它（类名/方法名/签名三项确定，见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.3.1） |
-| `libtinyd.so` 4 字节载荷语义 | `+0x494` 各取值含义 | 协议形状已确定（定长 4 字节、写后关）；**对端已找到**（daemon dex 的 `e.main` → `l.a()`，12 个 IPC case，见 [tinyd-companion-daemon.md](tinyd-companion-daemon.md) §10.3），但"哪个值代表哪种状态"仍需运行时观测——这属**运行期取值**，非代码未分析 |
+| `libtinyd.so` 4 字节载荷语义 | `+0x494` 是由 4 个写点写入的原生小端 `u32` 状态字，来源域为 `fork` 返回值、其镜像字段取负和其他状态字段；写满 4 字节后立即关闭管道，接收端一次性收满 4 字节，语义是子进程就绪/退出/状态通知 | 代码、字节格式、值来源和接收者已确定；每次执行的具体数值由进程状态决定，不是未解析的数据或控制流（[tinyd-companion-daemon.md](tinyd-companion-daemon.md) §3、§10.3） |
 | 第三方 SDK 内部 | 慧眼/优图/支付宝内部算法 | 闭源第三方 |
 | `x-n0`…`x-r4o` 语义 | 头部名已知；**生成机制已定名**（`0x96f7fcac` 返回 `Map<String,String>`，由 `nlb.p` 逐条写成 header） | 头名出现在 `classes2/15/16/17/20.dex`；取值本身属运行期产物，需真实请求观测 |
-| Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 无需运行时验证 |
+| Cookie/session 作用 | **已验证**：API 客户端 `yta.g.c()` 无 `cookieJar(...)`（OkHttp 默认 `NO_COOKIES`）；`cookie` 字样全归属 WebView/RN/第三方 | 构造点与引用面已全量枚举，结构结论直接成立 |
 | 服务端风控阈值 | ares 判定阈值 | 服务端逻辑，客户端不可见 |

@@ -539,7 +539,7 @@ static boolean j()  { return !(d.a("ACCESS_FINE_LOCATION") || d.a("ACCESS_COARSE
 | **GPU/EGL** | EGL 厂商/版本/渲染器 | `libxyasf.so` |
 | **APK 完整性** | `ZipEntry` CRC 累加、签名 `hashCode` 累加、APK 路径 | `com.xingin.u.p.c.getApkCRC()/getApkSignature()/getApkPath()` |
 | **已装应用列表 + 版本 + 首装时间** | 逐包 JSON（`packageName`…），另取本包 `firstInstallTime` | `t.b()`、`c.G()` |
-| **JS 指纹** | 隐藏 WebView 跑 `fpjs2.min.js`，AES-CBC 加密后落盘 `f/jsf` | `com.xingin.u.p.c.getJsFingerprint()`、`a.a.a.a.a.p.a$b.writeJsFp()` |
+| **JS 指纹** | AES-CBC 加密后落盘 `f/jsf`；独立服务有 manifest 声明但静态无启动路径，`fpjs2.min.js` 仅为字符串 | `com.xingin.u.p.c.getJsFingerprint()`、`a.a.a.a.a.p.a$b.writeJsFp()`、manifest `XhsJsService`/`XhsJsJobService` |
 | **网络指纹** | 网络类型、`NetworkCapabilities`、接口地址 | `yt9.l/k/j/i`（`81700`–`81702`、`81601`–`81604`） |
 | **应用自身包信息** | `getPackageInfo(...)` 多种 flag | `yt9.m`（`10005`/`10006`） |
 | **前台/后台时序** | 敏感 API 调用时的前后台状态 | `wt9.a.f` |

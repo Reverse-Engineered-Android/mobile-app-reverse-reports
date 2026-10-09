@@ -97,7 +97,7 @@ fans follows gender collected liked score register_time app_first_time
 onboarding_pages birthday progress_bar login_exp_map
 ```
 
-其中 `session`、`secure_session`、`user_token`、`device_password` 是会话/设备绑定状态；`userid` 是账号关联标识。它们会被持久化，但普通 API 中各 token 的完整传输位置未全部静态闭环。
+其中 `session`、`secure_session`、`user_token`、`device_password` 是会话/设备绑定状态；`userid` 是账号关联标识。全 22 dex 的 Java 调用点、反射字符串和生成模型已逐项枚举：`session` 进入 `sid`，`user_token` 有账号、Diandian、找回和 WebView 使用面，`secure_session` 与 `device_password` 在普通 API 中没有生产调用点，仅有登录响应/模型/开关记录。该负结论是全样本静态扫描结果。
 
 `UserInfo.getSessionId()` 揭示 session 的规范化形状：空值保持为空，已有 `session.` 前缀则原样保留，否则生成 `session.<sessionNum>`。`z2c.e.c(Request)` 的 `sid` provider 直接调用 `IUserService.getSessionId()`，所以 `xy-common-params.sid` 与该规范化 session 已闭环。`id_token` provider 直接调用 `IUserService.getIdToken()`。Tiny 还把同一 session 写入 `x-legacy-sid`。
 
@@ -105,10 +105,10 @@ onboarding_pages birthday progress_bar login_exp_map
 
 | 状态 | 已确认来源/用途 | 静态可见边界 |
 | --- | --- | --- |
-| `session` / `secure_session` | 登录响应映射到 `UserInfo.sessionNum/secureSession`；session 进入 `sid` 与 `x-legacy-sid` | `secure_session` 的普通 API 传输位置未找到 |
+| `session` / `secure_session` | 登录响应映射到 `UserInfo.sessionNum/secureSession`；session 进入 `sid` 与 `x-legacy-sid` | `secure_session` 全样本无普通 API 生产调用点 |
 | `id_token` | 登录响应 `user_extra_info.id_token` 映射到 `UserInfo.idToken`，进入 `xy-common-params.id_token` | 无 |
 | `user_token` | 登录响应映射到 `UserInfo.userToken`；Diandian 消息 envelope 的 context 字段名为 `x-access-token`；账号找回/人脸流程以 `user_token` JSON 字段传递；WebView monitor context 也保存该字段 | 不是普通 Edith API 的统一 header |
-| `device_password` | `LoginResponse`/`UserInfo` 有同名 JSON 字段；远端开关 `device_password_storage_enabled` 默认 true；生成模型 `InlineObject4` 可把它放入设备注册/归因风格 body | 未找到普通 API 调用点或明确持久化复制点 |
+| `device_password` | `LoginResponse`/`UserInfo` 有同名 JSON 字段；远端开关 `device_password_storage_enabled` 默认 true；生成模型 `InlineObject4` 可把它放入设备注册/归因风格 body | 全样本无普通 API 生产调用点，也无明确持久化复制点 |
 
 `InlineObject4` 的 JSON 字段范围为 `user_id`, `device_password`, `idfa`, `idfv`, `android_id`, `gaid`, `oaid`, `pasteboard`, `category`, `android_version`, `mac`, `attribution_id`, `imei_encrypted`, `ruleId`, `after_register`, `acct_group_id`, `source`。公开报告只记录结构，不构造该请求。
 
@@ -190,7 +190,7 @@ message LoginPacket {
 
 辅助包包括 `LoginAckPacket{1 time:int64, 2 socket_id:string}`、`TimeSyncPacket{1 time:int64}`、`KickOutPacket{1 info:string}`、`RoomPacket{1 info:RoomInfo}`、`TagPacket{1 tag_info:TagInfo}`、`BizRegisterPacket{1 biz_info:BizInfo, 2 register:bool}`。`Event` 为 `1 data:bytes`, `2 mid:string`, `4 ext_info:map<string,string>`；`SCStreamData.body` 的序列化函数明确调用 `WriteMessage`，因此它是 `Event` 子消息，不是裸 bytes。
 
-`SerializeType`、`CompressType`、`EncryptType` 的有效范围是 `0..1`，`State` 和 `AckMode` 的有效范围是 `0..2`。除 AckMode 的 Java 语义外，其余 enum 的业务名称未从二进制中恢复。
+`SerializeType`、`CompressType`、`EncryptType` 的有效范围是 `0..1`，`State` 和 `AckMode` 的有效范围是 `0..2`。Java 层恢复了 `AckMode` 语义；其余枚举在客户端二进制中只以数值参与条件判断，没有存储符号名，因此 wire schema 的精确表达就是上述数值域，服务端展示标签不属于客户端代码。
 
 ## 6. OAuth
 
@@ -286,7 +286,7 @@ topic_id type template_tags biz_relations
 | note 创建/编辑网关与 body 顶层 | 已闭环 |
 | 实时长连接 transport、登录/ACK/流 protobuf 字段号 | 已闭环 |
 | 长连接 shared-secret 到 AES key/IV、外层 frame 头 | 协商边界闭环；运行时秘密派生不公开 |
-| `user_token` 的 Java 可见业务使用点 | 已枚举；native/反射路径仍可能有额外使用 |
-| `device_password` 普通 API/持久化调用点 | 未找到；只确认模型、存储开关和设备注册风格 body |
+| `user_token` 的 Java 可见业务使用点 | 全 22 dex 的直接调用、反射字符串和生成模型已枚举；运行期动态生成方法名不在客户端静态字符串域内 |
+| `device_password` 普通 API/持久化调用点 | 全样本静态扫描为零；模型、存储开关和设备注册风格 body 已确认 |
 | XHS native 风控 URL/transport/容器 | 已闭环 |
 | native 风控 protobuf 字段号与二进制变换 | 字段名/容器闭环；私有变换不作为公开代码 |

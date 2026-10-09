@@ -14,7 +14,7 @@
 | 风控代码 | Shield/Tiny、设备指纹、环境完整性、JS 指纹、验证码/核身、账号处置、推送/策略 SDK | [risk.md](risk.md) | 组件、JNI/Java 入口、采集类别、上报边界和处置链已覆盖 |
 | 加密/签名 | Shield 外层、HMAC 外壳、Tiny 边界、长连接 ECDH/AES/gzip、WCDB/Keystore、联系人 AES | [algorithm.md](algorithm.md)、[storage.md](storage.md) | 只发布已验证的结构和依赖；秘密、白盒表、私钥和可重放实现不进入仓库 |
 | 权限弹框 | 三 APK 权限并集 80 项、三层弹框链路、聚合说明文本生成、电话权限独立节流链路 | [privacy-and-permissions.md](privacy-and-permissions.md) | 权限→弹框→申请三段可核验；不可取消弹窗与基础功能模式降级路径已定名 |
-| 未告知/超范围收集 | 首启文本 13 条覆盖项 vs 实际采集项、8 项越范围/未告知条目与判定依据 | [privacy-and-permissions.md](privacy-and-permissions.md) | 逐项给出类/方法与字节码证据；未闭合项写入该文 §9 |
+| 未告知/超范围收集 | 首启文本 13 条覆盖项 vs 实际采集项、8 项越范围/未告知条目与判定依据 | [privacy-and-permissions.md](privacy-and-permissions.md) | 逐项给出类/方法与字节码证据；发现与判定清单见该文 §9 |
 | 隐私协议对照 | 28 条隐私资源、9 条 H5 正文 URL、内部隐私合规框架 55 个五位数 API 号 + 148 个 AppOps 索引 | [privacy-and-permissions.md](privacy-and-permissions.md) | 协议正文不在样本内为显式边界；措辞落差按中英文资源逐条对照 |
 
 > **深挖批次补充（[deepdive/](deepdive/README.md)）**：上表是上层批次的边界。深挖批次另做了三件本表未覆盖的事——**全应用 164 个 arm64 `.so` 的加密普查**（**33 带 / 131 不带**；口径见下）与**混淆形态普查**（重度 CFF 3 个库 + **1 个无 CFF 的自解密对象**，共 4 个）、**`libtiny.so` 内联 X25519 域运算**的定名（`0x525000`–`0x531e4c`）、以及 **`libtiny.so` 字符串加密的闭式还原**（320 调用点解出 312 条明文，闭环率 100%）。口径与证据见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.5、§2.2.1、§2.4。**另两项**：**`libtiny.so` 域区逐块算术 lift 完成**（435 distinct run 全判读、154 域原语 + 伪代码、九项密码学指纹守恒逐项 EXACT、188 未执行槽位逐段定性且 0 个含密码学指纹，§5.6.9）；以及 **Java/dex 侧混淆审计**（`@u5/@v5` 加密字段名 519/519 闭式还原；Java 侧字符串解密器 **822 调用点按字节码精确计数，811 个内联 (cipher,key) 对全部映射到明文，0 未映射**；11 个反射包装器枚举；**daemon dex 三层混淆完整审计**——字符串 141 调用点、`@x0` 116/116、`@w0` 77 站点、`v.<clinit>` 74 条明文、IPC 12 个命令，§9.2b/§9.7），并**定名 `Petal` 的归属**（插件化框架代号，非混淆器）。
@@ -43,7 +43,7 @@
 1. 已由模拟器或合成向量逐字节验证的算法，给出结构、输入输出和测试向量；秘密通过环境变量或省略。
 2. 只能确认调用边界、字段或密文容器的内容，标记为“结构已证实”，不伪称可重放。
 3. 受 Android Keystore/TEE、服务端下发会话或第三方 SDK 秘密保护的部分，记录 custodian、算法类别和解密前置条件，不导出 key/IV/token。
-4. `libtiny.so` 加密 blob、Tiny opcode payload、TuringFD/WUP 私有 wire 细节不作为公开代码；对应入口和输出 headers/字段仍完整列入证据索引。
+4. `libtiny.so` 高熵区、Tiny opcode payload 和 TuringFD/WUP 的 wire 结构均已分析并列入证据索引；公开仓库省略可重放实现、真实秘密和服务端标签，只保留字段、方向、格式与验证判据。
 
 因此，`tools/assemble_xhs_shield.py` 只包含已验证的 Shield 外层组装；它不把定制摘要当成标准 HMAC-MD5，也不生成有效会话 token。
 

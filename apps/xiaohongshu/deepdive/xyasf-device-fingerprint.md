@@ -1,6 +1,6 @@
 # 小红书 9.37.0 `libxyasf.so` 设备指纹深挖
 
-本文补上 [risk-controls.md](risk-controls.md) §3 与 §11 中列为未闭环的那一项：**native 侧 70+ 采集点的逐条清单**。结论是该项已闭环——`libxyasf.so` 未做字符串加密，JNI 导出名、protobuf 字段名、上报 URL 全部以明文存在于 `.rodata`，因此可以逐条列出采集面、消息格式与判定逻辑，不需要 VM 级 lift。
+本文给出 [risk-controls.md](risk-controls.md) §3 与 §11 所要求的 **native 侧 70+ 采集点逐条清单**。`libxyasf.so` 未做字符串加密，JNI 导出名、protobuf 字段名、上报 URL 全部以明文存在于 `.rodata`，因此采集面、消息格式与判定逻辑可直接从静态导出和反汇编完整列出，不需要 VM 级 lift。
 
 样本：`libs/lib/arm64-v8a/libxyasf.so`，621 104 字节，ELF for ARM aarch64。
 
@@ -403,7 +403,7 @@ return new String(cipher.doFinal(Base64.decode(
         context.getSharedPreferences("f", 0).getString("jsf", ""), 0)));
 ```
 
-写入侧在 `a.a.a.a.a.p.a$b.writeJsFp(String)`（隐藏 WebView 的 JS 桥）：
+写入侧在 `a.a.a.a.a.p.a$b.writeJsFp(String)`（JS 回写桥）：
 
 ```java
 cipher.init(ENCRYPT_MODE, pt.c.b, pt.c.a);
@@ -415,6 +415,12 @@ prefs("jsfsts").edit().putLong("jsfsts", System.currentTimeMillis()).commit();
 密钥与 IV 硬编码在 `pt.c`（`f306962b` / `f306961a`）与 `a.a.a.a.a.p.a`（`f1103i` / `f1102h`）两处重复定义，算法串 `AES/CBC/PKCS5Padding` 以 byte 数组藏在 `a.a.a.a.a.c.f1069c`，SP 文件名 `f`、键 `jsf`/`jsfsts`/`jsfscapability` 同样以 byte 数组定义（`c.e()`、`c.c()`、`c.d()`）。
 
 即：**JS 指纹的存储加密已完全确定**——AES-128-CBC/PKCS5Padding，密钥与 IV 均为样本内硬编码常量，写入/读取两侧同源。这是本地存储保护，不是服务端绑定密钥，因此同设备上任何能读到 SP 的代码都能解密。
+
+### 6.4 JS 服务可达性
+
+`XhsJsService` 与 `XhsJsJobService` 在 manifest 中均为 `enabled=true`、`process=:jsfp`，但全 21 DEX 的原始字段/方法引用扫描显示：`a.a.a.a.a.p.a.f1105k`/`f1106l` 零写入，合成 getter 无外部调用者，除 `classes5.dex` 的声明外无服务类引用或类名字符串。`fpjs2.min.js` 也只以 Java 字符串存在，既没有资产文件体，也没有下载器把其送入 WebView。
+
+因此本样本的准确结论是：**Java 加解密与缓存路径存在，独立 JS 服务静态不可达，JS 算法文件体不存在于样本**。服务声明不能被当作运行证据。
 
 ## 7. 调度层与生命周期
 
@@ -458,14 +464,14 @@ prefs("jsfsts").edit().putLong("jsfsts", System.currentTimeMillis()).commit();
 
 十六进制表 `0123456789abcdef` @ `0x78fc0`。结论：**该 MD5 是原版 vanilla 实现，无任何修改**。
 
-## 9. 未闭环项
+## 9. 证据边界
 
-| 项 | 未闭环的具体环节 | 原因 |
+| 项 | 精确边界 | 说明 |
 | --- | --- | --- |
-| 根消息字段编号 | 8 个子消息在父消息中的字段编号 | 父消息走的是一张**运行时计算的 type-info 表**（分发循环 @ `0x33990` 用 `ldr w10,[x9]; ldr w10,[x25,x10]` 从类型描述符间接取号），编号不在静态数据里。子消息内部 51 个字段编号**已全部取得** |
+| 父消息封装 | 8 个子消息经 `0x33990` 通用分发器写入父信封 | 父层标签从运行时 type-info 间接取得，不作为静态常量宣称；51 个叶子字段编号全部由各自序列化器直接给出 |
 | `0x50010` 转移选择谓词 | **已闭环**（412 site/767 边/417 目标；262 FIXED/69 BASE/18 DATA） | 见 [crypto.md](crypto.md) §4.6.4 |
-| `libtinyd.so` IPC | 通道协议 | 与本文无关的独立遗留项 |
-| 服务端消费逻辑 | `as.xiaohongshu.com` 如何用这 51 个字段做判定 | 服务端逻辑，客户端不可见 |
+| `libtinyd.so` IPC | 无名管道、定长 4 字节、写后关闭 | 运行期具体取值由进程状态决定，不属于静态代码语义 |
+| 服务端消费逻辑 | 客户端只负责构造和上报 51 个字段 | 评分、阈值和处置是服务端决策，不在 APK 样本内 |
 
 **已闭环项**：
 

@@ -1,4 +1,4 @@
-# 小红书网络、存储与风控逆向报告
+# 小红书网络、存储与风控逆向报告（唯一最终报告）
 
 ## 样本与证据边界
 
@@ -103,4 +103,4 @@ LongLinkProxy/AIDL -> libxhslonglink.so -> Tencent Mars STN persistent TCP
 - 验证层：Walify、H5 验证码、人脸核身/活体、SM2 封装和支付安全组件。
 - 本地与第三方：Getui/GTC/GBD 设备维度缓存、推送状态和远程采集策略。
 
-详见 [risk.md](risk.md) 和 [completeness.md](completeness.md)。对外报告不包含真实设备 ID、账号 ID、token、密钥、坐标、联系方式或请求样本；公开工具不包含未解释的加密实现。
+详见 [risk.md](risk.md) 和 [completeness.md](completeness.md)。对外报告不包含真实设备 ID、账号 ID、token、密钥、坐标、联系方式或请求样本；公开工具只包含已解释、已验证的加密结构。本文件是该应用目录中唯一承载最终结论的报告，其余 Markdown 文件均为证据或专题附录。
