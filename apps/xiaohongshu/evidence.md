@@ -178,7 +178,7 @@ digest16 = H(bytes(a ^ 0x5c for a in K64) + inner)
 | 验证码 | Walify、ValidateActivity |
 | 人脸核身 | turingcam、TuringV2、WBCF、活体、SM2 |
 | 推送策略 | `dim.db`, `gtc3*.db`, `pushg3.db`, `cg.db` |
-| 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同 |
+| 挑战/核身 | `ValidateActivity`, Walify, `libturingmfa` | H5 验证、活体/实名链路、WUP/Tars DeviceToken 协同；TMF 的 HTTP 外层、JCE 字段、压缩/XXTEA 与响应选择逻辑见 deepdive §7.1 |
 | native 上报 | `libxyasf.so` strings/JNI | protobuf 字段、multipart `file=image.jpg`、`POST /api/v1/d/upload` |
 
 ## 权限与隐私

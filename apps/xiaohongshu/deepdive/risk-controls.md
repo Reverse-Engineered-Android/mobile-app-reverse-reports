@@ -190,6 +190,55 @@ Java 层可见的检测点（硬检测主要在 native）：
 
 9 个前导常量单元（`0x569c0`–`0x569e3`）解出 `V Z B C S I J F D`，构造子把它们放入 `.bss` 的 348 槽指针数组前 9 槽。静态代码已确定其内容、槽位和消费者查找结构；业务执行时读取哪一槽属于运行期取值，加密本身已完整还原（见 [tiny-and-app-sweep.md](tiny-and-app-sweep.md) §1.7）。
 
+### 7.1 TMF/WUP 传输格式与字节变换
+
+TuringFD 的 TMFShark 线程由 `arWPM.d()` 启动，使用默认 URL `https://tdid.m.qq.com/tmf`、10 秒端点选择超时和 `gr.h` 的 POST 传输。POST 请求固定设置 `User-Agent: Turing`、`Accept: */*`、`Accept-Charset: utf-8`、`Content-Type: application/octet-stream`、`Pragma: no-cache`、`Cache-Control: no-cache`、`Connection: close`，不跟随重定向、不读缓存，连接/读取超时均为 15 秒。200 响应读入完整字节流；300/301/302/303/305 只解析 `Location`，其他状态作为错误码返回。伴随的 `fenkF` 是端点探测 GET，头为 `User-Agent: Turing`、`Accept-Charset: utf-8`，同样不缓存。
+
+#### (a) JCE 编码器与 WUP RequestPacket
+
+`Xjpd8` 是逐字段 JCE 编码器：低 4 位为类型，高 4 位为 tag；tag 不小于 15 时先写 `0xF0 | type`，下一字节写完整 tag。类型码为 `0` byte、`1` short、`2` int、`3` long、`4` float、`5` double、`6` 短字符串、`7` 长字符串、`8` map、`9` list/array、`10` struct 起始、`11` struct 结束、`12` null、`13` 带内层类型的 byte array。字符串 `<=255` 字节时写 1 字节长度，否则写 4 字节大端长度；map 写 `size, key(tag 0), value(tag 1)`；struct 以 `type=10, tag=N` 开始、以 `type=11, tag=0` 结束；byte array 写内层类型 `0` 后再写长度。`YunKQ` 按同一类型码严格解码，类型不匹配直接抛错。
+
+`OF1Jz` 的解码异常文本直接给出 `RequestPacket` 类名；类型、tag 和默认值来自该类的读写方法，字段语义按标准 WUP `RequestPacket` 布局命名：
+
+| tag | 类型 | 字段语义 |
+| ---: | --- | --- |
+| 1 | short | WUP 版本；`AV6dE` 构造和响应解码路径默认写 `3` |
+| 2 | byte | packet type |
+| 3 | int | message type |
+| 4 | int | request id |
+| 5 | string | servant name |
+| 6 | string | function name |
+| 7 | byte[] | JCE 编码的业务 buffer |
+| 8 | int | timeout |
+| 9 | map<string,string> | context |
+| 10 | map<string,string> | status |
+
+`AV6dE.a(name,value)` 把任意受支持值用 UTF-8 JCE 编码成 `Map<String,byte[]>`；`AV6dE.a()` 把该 map 以 tag `0` 写入 RequestPacket tag `7`，再写 RequestPacket 的 1–10 字段，最后在整体前加 4 字节大端总长度。该长度包含长度字段自身。`qtIFA.a()` 的响应方向完全对称：先 `VBlVU.a(payload, VBlVU.a())` 解密，再 `Bp8QH.b()` inflate，跳过 4 字节长度，解码 `OF1Jz`，从 tag `7` 的 map 取键 `resp`，最后按目标 `UMDtK` 类型解出响应对象。
+
+#### (b) TMF 请求外层
+
+实际 TMF POST 不是直接把 `AV6dE.a()` 写入 HTTP。`gr.a.HandlerC0148a.b()` 先把业务对象编码为 `f4Dke`：
+
+- `f4Dke` tag `0/1` 是两个 int 序号，tag `2` 是 `qbihQ` 元数据，tag `3` 是 `kGAMq` 列表。
+- `qbihQ` 是 0–9 共 10 个字段：`0/1/5/6/7/8` 为 int，`2/3/4/9` 为 string；该调用点仅写 tag `2` 的 deviceId 和 tag `4` 的 sessionId，递增序号写入 `f4Dke.tag 0`，其余字段保持对象默认值。
+- `kGAMq` tag `0/1/2/6` 为 int、tag `3/5` 为 byte[]、tag `4` 为嵌套结构；`0` 写业务命令，`1` 写递增 request id，`3` 写业务字节，其余保持默认。
+
+随后按以下确定顺序变换：业务 `f4Dke` JCE 序列化 → 长度大于 50 字节且 zlib Deflater 结果更短时压缩，并在元数据写入“未压缩”标志位（压缩时该标志缺省）→ 用 16 字节随机密钥经 `VBlVU.b()` 的 XXTEA 类 32 位 Feistel 变换加密 → 外层 JCE 序列化。
+
+外层 wire 的精确字段为：嵌套 tag `0` 结构含 `1:string sessionId`、`2:int uncompressed_flag`、`3:string deviceId`、`4:int symmetric_algorithm`、`5:int request_sequence`、`6:int second_sequence`；结构外为顶层 `1:byte[] RSA_security_context`、`2:byte[] XXTEA_payload`，这些名称同时标明字段序号和构造用途。RSA 上下文由 `RbRz0.a()` 构造：16 字节随机 key、服务器 RSA 公钥 `RSA/ECB/PKCS1Padding` 加密结果和固定业务标识 `EP_TuringMM`，以三个 JCE 字段写入。
+
+`VBlVU.b()` 的编码规则是把明文字节按小端 32 位装入 word 数组，最后一个 word 写原始长度；16 字节随机 key 直接按小端 word 解析，`key.length > 16` 时才先取 MD5，结果补零至至少 4 个 word。每轮使用 `delta=0x9E3779B9`、64 位掩码 `(sum >>> 5) & 3` 和 key 索引 `(i & 3) ^ round_index`，轮数为 `6 + floor(52 / n)`，每轮扫描全部 word 并处理跨界末词。解密函数 `VBlVU.a()` 使用相同 key schedule 逆向该 Feistel 轮函数。`Bp8QH.a/b` 分别是 Java `DeflaterOutputStream`/`InflaterInputStream` 的完整包装，没有自定义压缩格式。
+
+#### (c) 响应结构、状态机与结果选择
+
+HTTP 200 字节先按顶层 `c9YSQ` 解码。状态分支是确定的：解码失败或 `c9YSQ.tag 0` 缺失返回 `-7`；嵌套 `jb1kT.tag 1 == 2` 触发重新生成 RSA 会话并返回 `-9`，`!= 0` 返回 `-12`，只有 `tag 1 == 0` 继续。`c9YSQ.tag 1` 如有内容，直接 JCE 解出 `ZIDl7`：其 tag `0` 非空时，以现有算法、现有 randomKey、新 sessionId 和过期时间替换内存会话，不解密该安全结构。业务体 `c9YSQ.tag 2` 按 `jb1kT.tag 0` 中的 flags 处理：先在 `(flags & 2) == 0` 时用当前会话 randomKey 执行 `VBlVU.a()`，再在 `(flags & 1) == 0` 时 inflate 解密结果。解出的 `LJPko.tag 2` 是 `IEttU` 结果列表，按请求的业务命令 tag `0` 选取唯一项。
+
+`IEttU.tag 3/4` 为状态 int，`tag 5/7` 为业务 byte[]，`tag 6` 为可选结构，`tag 8/9` 为 int/string；`3==0 && 4==0` 走成功分支，其他组合映射到对应负错误码。成功的会话结果写入 `ZY08E`：同一 sessionId 的安全结构按 `compress + XXTEA` 写入私有文件，读取时先按压缩标志解密/inflate；成功响应的 status 字符串 `501` 与毫秒时间戳写入 `XStYH`。这构成请求、刷新、持久化和错误重试的闭环。
+
+#### (d) `getDFPWup` native 入口
+
+JNI 注册表 `.data 0x56540` 的第 10 项就是 `k91_FC6D5B0A7013DB60([B)[B`，目标 `0x21c44`。它要求输入恰好 16 字节；把输入作为密钥，序列化运行期 DFP 状态，调用 `0x1faf8` 做 word 补齐并把原始长度写入末 word，再进入 `0x1f428` 的 XXTEA 类 32 位 Feistel 核心；核心常量为 `0x9E3779B9`，轮数按 `6 + floor(52 / n)` 生成，索引掩码为 `(sum >>> 5) & 3` 与 `(i & 3) ^ round_index`。输出经 `0x27eac` 校验长度后用 JNI `NewByteArray` 原样返回。因此该 native 方法是“DFP 序列化 → 原始长度补齐 → 16 字节 key 的 XXTEA 类变换 → Java byte[]”的固定管线。
+
 ## 8. 支付风控
 
 Alipay+ / Antom 收银台安全组件，用于海外卡场景。属第三方 SDK 集成，样本内为 jar/aar 形态。

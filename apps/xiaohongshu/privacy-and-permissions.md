@@ -568,7 +568,7 @@ static boolean j()  { return !(d.a("ACCESS_FINE_LOCATION") || d.a("ACCESS_COARSE
 
 `ACCESS_BACKGROUND_LOCATION` **未声明**（§1.5）。因此位置、GNSS、小区信息在应用退到后台后由系统直接拒绝；`wt9.e.h()` 的基础模式门控会先返回空。
 
-但**后台保活相关的权限是齐备的**：`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`FOREGROUND_SERVICE_MICROPHONE`、`FOREGROUND_SERVICE_MEDIA_PROJECTION`、`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`、`RECEIVE_USER_PRESENT`、`WAKE_LOCK`、`SCHEDULE_EXACT_ALARM`，配合 `com.xingin.xhs.matrix.permission.PROCESS_SUPERVISOR` 多进程监督。首启文本 §9 以"本应用退出后，可能仍需在后台保持网络连接，以便为您实时接收消息"一句概括，**未提及前台服务类型（麦克风/投屏/数据同步）各自的后台常驻能力**。
+但**后台保活相关的权限是齐备的**：`FOREGROUND_SERVICE`、`FOREGROUND_SERVICE_DATA_SYNC`、`FOREGROUND_SERVICE_MEDIA_PLAYBACK`、`FOREGROUND_SERVICE_MICROPHONE`、`FOREGROUND_SERVICE_MEDIA_PROJECTION`、`REQUEST_IGNORE_BATTERY_OPTIMIZATIONS`、`RECEIVE_USER_PRESENT`、`WAKE_LOCK`、`SCHEDULE_EXACT_ALARM`，配合 `com.xingin.xhs.matrix.permission.PROCESS_SUPERVISOR` 多进程监督。首启文本 §9 以"本应用退出后，可能仍会在后台保持网络连接，以便为您实时接收消息"一句概括，**未提及前台服务类型（麦克风/投屏/数据同步）各自的后台常驻能力**。
 
 ---
 

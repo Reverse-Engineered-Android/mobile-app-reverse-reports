@@ -155,7 +155,7 @@ request metrics -> business interceptor -> xy-common-params
 - `ValidateActivity` 加载 H5 验证码或风险说明。
 - 实名场景使用腾讯慧眼 WBCF、turingcam、TuringV2、优图活体。
 - native 工具包含 SM2 加密封装，用于核身数据保护。
-- `libturingmfa` 使用腾讯 WUP/Tars 二进制协议，Java 明文默认上报地址为 `https://tdid.m.qq.com/tmf`，服务返回/协同 DeviceToken。**该库把方法名与采集路径逐字节加密在 `.data` 字符串表里，由加载期构造子 `0x34d74` 原地解密**（密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 条文法明文（源列表 416 项））；解出后可直接看到 **OAID 厂商 AIDL 表（37 条，覆盖华为/荣耀/小米/OPPO/vivo/三星/华硕/联想/魅族/MSA 等）**、**反模拟器与环境完整性路径（57 条：`/proc/self/maps`、`/sys/bus/virtio`、`init.svc.qemud`/`noxd`/`droid4x`/`vbox86-setup`、`microvirt.*` 等）**，以及 **Binder/反射直取（17 条）**。完整清单见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.7(f)。
+- `libturingmfa` 使用腾讯 WUP/Tars 二进制协议，Java 明文默认上报地址为 `https://tdid.m.qq.com/tmf`，服务返回/协同 DeviceToken。**该库把方法名与采集路径逐字节加密在 `.data` 字符串表里，由加载期构造子 `0x34d74` 原地解密**（密钥调度 `key_index = src_index mod 8`；348 个非空条目 / 325 条文法明文（源列表 416 项））；解出后可直接看到 **OAID 厂商 AIDL 表（37 条，覆盖华为/荣耀/小米/OPPO/vivo/三星/华硕/联想/魅族/MSA 等）**、**反模拟器与环境完整性路径（57 条：`/proc/self/maps`、`/sys/bus/virtio`、`init.svc.qemud`/`noxd`/`droid4x`/`vbox86-setup`、`microvirt.*` 等）**，以及 **Binder/反射直取（17 条）**。完整采集清单见 [deepdive/tiny-and-app-sweep.md](deepdive/tiny-and-app-sweep.md) §1.7(f)，HTTP 外层、WUP 包字段、压缩/加密变换和响应选择规则见 [deepdive/risk-controls.md](deepdive/risk-controls.md) §7.1。
 - 海外支付场景使用 Alipay/Antom 收银台安全组件，包含设备支付 token 与 securityCode。
 
 这些组件面向高风险或高敏场景，不代表所有普通浏览请求都会触发。

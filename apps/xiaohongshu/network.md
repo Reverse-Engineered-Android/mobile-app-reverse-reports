@@ -47,7 +47,7 @@ gid overseas_channel did holder_ctry data_ctry active_ctry auto_trans
 mlanguage SUE id_token
 ```
 
-`id_token` 表明认证状态进入公共参数；其余 token 的精确 header/cookie 映射主要位于混淆/native 路径。公开报告只记录已确认字段，不构造可重放请求。
+`id_token` 表明认证状态进入公共参数。API 客户端没有面向其余 token 的统一 header/cookie 映射：`user_token`、`secure_session`、`device_password` 的已确认来源和调用面逐项列于本节表格，Tiny 仅另外写入 `x-legacy-sid`。公开报告只记录静态调用点，不构造可重放请求。
 
 ## 3. 响应封装
 
