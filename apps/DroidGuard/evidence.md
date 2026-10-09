@@ -24,7 +24,7 @@ payload package 均为 `com.google.ccc.abuse.droidguard`。
 | Subject/Issuer | `CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US` |
 | Serial | `0x4934987e` |
 | Certificate DER SHA-256 | `3D7A1223019AA39D9EA0E3436AB7C0896BFB4FB679F4DE5FE7C23F326C8F994A` |
-| Signature/key | `md5WithRSAEncryption` / RSA 1024 bit |
+| APK certificate signature/key | `md5WithRSAEncryption` / RSA 1024 bit |
 
 证书 Subject 明确标注 `Google, Inc`；这是 APK 签名归属证据，不等同于本报告
 独立验证 Android 平台的信任链。
@@ -48,13 +48,14 @@ payload package 均为 `com.google.ccc.abuse.droidguard`。
 
 ## 3. 公钥位置
 
-| 公钥 | 位置 | DER SHA-256 |
-|---|---|---|
-| 创建响应公钥 | `jadx-gms-deps/bxky.java:23` | `cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954` |
-| bytecode 公钥 1 | payload `DroidGuard.java:93` | `cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954` |
-| bytecode 公钥 2 | payload `DroidGuard.java:93` | `03551c17e169af5110d7a42b33cad55b156661536ff054e4c0e8fe55a77e3660` |
+| 公钥 | 位置 | 结构/算法 | DER SHA-256 |
+|---|---|---|---|
+| 创建响应公钥 | `jadx-gms-deps/bxky.java:23` | 294-byte RSA-2048 SPKI | `cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954` |
+| bytecode 公钥 1 | payload `DroidGuard.java:93` | 294-byte RSA-2048 SPKI | `cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954` |
+| bytecode 公钥 2 | payload `DroidGuard.java:93` | 294-byte RSA-2048 SPKI | `03551c17e169af5110d7a42b33cad55b156661536ff054e4c0e8fe55a77e3660` |
 
-公钥是公开验证材料；报告不复制完整 Base64，API key 已脱敏。
+三处均用 `SHA256withRSA`。公钥是公开验证材料；报告不复制完整 Base64，
+API key 已脱敏。
 
 ## 4. protobuf 元数据
 
@@ -78,11 +79,10 @@ payload package 均为 `com.google.ccc.abuse.droidguard`。
 
 | 证据 | 位置 |
 |---|---|
-| JNI 注册恢复 | `evidence/native/base_jni_emulation.json` |
-| native 函数清单 | `evidence/native/base_functions.afl` |
-| 反汇编 | `evidence/native/base.disasm` |
-| 字符串 | `evidence/native/base.strings` |
-| init 反编译 | `evidence/native/base_init_decomp.txt` |
+| JNI 注册恢复 | `JNI_OnLoad/RegisterNatives`，本报告私有分析目录 |
+| native 函数清单与反汇编 | `libd669FBAAEF4B3.so`，SHA-256 `64e32d741efff46fcac0d74884a41dafecda4287cb7b379e18cb2cb4345abe07` |
+| init/注册反编译 | `0x135a0`、`0x14280`、`0x1462c`、`0x14660` |
+| `.b` 解码本地执行 | `0x19308` → `0x1c5e8` → `0x46cb0`，无执行错误 |
 
 JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 `0x1462c`、`0x14660`。
@@ -119,6 +119,14 @@ CREATE INDEX expiration_idx ON main (h);
 | `.d` A | 66 | `4197154d213be0b5050583142b0af99ebc91c98b2a26bb520aa8d1c6b6e6085e` |
 | `.d` B | 66 | `79846ff6a6e5e5fe350c4f30ae8098a79ad0000787cfb3e40d1401341cc87322` |
 | `.d` C | 66 | `118ed483730746b57dcb7c15f27fd1fdebcf696fa2ce2f81bd8bf54aee4a6f49` |
+
+`.b` 的正确解码结果（只发布长度与摘要，不发布字节）：
+
+| 文件前缀 | 解码字节数 | 解码 SHA-256 |
+|---|---:|---|
+| `0b5272…cdda0.b` | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
+| `4d85a8…aeeb7.b` | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
+| `8f1a78…100e.b` | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
 
 三个 `.b` 的熵为 7.997305、7.998246、7.997515 bit/byte，均覆盖 256 个字节值。
 代码映射：`bxkw.java:56-79` 读取，`bxkw.java:121-127` 生成摘要文件名，

@@ -5,9 +5,10 @@
 已缓存 DroidGuard payload APK。GMS APK SHA-256 为
 `bda6a95f1bb8dd707ad9333dce9639cc8104c4bbc97a639e14a428e63b4a6852`。
 
-调查使用 DEX/JADX 静态反编译、ELF 静态反汇编、protobuf 反射元数据解码和设备
-只读数据库/schema 核对。没有构造或发送 DroidGuard 请求，没有下载服务端 VM，
-没有运行 payload，没有绕过风控，也没有写入或修改手机数据。
+调查使用 DEX/JADX 静态反编译、ELF 静态反汇编、protobuf 反射元数据解码、
+本地 Unicorn 受控执行初始化/解码函数，以及设备只读数据库/schema 核对。没有
+构造或发送 DroidGuard 请求，没有从网络下载服务端 VM，没有在设备运行完整
+payload 或评分程序，没有绕过风控，也没有写入或修改手机数据。
 
 ## 结论入口
 
@@ -16,7 +17,7 @@
 - `protocol.md`：`hvnz`/`hvoa`/`hvpj` protobuf 精确字段。
 - `auth.md`：调用方身份、同意闸门、API key、签名验证。
 - `transfer.md`：上传、下载、返回数据的分层范围。
-- `risk.md`：具体风控机制、native 采集、动态 VM、密码学闭包。
+- `risk.md`：具体风控机制、native 采集、动态 VM、`.b` 解码和密码学还原。
 - `permissions.md`：权限与越权、提权判断。
 - `privacy.md`：告知、采集与超范围判断。
 - `evidence.md`：哈希、代码位置、公钥位置和设备只读核对。

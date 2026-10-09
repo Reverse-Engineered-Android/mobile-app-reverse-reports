@@ -53,7 +53,7 @@
 
 | 字段 | 数据范围 | 本地保护 |
 |---|---|---|
-| `byteCode` | DroidGuard 风控程序字节码 | 外层 RSA-SHA256 + payload 二次 RSA-SHA256 |
+| `byteCode` | DroidGuard 风控程序字节码 | 响应 RSA-SHA256 + payload 二次 RSA-SHA256；执行时由 native AES 外层解码 |
 | `vmUrl` | VM 下载地址 | 必须以固定 gstatic HTTPS 前缀开头 |
 | `vmChecksum` | VM/程序校验和 | 非空校验 + 下载校验 |
 | `validityDurationSecs` | 程序有效期 | 非空校验 + 本地缓存过期 |
@@ -64,11 +64,13 @@
 
 下载后的程序与辅助字节会写入 GMS 私有目录 `app_dgp`：
 
-- `.b` 保存 `hvpj.byteCode` 的程序字节；
+- `.b` 保存 `hvpj.byteCode` 的程序字节；执行前由 `0x46cb0` 按
+  `len(raw)-4` 解出程序正文；
 - `.d` 保存 `hvoa` 解析出的辅助字节；
 - `dg.db` 只保存缓存键、创建/过期时间和版本；
 - 当前设备有 `fast`、`pia_express`、`ad_attest` 三组缓存，
-  程序文件大小为 63666、87050、64561 字节；
+  原始程序文件大小为 63666、87050、64561 字节，解码大小为 63662、87046、
+  64557 字节；
 - 缓存键含 `Build.FINGERPRINT`，但真实键值和程序正文不进入报告或 Telegram。
 
 该缓存不包含通讯录、短信、照片、位置轨迹、剪贴板或其他用户业务文件。

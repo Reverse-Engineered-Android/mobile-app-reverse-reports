@@ -15,7 +15,8 @@ Google Play services 客户端/应用配置，不是用户身份认证。
 
 ## 2. 响应完整性认证
 
-`bxky.java:23` 内嵌 RSA SubjectPublicKeyInfo 公钥；其 DER SHA-256 为：
+`bxky.java:23` 内嵌 294 字节 RSA-2048 SubjectPublicKeyInfo 公钥；其 DER
+SHA-256 为：
 
 ```text
 cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954
@@ -34,16 +35,21 @@ cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954
 
 ## 3. payload bytecode 认证
 
-`DroidGuard.java:93` 依次尝试两枚 Base64 RSA SPKI 公钥：
+`DroidGuard.java:93` 依次尝试两枚 294 字节 Base64 RSA-2048 SPKI 公钥：
 
 | 位置 | DER SHA-256 |
 |---|---|
 | `DroidGuard.java:93` 第一枚，与 `bxky.java:23` 相同 | `cfa6b5243de9e3fcc0408aae5b40b5b480c3cfc6db8828f338c176c57c312954` |
 | `DroidGuard.java:93` 第二枚 | `03551c17e169af5110d7a42b33cad55b156661536ff054e4c0e8fe55a77e3660` |
 
-`DroidGuard.java:107-120` 对 byteCode 执行 `SHA256withRSA.update` +
+`DroidGuard.java:107-120` 对 byteCode 执行 `KeyFactory("RSA")`、
+`SHA256withRSA.update` +
 `verify`；两枚 key 均失败时在 `DroidGuard.java:93-95` 抛出
 `Failed to verify bytecode.`。
+
+这里的 294 字节 RSA-2048/`SHA256withRSA` 是消息与 bytecode 验签材料；
+APK 自身签名证书是另一个对象，其 `MD5withRSA`/RSA-1024 属性见
+`evidence.md` §1，不能混写为 payload 验签算法。
 
 ## 4. 同意与运行闸门
 

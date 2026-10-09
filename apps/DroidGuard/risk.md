@@ -52,7 +52,7 @@
 - `droidguasso/h.java` 读取本地文件前 1024 字节并计算摘要。
 - `droidguasso/c.java` 对 ByteBuffer 计算 MessageDigest 摘要。
 
-## 3. native JNI 闭包
+## 3. native JNI 与固定解释器
 
 从 `JNI_OnLoad/RegisterNatives` 静态恢复的类
 `com/google/ccc/abuse/droidguard/DroidGuard`：
@@ -81,9 +81,12 @@
 
 `0x4563c` 是核心大函数：起始 `0x4563c`，规模约 217088 字节，约 7150 basic
 blocks、42314 条指令、递归/高复杂度。其栈式解释循环、AES/SHA XREF 和长度
-缓冲共同证明它是服务端程序的动态执行核心，而不是普通业务 helper。
+缓冲共同证明它是服务端程序的动态执行核心，而不是普通业务 helper。本地
+Unicorn 对 `0x19308`、`0x1c5e8`、`0x46cb0` 的受控执行分别完成初始化、建立
+寄存器帧和解码 `.b`，调用完成且无执行错误；这用于核对静态反汇编恢复的算法，
+不等同于在设备上运行 payload 或请求服务端评分。
 
-## 4. 动态 VM 与混淆闭包
+## 4. 动态 VM、`.b` 解码与混淆分析
 
 ### 4.1 程序模型
 
@@ -97,13 +100,17 @@ blocks、42314 条指令、递归/高复杂度。其栈式解释循环、AES/SHA
 - `pthread_once` 初始化；
 - SHA 上下文更新/收尾。
 
-因此“混淆”不是未识别的自定义加密壳，而是两层：
+因此混淆是四条可分离的数据流：
 
-1. 服务端程序字节码的动态 opcode；
-2. native 固定解释器调用标准密码学原语。
+1. `.b` 缓存的 AES 可变块密码外层；
+2. 服务端程序字节码的动态 opcode 与操作数索引；
+3. 寄存器值、PC 和字符串缓冲区的 XOR/轮换编码；
+4. 每个解释器 handler 内联的 Mixed Boolean-Arithmetic（MBA）操作数变换。
 
-程序字节码必须先通过两层 RSA-SHA256 与 checksum；当前样本没有把未验签
-bytecode 当作可信代码。固定 native/Java 中的密码学实现均已按算法和用途定位。
+程序字节码必须先通过两层 RSA-SHA256 与 checksum；`.b` 外层使用固定
+AES-128，不是第二套独立认证。外层密文、寄存器/PC 编码和 handler 内联 MBA
+已分别从 `0x46cb0`、`0x432c4`/`0x177a4` 与解释器 XREF 还原；固定
+native/Java 中的密码学实现均已按算法和用途定位。
 
 ### 4.2 JNI/输入混淆
 
@@ -113,7 +120,7 @@ bytecode 当作可信代码。固定 native/Java 中的密码学实现均已按�
 - 读取 byte[]、String、Parcelable/FileDescriptor；
 - 传给 native session。
 
-报告没有把它写成未知加密。
+这是传输编码，不参与认证或保密。
 
 ### 4.3 `app_dgp` 程序缓存
 
@@ -137,9 +144,81 @@ bytecode 当作可信代码。固定 native/Java 中的密码学实现均已按�
 三个 `.b` 文件分别为 63666、87050、64561 字节，逐字节 Shannon 熵为
 7.997305、7.998246、7.997515 bit/byte，且 256 个取值全部出现；zlib、gzip、
 bzip2、xz 头/解压探测均失败。它们是服务端交付后原样缓存的高熵程序数据，
-不是 APK 内未识别的固定加密代码。三个 `.d` 文件均为 66 字节，属于 `hvpj.h`
-辅助字节，不是私钥。固定代码里的 RSA、SHA 与 AES 已在 §5 按算法、调用点和
-参数闭包；动态程序的评分语义属于服务端数据，不能从客户端样本凭空改写。
+不是 APK 内未识别的压缩包或固定业务源码。三个 `.d` 文件均为 66 字节，属于
+`hvpj.h` 辅助字节，不是私钥。固定代码里的 RSA、SHA 与 AES 已在 §5 按算法、
+调用点和参数还原；服务端程序交付后的评分阈值仍属于服务端内容，不能从客户端
+样本凭空改写。
+
+### 4.4 `.b` 外层解码算法
+
+程序头的四个字节是固定 IV。`0x19a70` 初始化 session 寄存器 42，得到的
+AES-128 key（小端寄存器值 `0x8685c6899bc75b21`，按 8 字节重复）为：
+
+```text
+21 5b c7 9b 89 c6 85 86 21 5b c7 9b 89 c6 85 86
+```
+
+`0x177a4` 在写寄存器 42 时于 `0x178cc`–`0x1790c` 保存该值；`0x46cb0` 读取
+session 的 buffer/长度/指针/AES schedule 缓存字段，从逻辑偏移读取 IV 和
+16 字节块，构造状态、调用 AES 单块加密并 XOR。session 精确布局为：
+
+| 偏移 | 含义 |
+|---:|---|
+| `+0xc58` | buffer 模式/标志 |
+| `+0xc60` | buffer 长度 |
+| `+0xc68` | buffer 指针 |
+| `+0xc70` | AES key schedule 指针 |
+| `+0xca0` | 当前缓存 block index，初值 `-1` |
+| `+0xca8`–`+0xcb7` | 当前 AES state |
+| `+0xcb8` | 程序头固定的前四个 IV 字节 |
+
+对第 `j` 个 block，状态和 keystream 是：
+
+```text
+state_j   = raw[0:4] || uint32_le(j) || 00 00 00 00 00 00 00 00
+keystream = AES-ECB-128(state_j)
+```
+
+解码长度为 `len(raw) - 4`，从第一个 `raw[4:16]` 开始消耗，逐块 XOR：
+
+```text
+j = 0: raw[4:16]  XOR keystream[4:16] -> decoded[0:12]
+j > 0: raw[16j:16j+16] XOR keystream -> decoded[16j-4:16j+12]
+```
+
+末尾只 XOR 实际剩余字节。`+0xcb8` 只在首次 cache miss 读取一次，之后不刷新；
+`+0xca0` 保存命中的 block index，后续 miss 从缓存 keystream 取数据。
+三个样本的正确解码结果如下（不发布原始或解码后的程序字节）：
+
+| 文件前缀 | 原始长度 | 解码长度 | 解码 SHA-256 |
+|---|---:|---:|---|
+| `0b5272…cdda0.b` | 63666 | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
+| `4d85a8…aeeb7.b` | 87050 | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
+| `8f1a78…100e.b` | 64561 | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
+
+该变换后的高熵来自后两层 VM 数据流编码，而不是残余 AES 密文：解码结果仍需
+按 handler 的操作数公式、寄存器索引和 MBA 语义逐次展开。
+
+### 4.5 寄存器、PC 与字符串编码
+
+寄存器帧中第 `i` 个寄存器的 type 位于 `frame + (i+1)*16`，value 位于
+`frame + (i+1)*16 + 8`。初始化时 root key 的前 8 字节与寄存器 8 的关系是
+`rotate_left(root_key[0:8], 8) XOR reg8.value == 0`；报告不发布 root key。
+`0x432c4` 从 session `+0xc10` 的 root key、寄存器 8 的编码值以及寄存器
+type/rotation 字段计算当前解码偏移，调用 `0x46cb0`，最后把返回值按同一
+rotation/XOR 规则写回寄存器 8 作为新的 PC。于是读取不是直接
+`pc = *(uint32_t*)pc`，而是：
+
+```text
+offset = rotate(root_key, derived(type/rotation)) XOR reg8.value
+offset = decode46cb0(session, dst, offset, operand_length)
+reg8.value = rotate(root_key, derived(type/rotation)) XOR returned_pc
+```
+
+`reg8.value` 的第一轮是上式初始化结果，后续调用保持同构，因此 PC 的推进和
+operand 解码互相绑定。字符串/缓冲区使用同样的“寄存器索引 + VM key”导出 XOR
+key；搬运缓冲时直接做两次 XOR，避免临时变量暴露明文。handler 读取寄存器索引
+后还要执行该 handler 专属的内联 MBA；MBA 只改变索引/操作数，不改变其语义。
 
 ## 5. 密码学精确位置
 
@@ -151,6 +230,9 @@ bzip2、xz 头/解压探测均失败。它们是服务端交付后原样缓存�
 | `bxky.java:28-46` | `SHA256withRSA.verify(hvoa.c, hvoa.d)` |
 | `DroidGuard.java:93` | 两枚 bytecode 验签公钥 |
 | `DroidGuard.java:107-152` | RSA KeyFactory + `SHA256withRSA` |
+
+三处 payload/响应公钥均为 294 字节 RSA-2048 SubjectPublicKeyInfo；签名算法是
+`SHA256withRSA`，不是 APK 证书的 `MD5withRSA`。
 
 ### 5.2 SHA-1
 
@@ -187,10 +269,16 @@ bzip2、xz 头/解压探测均失败。它们是服务端交付后原样缓存�
 | core schedule XREF | `0x31674`、`0x35994` |
 | core block XREF | `0x359b4`、`0x35a24`、`0x49870`、`0x49930` |
 
+HWCAP 检测从 `0x49a14` 读取 `AT_HWCAP` 并把 AES 可用性放在状态 bit 2。
+实际 aarch64 手机设备带 `aes` flag 时，`.b` 解码走 key schedule `0x6f20` 和
+单块加密 `0x71a0`；没有 AES 硬件时走可移植 fallback：key schedule `0xa3d0`、
+单块加密 `0x9c20`。两套路径均以标准 AES-ECB 结果核对，错配调用只是路径
+不匹配，不是另一种密码算法。
+
 `0x6f20` 的输入长度检查接受 `0x80`–`0x100` bits，并要求 64-bit 对齐；随后
 执行标准 AES key schedule。`0x71a0` 使用 expanded round keys 做单块加密，
 `0x7660` 做多块路径。该用途由核心函数 XREF 与上下文长度缓冲共同确定：
-它是动态程序的对称密码原语，不是独立未知后门。
+它是 `.b` 外层与动态程序共用的对称密码原语，不是独立未知后门。
 
 具体分支在 `fcn.00017cd0`：`0x17e10` 把 `sp+8` 放入 `x0`、把 `0x80`
 （128-bit）放入 `w1`、把输出上下文 `x20` 放入 `x2`，然后在 `0x17e1c` 调
@@ -211,5 +299,6 @@ bzip2、xz 头/解压探测均失败。它们是服务端交付后原样缓存�
 4. GPU、传感器、触摸与 Bundle/Map；
 5. native session 中的动态程序执行结果。
 
-服务端返回什么阈值、如何把结果转成拒绝/挑战/放行，以及处罚策略，不在客户端
-固定代码中；本报告不编造阈值。
+客户端可执行的判定链、输入、解码和认证门全部给出精确地址与公式。服务端返回
+什么阈值、如何把结果转成拒绝/挑战/放行，以及处罚策略，不在客户端固定代码中；
+本报告不编造阈值。
