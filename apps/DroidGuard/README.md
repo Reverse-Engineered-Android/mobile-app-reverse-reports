@@ -24,9 +24,11 @@
 
 ## 核心边界
 
-客户端可证实的 DroidGuard 网络出口只有两个方向：向
-`/androidantiabuse/v1/x/create` 提交创建请求，以及从
-`https://www.gstatic.com/droidguard/` 下载 VM/程序。风险计算结果通过 Binder
-写回发起调用方；在已分析的 DroidGuard/GMS 调用链中，未观察到 GMS 把该结果
-再次上传到 Google。业务调用方拿到结果后是否上传，属于调用方边界，本报告不
-将其混同为 DroidGuard 自身上传。
+客户端存在两类 Google 网络出口：业务链路向
+`/androidantiabuse/v1/x/create` 提交创建请求，并从
+`https://www.gstatic.com/droidguard/` 下载 VM/程序；另有 Clearcut/StreamZ
+遥测链路向 Google Play 日志服务上传 DroidGuard 的 flow、状态、时延、失败原因和
+响应大小计数。后者不携带 GPU、触摸、传感器或动态 VM 的原始采集值。风险计算
+结果通过 Binder 写回发起调用方；未发现 GMS 把结果字节或本地原始信号再次放入
+创建请求或其他业务上传。业务调用方拿到结果后是否上传，属于调用方边界，本报告
+不将其混同为 DroidGuard 自身上传。

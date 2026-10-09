@@ -12,6 +12,23 @@
 
 payload package 均为 `com.google.ccc.abuse.droidguard`。
 
+四个 payload manifest 的 `minSdkVersion=24`、`targetSdkVersion=14`，并以
+`compileSdkVersion=37`/`DEV` 编译；解码后 `uses-permission` 与自定义
+`permission` 数量均为 0。仅有一个默认禁用且未导出的
+`PropertiesServiceHolder` service。
+
+四个 APK 使用同一旧式签名证书：
+
+| 项目 | 值 |
+|---|---|
+| Subject/Issuer | `CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US` |
+| Serial | `0x4934987e` |
+| Certificate DER SHA-256 | `3D7A1223019AA39D9EA0E3436AB7C0896BFB4FB679F4DE5FE7C23F326C8F994A` |
+| Signature/key | `md5WithRSAEncryption` / RSA 1024 bit |
+
+证书 Subject 明确标注 `Google, Inc`；这是 APK 签名归属证据，不等同于本报告
+独立验证 Android 平台的信任链。
+
 ## 2. 网络与协议代码
 
 | 结论 | 代码位置 |
@@ -24,6 +41,10 @@ payload package 均为 `com.google.ccc.abuse.droidguard`。
 | response parse/verify/required fields | `jadx-gms-deps/bxkz.java:49-72` |
 | VM host allowlist/HTTP 200 | `jadx-gms-deps/bxkz.java:82-110` |
 | result Binder write | `jadx-gms-deps/bxgx.java:144-146` |
+| StreamZ telemetry factory | `jadx-gms-deps/bxlr.java:23` |
+| 15 个 DroidGuard StreamZ 指标与字段 | `jadx-gms-network/classes7-full/sources/defpackage/bxmh.java:12-118` |
+| StreamZ 消息构造/派发 | `jadx-gms-network/classes7-full/sources/defpackage/bxll.java:23-217` |
+| log source 注册 | `jadx-streamz-classes5/sources/defpackage/arqm.java:78` |
 
 ## 3. 公钥位置
 
@@ -105,16 +126,29 @@ CREATE INDEX expiration_idx ON main (h);
 
 ## 7. 设备只读核对
 
+Android data 目录在 SSH 进程的挂载命名空间中不可直接遍历，实际核对时通过
+宿主挂载命名空间进入 `data/...`；没有写入文件。
+
 只读核对确认：
 
 - GMS phenotype：`config_packages`、`android_packages`、`log_sources`、
   `cross_logged_tokens`、`flag_overrides`；
 - Vending phenotype：`static_config_packages`、`experiment_states`、
   `param_partitions`、`accounts`；
-- `verify_apps.db`：`package_verdict_cache(data, pk)`、`apk_info`、
+- `data/user/0/com.google.android.gms/databases/dg.db`：
+  24576 字节，SHA-256
+  `3304d831f32914029d65212fd9f63949532565749f005897cffcec93cca1e12b`，
+  与本地只读副本完全相同；
+- `data/user/0/com.google.android.gms/app_dgp/` 中三组
+  `.b`/`.d` 的长度与 SHA-256 均与本地副本完全相同；
+- `data/data/com.google.android.gms/files/clearcut/0/STREAMZ_DROIDGUARD`
+  存在但为空，证明 log source spool 已配置，不证明该样本发生实际发送；
+- `data/user/0/com.android.vending/databases/verify_apps.db`
+  （Play Store/Vending）：`package_verdict_cache(data, pk)`、`apk_info`、
   `installation_attempts`、`package_installation_state`；
 - verdict cache 450 行、apk info 451 行、installation state 442 行；
-- `droid_guard_payload_valuestore.pb` 存在，大小 152 字节；
+- `data/user/0/com.android.vending/files/finsky/shared/droid_guard_payload_valuestore.pb`
+  存在，大小 152 字节，属于 Vending 的 payload 配置存储；
 - DroidGuard phenotype 配置文件存在。
 
 数据库行内容、真实账号与 payload 内容未写入本报告。

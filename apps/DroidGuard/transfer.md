@@ -32,6 +32,21 @@
 这些字段构成已证实的上行集合。`FINGERPRINT`、`BUILD`、ABI、硬件和型号组合
 具有较强设备关联性，即使不含账号信息也是高熵设备指纹。
 
+### 1.2 Clearcut/StreamZ 遥测
+
+`bxlr.java:23`、`bxmh.java:12-118` 与 `bxll.java:23-217` 证实第二类 Google
+上行，内容限于 `/client_streamz/droidguard/*` 指标：
+
+- `flow`；
+- `status`、`success`、`cause`、`response_type`；
+- 操作耗时（毫秒）；
+- client response size（字节数）。
+
+上报组为 `gmscore_droidguard`，Clearcut 默认端点为
+`https://play.googleapis.com/log/batch` 或
+`https://play.googleapis.com/log`。这些是 DroidGuard 服务链路的遥测计数，不是
+风控输入、风控结果或用户文件。
+
 ## 2. 明确下载的数据
 
 `hvoa` 解包出的下载/执行材料：
@@ -70,17 +85,20 @@
 | 文件/内存摘要 | `droidguasso/h.java` 等 | 本地环境信号 |
 
 结果 byte[] 通过 Binder 返回调用方。静态调用链中没有
-`这些采集项 → create 请求` 的路径，也没有第二个 DroidGuard 业务上传端点。
+`这些采集项 → create 请求` 的路径，也没有发现这些采集项进入 Clearcut/StreamZ
+字段。第二条已证实的上行只携带操作状态、时延、原因和响应大小计数。
 
 ## 4. 不混入 DroidGuard 上传的数据
 
-- `verify_apps.db` 的 apk/verdict/installation 表是 Play Protect 数据库；
+- `verify_apps.db` 属于 `com.android.vending`（Play Store），其
+  apk/verdict/installation 表是 Play Protect 数据库，不是 GMS DroidGuard 缓存；
 - phenotype `config_packages`、`log_sources`、`flag_overrides` 是配置/遥测框架；
 - `droid_guard_payload_valuestore.pb` 是 payload 配置存储；
-- StreamZ/Clearcut 类框架存在于 GMS，但未形成可证实的 DroidGuard 原始信号
-  上传调用链。
+- StreamZ/Clearcut 确实形成 DroidGuard 指标上传链，但没有形成 GPU、触摸、
+  传感器、Bundle/Map 或结果 byte[] 的上传链。
 
-上述对象可用于核对 schema，但不等于 DroidGuard 把对应数据上传。
+上述前三类对象可用于核对 schema，但不等于 DroidGuard 把对应数据上传；第四类
+只证明计数遥测，不证明原始风控信号上传。
 
 ## 5. 静态上传示例
 

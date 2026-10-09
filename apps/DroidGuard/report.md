@@ -10,10 +10,10 @@ VM 执行风控程序，最后把结果字节通过 Binder 交回调用方。
 
 | 维度 | 最终结论 | 精确依据 |
 |---|---|---|
-| 网络流程 | `create` 上行、gstatic VM 下行两条固定链路 | `network.md` §1–§3 |
+| 网络流程 | `create` 上行、gstatic VM 下行、Clearcut/StreamZ 计数上行 | `network.md` §1–§6 |
 | 协议 | proto2 typed protobuf，创建请求 14 个 wire 字段 | `protocol.md` §1 |
 | 认证 | Binder UID、调用方上下文、API key 查询参数、响应 RSA 验签 | `auth.md` |
-| 上传范围 | Build 26 项、GMS 版本、flow、模式与少量运行上下文 | `transfer.md` §1 |
+| 上传范围 | `create` 为 Build/GMS/flow/模式与上下文；StreamZ 仅为操作计数 | `transfer.md` §1 |
 | 下载范围 | 验签后的 bytecode、VM URL、checksum、有效期 | `transfer.md` §2 |
 | 本地采集 | GPU 32×32、触摸、传感器、方向、Bundle/Map 上下文 | `risk.md` §3 |
 | 动态风控 | 固定 native 解释器执行服务端签名程序，并按摘要与有效期缓存 | `risk.md` §4 |
@@ -36,6 +36,9 @@ VM 执行风控程序，最后把结果字节通过 Binder 交回调用方。
 6. payload 构造器再次用两枚 RSA SPKI 公钥之一验证 bytecode。
 7. `initNative` 创建 native session，`ssNative`/`xssNative` 执行风险程序，
    `heNative` 接收额外事件，结果 byte[] 经 Binder 写回调用方。
+8. 独立 telemetry 链由 `bxlr.java:23` 构造，经
+   `/client_streamz/droidguard/*` 收集 flow、状态、成功、原因、时延和响应大小，
+   最终交给 Clearcut/Google Play 日志服务。
 
 ## 3. 认证与完整性
 
@@ -65,11 +68,12 @@ VM 执行风控程序，最后把结果字节通过 Binder 交回调用方。
 风控程序交付物，不是用户业务文件。下载完成后仍需通过 URL 白名单、HTTP 200、
 checksum 和两层 RSA 验签。
 
-### 本地采集但未证实由 GMS 直接上传
+### 本地采集但未由已分析上行携带
 
 payload 采集 GPU 像素、触摸轨迹、传感器/方向事件、动态 VM 输入与调用方
 Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把这些采集项写入
-`/androidantiabuse/v1/x/create` 的调用点，也没有第二次 DroidGuard 上传端点。
+`/androidantiabuse/v1/x/create`，Clearcut/StreamZ 字段也只有操作计数；因此两类
+已证实上行均未携带这些原始值。
 
 ## 5. 越权、提权与超范围
 
@@ -78,7 +82,7 @@ Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把�
 | 越权 | **未发现**。payload manifest 无危险权限；采集依赖 GMS/调用方已有上下文与公开 Android API。 |
 | 提权 | **未发现**。未见 `su`、root、注入系统进程、静默安装、权限提升或 Binder 绕过。 |
 | 未经告知 | **存在运行前同意要求，但客户端静态证据不能证明每个数据项均逐项告知**；汽车受限分支有显式 gTOS 闸门。 |
-| 超范围获取 | **已证实创建请求包含高熵设备指纹；未证实本地传感器、触摸、GPU 数据由 GMS 直接上传**。 |
+| 超范围获取 | **创建请求包含高熵设备指纹；StreamZ 仅上传操作计数；本地传感器、触摸、GPU 数据未进入已分析上行**。 |
 
 ## 6. 风控机制
 

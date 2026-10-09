@@ -20,6 +20,8 @@
            native dynamic VM 风控程序
                      │
               result byte[] → Binder caller
+
+        └─ bxlr/bxmh operation counters ── Clearcut/StreamZ
 ```
 
 ## 2. Java 层具体机制

@@ -4,7 +4,7 @@
 
 | 要求 | 状态 | 证据 |
 |---|---|---|
-| 主要网络交互 | 完成 | `network.md` |
+| 主要网络交互 | 完成 | `network.md` §1–§6 |
 | 协议具体格式 | 完成 | `protocol.md` |
 | 认证机制 | 完成 | `auth.md` |
 | 上传具体范围 | 完成 | `transfer.md` §1 |
@@ -16,6 +16,7 @@
 | 风控机制精确代码 | 完成 | `risk.md` §1–§6 |
 | 混淆/动态程序机制 | 完成 | `risk.md` §4 |
 | 密码学用途与地址 | 完成 | `risk.md` §5 |
+| Google 官方 GMS/StreamZ 代码反混淆 | 完成 | `network.md` §4、`risk.md` §2–§5 |
 | 公钥位置 | 完成 | `evidence.md` §3 |
 | 设备数据库格式 | 完成 | `evidence.md` §6–§7 |
 | 上传示例 | 完成 | `protocol.md` §5 |
@@ -33,6 +34,9 @@
 - `app_dgp` 的 `.b`/`.d` 文件映射、`dg.db` schema、有效期和过期清理；
 - `_seigd` Base64 Parcel/Bundle 编码；
 - 结果返回 Binder 链。
+- Clearcut/StreamZ 的 15 个 DroidGuard 指标、字段、log source 与 uploader 端点；
+- payload manifest 的零 `uses-permission` 权限面与 Google 签名证书；
+- 设备真实 Android data 路径、`app_dgp`/`dg.db` 与 Vending 数据库归属。
 
 ### 动态程序的边界
 
@@ -58,7 +62,8 @@
 - protobuf runtime `RawMessageInfo` 元数据解码；
 - manifest、ELF、数据库 schema 只读解析；
 - `app_dgp` 文件 hash/熵、`dg.db` schema 与有效期只读核对；
-- Android 设备仅通过只读 SSH 核对 schema/存在性。
+- Android 设备仅通过只读 SSH，并在需要时进入宿主挂载命名空间的 `data/...`
+  路径，核对 schema、哈希与存在性。
 
 ## 4. 未执行行为
 

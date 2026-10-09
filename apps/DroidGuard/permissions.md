@@ -14,6 +14,12 @@ manifest 只声明一个默认禁用、未导出的
 `com.google.android.build.data.PropertiesServiceHolder`，没有
 `uses-permission`。因此 payload 自身没有额外危险权限授予面。
 
+四个 APK 共用同一 Google 签名证书 Subject
+`CN=Unknown, OU=Google, Inc, O=Google, Inc, L=Mountain View, ST=CA, C=US`，
+Serial `0x4934987e`，Certificate DER SHA-256 为
+`3D7A1223019AA39D9EA0E3436AB7C0896BFB4FB679F4DE5FE7C23F326C8F994A`。
+该证书只证明 APK 来源签名，不授予 DroidGuard 任何 Android 运行时权限。
+
 ## 2. GMS 宿主权限
 
 GMS base APK 是宿主，manifest 声明 `INTERNET`、`GET_ACCOUNTS`、
