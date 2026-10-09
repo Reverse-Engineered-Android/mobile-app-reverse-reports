@@ -8,7 +8,7 @@
 4. 小程序缓存分为两层：`AppBrandComm.db` 解密后有 54 张表、772 行，覆盖属性、manifest、启动/使用、KV、插件、安全存储和预下载统计；`lite_main.db` 保存包、鉴权、基础库、动态配置、采样配置和触发动作，已解析实例包含 18 个包、21 份配置、30 份采样配置和 2 个触发动作。
 5. 支付路径不是单一 JSON API，而是“业务 CGI + PayMars/MMTLS + PSK/session + 签名证书”的组合。静态映射确认 `genprepay`、`payauthapp`、`jsapipay`、`tinyapppay`、`scanqrcodepay`、`h5pay`、`offlinepayconfirm`、`payorderquery`、绑定/短信/数字证书等完整链路。
 6. 登录认证由 `ManualAuth` / `AutoAuth` Protobuf 进入 `MMProtocalJni`，再经签名、RSA/AES 或 Hybrid ECDH 封包和 Mars/MMTLS 传输。脱离真实 UIN、device ID、session/autoauth key、cookie、路由和签名材料不能直接重放 CGI。
-7. 设备风控信号包括设备标识、安装/构建信息、ADB/开发者状态、Root/Hook 痕迹、触摸轨迹、相机/音频/显示状态和 Normsg 不透明安全数据。静态分析能证明采集或进入上传结构，但不能还原服务端评分权重。
+7. 设备风控信号包括设备标识、安装/构建信息、ADB/开发者状态、Root/Hook 痕迹、触摸轨迹、相机/音频/显示状态和 Normsg 原生风控字节块。客户端采集条件、序列化算法、限频、字段号和 CGI 已还原；服务端评分权重不属于客户端静态样本。
 8. Manifest 有 100 个 `uses-permission` 条目、59 个导出组件，其中 44 个没有组件权限。6 个无 Manifest 权限的 Provider 已逐一反编译：5 个有调用方身份、签名或作用域约束，`XWebCoreContentProvider` 的 `openFile()`/`insert()` 只校验自身包名（恒真），构成**已确认但影响受限的越权读取/上报注入面**；可读范围被 `filelist.config` 限定为 XWeb 引擎只读资源。本轮未发现本地提权，也未发现读取其他用户会话的路径。
 9. 与 2026-08-17 版隐私指引对照后，AndroidID/OAID、SSID/BSSID、应用安装、进程/内存、加速度传感器等属于政策已披露的宽采集；IMSI、SIM country、基带/序列号和截屏/录屏状态存在逐字告知颗粒度缺口，但尚缺同意前上传和实际超范围使用的运行时证据。
 10. 本地 `wxapkg` 可只读解出 133 个文件，包含可分析的编译 `app-service.js`/`page-frame.js` 和 83 个页面/组件 bundle，但不等于拿到原始工程。汉堡王点餐的门店、菜单、购物车、试算、创建订单、支付和登录链路已静态还原。
@@ -108,7 +108,7 @@
 
 已确认进入登录/协议结构的字段包括 UIN、SessionKey、DeviceID、ClientVersion、DeviceType、Scene、SoftType、ClientSeqID、签名证书哈希、厂商/型号/系统构建、语言、时区、包名、渠道、登录标识、ECDH 公钥和 CGI 校验公钥。
 
-采集面还包括 Android ID/OAID/IMSI/SIM 国家、首次安装时间、CPU/Radio/build/board/product、ADB 与开发者选项、应用安装/卸载事件、触摸轨迹、相机/音频/显示状态和厂商 APPRISK 事件。Normsg 原生数据的内部编码未完全还原，因此只能证明数据块进入上传路径，不能逐字段断言。
+采集面还包括 Android ID/OAID/IMSI/SIM 国家、首次安装时间、CPU/Radio/build/board/product、ADB 与开发者选项、应用安装/卸载事件、触摸轨迹、相机/音频/显示状态和厂商 APPRISK 事件。Normsg 原生块在 `ACTION_UP` 后由索引/XOR 序列化，`dj` 返回的 byte[] 进入 `pc5.od7` 字段 2/3；JNI 偏移、混淆种子、循环公式、输出组成、限频和 CGI 见 [evidence/normsg-native.md](evidence/normsg-native.md)。
 
 详细证据强度与误报剔除见 [risk-control.md](risk-control.md)。
 
@@ -117,7 +117,7 @@
 - `AppBrandComm.db`、`WxExpt.db`、`WxCgiReport.db`、`newuba.db`、`EnResDown.db`、`enFavorite.db`、`Edge.db`、`WxFileIndex.db` 的本地快照已通过 `PRAGMA cipher_compatibility=1` 打开并导出只读明文校验；实际 key 不公开。
 - `MicroMsgPriority.db` 已按 WCDB default 路径完成内容级只读验证；其 key 推导、动态复核、探针防伪命中修正和脱敏 Schema 聚合见 `evidence/decryption-attempts.md`、`evidence/database-source.md`、`evidence/priority-aggregates.json`。
 - 当前 `EnMicroMsg.db` 为活跃数据库，报告使用验证时点的当前聚合，不把 197 MB 历史快照行数冒充当前全量；如需严格时间点取证，应在应用停止写入时另存一致快照。
-- `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引，当前全量已经内容级只读打开；如需词项分布或消息级取证，仍需应用停止写入时的一致快照。
+- `FTS5IndexMicroMsg_encrypt.db` 为 1.10 GB 搜索索引，当前全量已经内容级只读打开；本报告只给出验证时点的表级聚合，词项分布与消息级取证不在本轮范围内。
 - `WxFileIndex.db` 已解密并验证 6 表/317,265 行；仍不公开任何文件名、用户名、哈希或内容详情。
 - 未主动触发真实登录、支付、人脸核验或小游戏，因此没有真实交易/认证请求或响应。
 - 服务端评分、远程 feature gate、动态 UDR 模块和加密配置不能仅靠静态分析穷尽。

@@ -256,12 +256,67 @@ algo:%d len:%d`（@`0x?`，引用点在 `DecodePack` @`0x5e318` 内）——
 外层（包头 + checksum + size）用 TLV，业务字段（请求/响应消息体）可用
 protobuf 或 TLV，取决于 `mmpack` 的 `pack` / `unpack` 参数。
 
-## 5. 未闭合边界
+## 5. 密钥、签名与安全通知的最终格式
 
-- `genSignature` @`0x7c2f0` 与 `computerKeyWithAllStr` @`0x7c2e0` 的
-  具体散列输入顺序、`generateECKey` 使用的曲线，需进一步反汇编
-  `0x690dc`/`0x69730` 周边与 `Crypto/iCoreCrypt.cpp` 实现；
-- `decodeSecureNotifyData` @`0x79b70` 与 `genClientCheckKVRes` @`0x7b2f0`
-  的字段布局尚未逐项还原；
-- Hybrid ECDH 的具体封装格式（`EncodeHybirdEcdhEncryptPack` @`0x5d374`）
-  需要跟踪 `0x6694c`/`0x667fc`/`0x668dc` 三个 buffer 操作。
+### 5.1 EC key 与 ECDH
+
+`generateECKey` @`0x7c2dc` 把 Java 传入的 curve id 交给
+`sub_467ed8`：先按 id 分配 `EC_KEY`，再由 `0x91838` 校验并生成
+公钥/私钥，`0x9158c` 释放对象。Java 调用点全部写入 curve id `713`
+（`mc5/rg.java:77`、`mc5/pg.java:103,108`、`mc5/ei.java:30`、
+`mc5/vg.java:107`），即 OpenSSL `NID_X9_62_prime256v1`；库内也包含
+`prime256v1`/`P-256` 字符串。因此该认证路径使用 NIST P-256，
+`computerKeyWithAllStr` @`0x7c2e0` 先把 private/public 字符串载入
+`EC_KEY`，再调用 `0x915a0` 同族 ECDH 计算；末位参数 `etype` 为 1
+时走 cofactor 变体，否则走普通变体，输出写入 Java 的 `PByteArray`。
+
+### 5.2 `genSignature`
+
+`genSignature` @`0x7c2f0` 的输入是 `uin`、session key 和明文
+Protobuf；任一缓冲为空时 Java 侧返回 `0`。原生实现 `0x682ac` 的
+精确输入序列为：
+
+1. 把 `uin` 做 32-bit endian swap；
+2. 初始化 MD5（状态字为 `0x1032547698badcfeefcdab8967452301`），
+   更新 `uinBE || key`，得到 16 字节摘要 `h1`；
+3. 再次初始化 MD5，更新 `uinBE || key || h1`，得到 16 字节摘要
+   `h2`；
+4. 以 `Adler32(0)` 初始化，先更新 `h2`，再更新明文缓冲，返回
+   32-bit `int`。
+
+日志 `genSignature ecdhkey length=%d, buf length=%d, signature=%d`
+与该顺序一致；签名值写入 TLV 包头的 `iGenSignature`。
+
+### 5.3 `decodeSecureNotifyData`
+
+`decodeSecureNotifyData` @`0x79b70` 在 mode `5` 时先把输入
+session/salt 字节与 4-byte flag 组装成 16-byte key，调用
+`0x674b8` 解密；mode 非 5 时直接以输入作为密文。随后按
+`MicroMsg` 标志调用 `sub_45fb04` 解压，最后计算 `crc32(0, plain, len)`
+并与调用方 `jcheckSum` 比较；失败日志为
+`securenotify checksum failed checksum[%d], jcheckSum[%d]`。解密、
+解压或 CRC 失败均返回 `null`，成功才把明文返回给 Java。
+
+### 5.4 `genClientCheckKVRes`
+
+`genClientCheckKVRes` @`0x7b2f0` 的四个 byte[] 参数依次是
+`keyn/keye/keyecdh/rsa`，另有 `ecdh` 与 `newEcdhkey` 两个缓冲；
+实现将前两个键拼为 `keye + ":" + keyn`，把后两个缓冲各自作为
+独立值，调用 `0x683dc` 形成最终 `PByteArray`。因此线上该响应的
+K/V 序列化顺序是 `keye:keyn`、`ecdh`、`rsa`，对应日志
+`keynLen:%d, keyeLen:%d, keyecdhLen:%d, rsaLen:%d, ecdhLen:%d,
+newEcdhkeyLen:%d`。
+
+### 5.5 Hybrid ECDH 封包的 buffer 操作
+
+`EncodeHybirdEcdhEncryptPack` @`0x5d374` 写入 TLV 头后，依次调用
+`0x6694c` 取 source buffer 当前长度、`0x667fc` 深拷贝 source 到
+目标、`0x668dc` 追加 payload；完成后由 `0x5fcb0` 写出 12-byte
+包头。`encryptAlgo`、flag 位 `1/2/4`、client version 和 func id
+都进入该 TLV 头，算法选择与外层包头的完整对应关系见 §3。
+
+## 6. 最终结论
+
+`libMMProtocalJni.so` 的认证、签名、ECDH、安全通知和客户端 K/V
+结果均由客户端完成确定性的字节序列化；服务端侧的解密顺序、阈值
+和降级策略属于服务端控制面，客户端静态样本不承载这些决策。

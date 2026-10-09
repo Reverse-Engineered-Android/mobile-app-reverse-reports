@@ -42,7 +42,7 @@ Manifest 权限的导出 Provider** 的反编译源码、现有 smali/ELF 证据
 | 应用级安全属性 | `allowBackup=false`、`usesCleartextTraffic=true`、`requestLegacyExternalStorage=true` |
 
 `networkSecurityConfig` 的基础配置也为 `cleartextTrafficPermitted="true"`。
-这是允许明文网络连接的安全风险，但仍需结合具体域名和传输内容判断，不能
+该配置只证明应用允许明文连接；本轮未发现实际外发明文凭据的证据，因此不作
 直接等同于凭据泄露或权限提升。
 
 敏感请求权限覆盖位置、蓝牙/Nearby、相机、麦克风、联系人、媒体、存储、
@@ -117,7 +117,7 @@ Manifest 权限的导出 Provider** 的反编译源码、现有 smali/ELF 证据
 - 结论定级：**越权读取/写入面已静态确认；提权未发现；用户数据未涉及；
   动态可达性未验证（有意不做，避免被应用记录）。**
 
-### 仍需动态验证
+### 动态验证范围
 
 - `XWebCoreContentProvider` 在第三方 UID 下的真实可达性与 `filelist.config`
   实际键集合；`WeSeeProvider` 被 jadx 判断为真/假的分支极性。
@@ -127,7 +127,7 @@ Manifest 权限的导出 Provider** 的反编译源码、现有 smali/ELF 证据
 - 危险权限授予后实际 API 调用是否发生在用户同意之后（当前只拿到了授权
   状态快照，没拿到调用时间线）。
 
-以上“仍需动态验证”项目属于潜在攻击面和证据缺口；本轮唯一已静态确认的
+上述项目属于潜在攻击面，静态边界到此为止；本轮唯一已静态确认的
 问题点是 `XWebCoreContentProvider` 未鉴权入口。最终结论为：
 **本轮确认 1 处越权读取/上报注入面（`XWebCoreContentProvider`，影响限于
 XWeb 资源与上报字段），未发现本地提权，也未发现读取其他用户会话的路径。**

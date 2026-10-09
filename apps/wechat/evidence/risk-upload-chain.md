@@ -212,9 +212,12 @@ out[i] = ((in[i] ^ 0xA7) ^ (uint8)(~(((i + 1) ^ L) & 0xFF))) & 0xFFFF
 | `eg0.y` | `eg0.o0.c(11, 86400000L, i4)` | 24h 计数槽 11 |
 | `eg0.b0` | `eg0.o0.c(8, 86400000L, ...)`，默认 `10` | 24h 计数槽 8 |
 
-## 3. 边界
+## 3. 原生数据与最终结论
 
-`MotionEvent` 的坐标、压力、历史点、时间戳如何在 `libwechatnormsg.so` 中
-打包，以及 `Q8` 返回块的字段编码，属于原生库内部格式。本文件已把 Java 侧
-的采集条件、限频、字段号、CGI 和限频阈值全部闭合；原生块的内部字段编码
-见 `normsg-native.md`。
+`MotionEvent` 在 `libwechatnormsg.so` 中由 JNI 类/方法/字段解析、
+索引交换和 XOR 循环转换为场景状态，`dj` 再返回 `byte[]`；精确函数
+边界、JNI 偏移、混淆种子、循环公式和输出组成见
+[normsg-native.md](normsg-native.md)。该 native 块与附加块进入
+`pc5.od7` 的字段 `2/3`，外层 `pc5.vw5` 再携带场景号 `540999748`、
+空 bytes 和嵌套请求，最终由 func/type `771` 发往
+`/cgi-bin/micromsg-bin/reportclientcheck`。

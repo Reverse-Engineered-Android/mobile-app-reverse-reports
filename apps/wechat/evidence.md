@@ -55,6 +55,7 @@
 | Root/Hook/活体/MIS 机制 | `evidence/risk-source.md` |
 | 触屏事件触发时机、限频、字段号与 CGI | `evidence/risk-upload-chain.md` |
 | `reportclientcheck` URI 解混淆算法与结果 | `evidence/risk-upload-chain.md` |
+| 朋友圈/公众号/小程序共享请求打包、RSA 与算法分发 | `evidence/protocol-crypto-dispatch.md` |
 | `libMMProtocalJni` JNI 导出、算法枚举、包头与 checksum | `evidence/mmprotocaljni-native.md` |
 | 误报边界 | `evidence/risk-source.md` |
 
@@ -68,6 +69,14 @@
 | `emMMCryptAlgo` 枚举 0/3/5/10/11/12/13/14 | `evidence/mmprotocaljni-native.md` |
 | Hybrid / HybridECDH / DoubleHybrid 四条封包路径 | `evidence/mmprotocaljni-native.md` |
 | 硬编码 RSA 模数与 `010001` 指数 | `evidence/mmprotocaljni-native.md` |
+
+## 协议业务分发
+
+| 结论 | 公开证据 |
+| --- | --- |
+| 三类业务共享 `modelbase.r2.G2` 打包器与四条封包路径 | `evidence/protocol-crypto-dispatch.md:6-40` |
+| 明文直通、flag 位、AES-GCM/SM4-GCM、Hybrid ECDH 分发 | `evidence/protocol-crypto-dispatch.md:42-156` |
+| RSA 密钥轮换与 cmdId 白名单 | `evidence/protocol-crypto-dispatch.md:158-194` |
 
 ## 权限、提权与隐私
 
