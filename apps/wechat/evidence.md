@@ -53,7 +53,21 @@
 | 设备字段进入认证 | `evidence/risk-source.md` |
 | ADB/开发者/CPU/IMSI/SIM/Android ID 采集 | `evidence/risk-source.md` |
 | Root/Hook/活体/MIS 机制 | `evidence/risk-source.md` |
+| 触屏事件触发时机、限频、字段号与 CGI | `evidence/risk-upload-chain.md` |
+| `reportclientcheck` URI 解混淆算法与结果 | `evidence/risk-upload-chain.md` |
+| `libMMProtocalJni` JNI 导出、算法枚举、包头与 checksum | `evidence/mmprotocaljni-native.md` |
 | 误报边界 | `evidence/risk-source.md` |
+
+## 协议原生层
+
+| 结论 | 公开证据 |
+| --- | --- |
+| `EncodePack`/`EncryptPack`/`DecryptPack`/`DecodePack` 签名与地址 | `evidence/mmprotocaljni-native.md` |
+| 12 字节 TLV 包头（magic `0x81`、checksum、size、reserved） | `evidence/mmprotocaljni-native.md` |
+| checksum = `uint16(~(前缀和[end] - 前缀和[start-1]))` | `evidence/mmprotocaljni-native.md` |
+| `emMMCryptAlgo` 枚举 0/3/5/10/11/12/13/14 | `evidence/mmprotocaljni-native.md` |
+| Hybrid / HybridECDH / DoubleHybrid 四条封包路径 | `evidence/mmprotocaljni-native.md` |
+| 硬编码 RSA 模数与 `010001` 指数 | `evidence/mmprotocaljni-native.md` |
 
 ## 权限、提权与隐私
 

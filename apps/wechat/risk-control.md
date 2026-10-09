@@ -19,15 +19,117 @@
 - `evidence/java/mmprotocal-jni.java:21-47`：签名、EC key、封包和解包 ABI。
 - `evidence/java/hybrid-pack.java:33-48`：DeviceID、UIN、funcId、RSA/Hybrid ECDH、pass key、route info。
 
-## 2. 已确认采集，但上传位置/频率未完全确认
+## 2. 触屏与设备信号的采集、时机与上传格式
 
-- Android ID、OAID、IMSI、SIM country、首次安装时间。
-- CPU、Radio、Build fingerprint、board、product。
-- ADB enabled、development settings enabled。
-- 应用安装/卸载事件和厂商 APPRISK 事件。
-- Display、相机、音频模式和触摸 MotionEvent 轨迹。
+`cp/w0.smali` 明确读取 `adb_enabled`、`development_settings_enabled`、CPU 信息、
+IMSI/SIM country、Android ID、device ID、首次安装时间等，并在 ManualAuth
+日志中写入认证环境结构；这部分字段的最终上传边界见
+[privacy.md](privacy.md)。触摸 MotionEvent、相机状态、音频模式与显示设备
+的编码和上传链已逐段还原如下，完整代码见
+[evidence/risk-upload-chain.md](evidence/risk-upload-chain.md)。
 
-`cp/w0.smali` 明确读取 `adb_enabled`、`development_settings_enabled`、CPU 信息、IMSI/SIM country、Android ID、device ID、首次安装时间等。ManualAuth 日志把这些字段放入认证环境结构。Normsg 路径会把 MotionEvent、相机状态、音频模式和显示设备编码成不透明安全数据。
+### 2.1 触摸事件：是否上传、何时上传
+
+- 入口是接口 `n84.k.mc(int, MotionEvent, String)`，由单例代理
+  `n84.l` 转发（`n84/l.java:143-145`），真实实现为 `eg0.v`
+  （日志名 `MicroMsg.SecInfoReporterImpl`）。
+- 进入上报分支的必要条件是 `motionEvent.getAction() == 1`
+  （`ACTION_UP`，抬手）**且**场景字符串非空（`eg0/v.java:389-391`）。
+- 事件随后通过 `MotionEvent.obtain(...)` 复制，并丢到工作线程
+  `"SIRI.GTE"` 上处理。
+- 场景门控为 `i2 == 540999748`，采集标签固定为 `"ceu_global"`
+  （`eg0/v.java:400-407`）。
+- 上传受 24 小时限频：计数槽 `13`、窗口 `86400000L` ms、
+  默认上限 `20` 次/天，上限可由远端配置 `h92.d0.ZC` 覆盖
+  （`eg0/v.java:411-416`）。原生返回空字节则不发送。
+
+结论：触摸数据不是逐次实时上传，而是“抬手 + 指定场景 + 远端限频”
+三重门控后按天配额上传。
+
+### 2.2 触摸事件如何进入原生层
+
+调用链：
+
+```
+eg0.v.mc
+  → hu3.q.Bi("ceu_global", motionEvent, false, str)
+  → hu3.h 实现 com.tencent.mm.plugin.normsg.t.Bi   (t.java:36-38)
+  → com.tencent.mm.normsg.l.i(...)                  (normsg/l.java:37-39)
+  → 原生 c.p.dg(scene, MotionEvent, mode=3, str, 0) (normsg/c.java:88)
+```
+
+取数侧：
+
+```
+hu3.q.Q8("ceu_global", new normsg.i(true,false,true,true))   (t.java:853-855)
+  → normsg.l.c(...)                                          (normsg/l.java:13-15)
+  → 原生 c.p.dj(scene, flags)                                (normsg/c.java:94)
+```
+
+原生库名由类初始化器 `"tahcew".reverse() + "gsmron".reverse()` 拼接为
+`wechatnormsg`，即 `lib/arm64-v8a/libwechatnormsg.so`；MotionEvent 的
+字段读取与序列化全部发生在该库内。
+
+### 2.3 上传的 Protobuf 格式与 CGI
+
+```java
+// eg0/v.java:418-433
+pc5.od7 od7Var = new pc5.od7();
+pc5.p16 p16Var = new pc5.p16();
+p16Var.d(bArr);        // Q8 返回的原生 normsg 字节块
+od7Var.e = p16Var;     // 字段 2
+if (z) {               // z 恒为 true（eg0/v.java:406）
+    pc5.p16 p16Var2 = new pc5.p16();
+    p16Var2.d(hu3.q.INSTANCE.h());
+    od7Var.f = p16Var2; // 字段 3
+}
+vVar2.cj(i5, od7.toByteArray(), false);
+```
+
+字段号由 `pc5/od7.java:48-55` 的序列化代码确定：字段 `2` = 原生 normsg
+块，字段 `3` = `hu3.q.h()` 附加块，均为 `LEN`（wire type 2）嵌套
+`pc5.p16` bytes 消息。
+
+外层请求由 `eg0/v.java:274-291` 构造：
+
+```java
+lVar.f1176c = hu3.q.INSTANCE.U6("<obfuscated URI>");  // 解混淆
+lVar.f1177d = 771;                                    // 网络 func/type
+lVar.a = new pc5.vw5();
+lVar.b = new pc5.ww5();
+vw5Var.e = i;                                          // 场景号 540999748
+vw5Var.d = new com.tencent.mm.protobuf.g("".getBytes()); // 空 bytes
+vw5Var.f = p16Var;                                     // od7 字节块
+```
+
+URI 解混淆函数 `hu3.h.U6`（`com/tencent/mm/plugin/normsg/t.java:889-898`）
+逐字符执行：
+
+```java
+int iCharAt = str.charAt(i) ^ (-89);          // 0xA7
+i++;
+sb.append((char) (iCharAt ^ ((byte) (~(i ^ length)))));
+```
+
+对本样本密文独立复算得到：
+
+```
+out[i] = ((in[i] ^ 0xA7) ^ (uint8)(~(((i + 1) ^ L) & 0xFF))) & 0xFFFF
+```
+
+解出的路径为 `/cgi-bin/micromsg-bin/reportclientcheck`。
+
+最终结论：触屏与设备风控数据通过
+`/cgi-bin/micromsg-bin/reportclientcheck`（func/type `771`）上传，
+外层 `pc5.vw5` 承载场景号、空 bytes 字段和 `pc5.od7` 字节块，
+`pc5.od7` 的字段 `2`/`3` 分别承载原生 normsg 数据与附加原生数据。
+
+### 2.4 其他 normsg 上报口
+
+同一发送器 `eg0.v.cj` 还承载 `Z7`（结构化设备/环境字段）、
+`qg`（原生探测块 560）、`ec`（`cssi` 上下文）、`hd`/`he`（风控字节块）。
+`eg0.a0`、`eg0.y`、`eg0.b0` 分别使用 24 小时限频槽 `12`、`11`、`8`，
+其中槽 `8` 默认上限 `10`。
 
 ## 3. Root、Hook 与环境完整性
 
