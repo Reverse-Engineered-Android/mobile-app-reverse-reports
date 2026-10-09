@@ -91,6 +91,7 @@
 | IMSI/SIM/细粒度设备字段的告知颗粒度缺口 | [privacy.md](privacy.md)、`evidence/risk-source.md` |
 | 真机版本/哈希一致性、10 已授予 + 6 未授予、AppOps `foreground`/`ignore` | `evidence/phone-runtime.md` |
 | AppOps 时间戳因只读检查位移，不作为采集证据 | `evidence/phone-runtime.md` |
+| 安装/进程列表的本机读取、风险字段边界及 IPxx 日志切片范围 | `evidence/risk-upload-chain.md` §4 |
 
 ## 小程序静态提取
 

@@ -1,7 +1,7 @@
 # 设备风控信号上传链：精确代码与协议格式
 
 样本：`com.tencent.mm` 8.0.78 / `versionCode=3180`，`arm64-v8a`。
-JADX 反编译源位于受控环境 `analysis/wechat-risk-closure-20261009/java/<dex>/sources/`。
+JADX 反编译源在受控分析环境内完成；公开页只保留可复现的类、方法、行号和 DEX 字节格式。
 本文件只记录可复现的调用链、判定条件、字段号和编码算法；不包含账号、设备 ID 或真实负载。
 
 ## 1. 触屏事件的采集、触发时机与上传格式
@@ -221,3 +221,118 @@ out[i] = ((in[i] ^ 0xA7) ^ (uint8)(~(((i + 1) ^ L) & 0xFF))) & 0xFFFF
 `pc5.od7` 的字段 `2/3`，外层 `pc5.vw5` 再携带场景号 `540999748`、
 空 bytes 和嵌套请求，最终由 func/type `771` 发往
 `/cgi-bin/micromsg-bin/reportclientcheck`。
+
+## 4. 安装列表与进程列表的读取、使用和上传边界
+
+### 4.1 `getInstalledPackages`：只用于系统设置页兜底
+
+样本的 17 个 DEX 中 `getInstalledPackages` 只有一个调用点：
+
+```java
+// com/tencent/mars/comm/NetStatusUtil.java:600-621
+private static Intent searchIntentByClass(Context context, String str) {
+    PackageManager packageManager = context.getPackageManager();
+    List<PackageInfo> installedPackages = packageManager.getInstalledPackages(0);
+    ...
+    for (int i = 0; i < installedPackages.size(); i++) {
+        Intent intent = new Intent();
+        intent.setPackage(installedPackages.get(i).packageName);
+        List<ResolveInfo> activities = packageManager.queryIntentActivities(intent, 0);
+        ...
+        if (activityInfo.name.contains(str)) { ... }
+    }
+}
+```
+
+该私有方法只被 `startSettingItent(Context, int)` 的三个异常兜底分支调用
+（`NetStatusUtil.java:662-711`），目标类名固定为 `DevelopmentSettings`、
+`AdvancedSettings`、`ManageAccountsSettings`；其唯一业务调用者是
+`LauncherUI.java:543` 的后台限制提示按钮。遍历过程中写入 Xlog 的只有
+`package size` 和当前 `packageName`，函数返回值是命中的单个 `Intent`。
+返回值随后直接用于 `startActivity`，没有进入 `Bundle`、`byte[]`、
+Protobuf 或 CGI 请求体。因此该路径会在本机枚举应用包名并把每个命中的
+`packageName` 写入 Xlog，但完整安装包列表没有进入
+`reportclientcheck` 或其他已还原的风险 Protobuf 请求体。
+
+### 4.2 `getRunningAppProcesses`：Normsg 只保留一个布尔判定
+
+Normsg 的完整进程列表读取点位于
+`com/tencent/mm/plugin/normsg/t.java:1287-1305`：
+
+```java
+public boolean hj() {
+    List<RunningAppProcessInfo> runningAppProcesses =
+        activityManager.getRunningAppProcesses();
+    int myUid = Process.myUid();
+    for (RunningAppProcessInfo info : runningAppProcesses) {
+        if (info.uid == myUid && str.equals(info.processName)) {
+            z = true;
+            break;
+        }
+    }
+    return z && !a3.g;
+}
+```
+
+DEX 方法 `com.tencent.mm.plugin.normsg.t.hj:()Z`（方法代码起始偏移
+`0x385cd8`）的控制流进一步确认：初始化布尔值后仅遍历 `List`，只有
+“UID 与本进程名同时匹配”才把结果置为 `true`；列表对象不会被返回或写入
+任何请求字段。方法只有四个调用点——`Q4`、`qb`、`s8`、`t3`
+（`t.java:813,1543,1640,1752`）——布尔值只决定走主进程 IPC 还是
+`HotpotService` 数据服务。`Bundle` 中只放入调用方原有参数，没有放入
+`List`、进程名数组或 PID 数组。
+
+全样本其余 `getRunningAppProcesses` 调用点的用途是获取当前进程名、当前
+PID/importance、Tinker/Matrix/性能诊断或只保留匹配本包名的进程；这些查询
+结果没有被送入 `eg0.v.cj`、`pc5.od7`/`pc5.vw5` 或
+`reportclientcheck`。同理，`dp/a.java:474-503` 从列表中只挑出
+`pid == Process.myPid()` 的当前进程并写入 importance/cgroup 元数据。
+
+### 4.3 独立的 IPxx 诊断日志上传
+
+Xlog 与风险 CGI 是两条独立路径。诊断日志上传入口为：
+
+```java
+// com/tencent/mm/network/j1.java:296-298
+public int G(int[] timespans, boolean isLogin, long uin,
+             int beginHour, int endHour,
+             String commExtraInfo, String prefix, String suffix) {
+    ...
+    return new com.tencent.mm.network.p1(
+        this, 2000L, null, beginHour, endHour, timespans,
+        isLogin, uin, commExtraInfo, prefix, suffix
+    ).a(this.t);
+}
+
+// com/tencent/mm/network/p1.java:32-36
+Log.appenderFlush();
+int ret = IPxxLogic.uploadLog(
+    0, timespans, isLogin, uin, "", commExtraInfo,
+    beginHour, endHour, prefix, suffix
+);
+```
+
+`com.tencent.mm.app.i3.d(...)`（`i3.java:89-114`）把该调用接到
+`com.tencent.mm.network.s.G(...)`；`CoreService.java:358-359` 在服务启动时
+注册回调并执行 `IPxxLogic.checkAndReportUploadTask()`，用于恢复已经排队的
+上传任务。`libwechatnetwork.so` 的 JNI 导出
+`Java_com_tencent_mars_magicbox_IPxxLogic_uploadLog` 位于 `0x351fac`，
+先在 `0x35203c` 调用 `mars::xlog::FlushAll`，保存时窗、网络类型、UIN、
+登录标记、前后缀等参数，再在 `0x352418` 创建并分离上传线程。
+
+附加信息由 `x0.getUploadLogExtrasInfo`（`x0.java:37-44`）返回
+`"Device:"` 加两个设备字段；进度和结果分别回调
+`uploadLogResponse` / `uploadLogSuccess` / `uploadLogFail`
+（`x0.java:66-92`）。该路径上传的是被时窗、网络类型、前缀和后缀选中的
+Xlog 文件切片，不生成安装包或进程的结构化数组。
+
+对安装列表结论的最终影响：设置页兜底遍历产生的逐包 Xlog 行若落在
+IPxx 所选时窗内，可随独立的诊断日志切片上传；这不改变风险 CGI 的字段
+边界。因此完整安装应用列表不会作为风险请求字段上传，但在该兜底确实
+执行且 IPxx 诊断日志上传被触发时，其逐包日志行属于可外发范围。
+完整进程列表没有类似的日志写入点，不进入 IPxx 日志选择链。
+
+最终结论：客户端会局部读取系统返回的安装包和进程列表；风险上传链只携带
+散装设备/环境信号和原生风控块，不上传完整安装应用列表，也不上传完整
+进程列表。独立的 IPxx 诊断日志路径可在触发时上传包含安装列表兜底逐包
+日志行的 Xlog 切片，该能力与 `reportclientcheck` 风控封包相互独立。

@@ -169,13 +169,23 @@ Java RiskScanner 的静态检查包括：
 - 设备信息读取 API 和 Normsg 事件入口。
 - 支付 PSK/AES-GCM/signature/root-cert/CGI 映射字符串。
 
-### 结构已证实
+### 已完成的原生链
 
-- Normsg 数据块进入认证/安全上传结构，但字段编码未逐项还原。
+- Normsg 数据块的 JNI 解析、索引/XOR 变换、`ACTION_UP` 时机、
+  `byte[]` 输出、限频、Protobuf 字段和 CGI 均已给出精确代码，
+  见 `evidence/normsg-native.md` 与 `evidence/risk-upload-chain.md`。
 - 支付组件具备设备信息、交易上下文、签名和 MMTLS 能力，但未触发真实支付。
 
-### 静态推断或未知
+### 客户端样本的最终边界
 
-- 每项信号的服务端权重、封禁阈值和远程 feature gate。
-- 是否上传完整安装应用列表或完整进程列表。
-- 动态 UDR 模块在小游戏触发后的行为。
+- 服务端权重、封禁阈值和远程 feature gate 由服务端控制，APK 内不存在
+  这些决策代码；本报告只给出客户端实际采集和进入封包的字段。
+- `getInstalledPackages` 只在系统设置页异常兜底时做本机枚举并返回命中的
+  单个 `Intent`；Normsg 的 `getRunningAppProcesses` 只输出“本进程存在且
+  未 standby”的布尔值。完整安装应用列表和完整进程列表均没有进入本轮
+  还原的风险上传结构；客户端最终结论是风险请求不上传完整列表，只上传
+  已列举的散装设备/环境信号。设置页兜底的逐包 Xlog 行在 IPxx 诊断日志
+  上传被触发时可随日志切片外发，完整进程列表没有这一入口；精确调用链见
+  `evidence/risk-upload-chain.md` §4。
+- 动态 UDR 模块的网络行为属于服务端下发内容的运行时状态，不在客户端
+  静态风险上传链中；本报告不把它写成已发生的上传。

@@ -1,7 +1,7 @@
 # 朋友圈 / 公众号 / 小程序 请求的共享密码学分发
 
 样本：`com.tencent.mm` 8.0.78 / `versionCode=3180`，`arm64-v8a`。
-JADX 源位于受控环境 `analysis/wechat-risk-closure-20261009/java/classes11-clean/sources/`。
+JADX 源在受控分析环境内完成；公开页只保留可复现的类、方法、行号和字节格式。
 
 ## 1. 结论
 
@@ -15,8 +15,7 @@ JADX 源位于受控环境 `analysis/wechat-risk-closure-20261009/java/classes11
 ## 2. 共享 CGI 清单
 
 对完整 APK 的 17 个 DEX 提取字符串并去重后得到 2116 条
-`/cgi-bin/...` 路径（受控环境
-`analysis/wechat-risk-closure-20261009/disasm/all-dex-strings-17.txt.cgi`），
+`/cgi-bin/...` 路径（提取结果留在受控分析环境），
 其中本报告关心的三类：
 
 | 业务 | 路径前缀 | 样例 |
