@@ -30,7 +30,7 @@
 - `hvoa/hvpj` 解析、响应验签、必需字段与 VM URL 白名单；
 - payload 构造、bytecode 二次验签、JNI 注册和全部 native 入口；
 - GPU、触摸、传感器、Bundle/Map 输入如何进入 native session；
-- SHA-1、SHA-256、RSA-SHA256 与 AES 的算法、调用点、硬件/回退路径；
+- SHA-1、SHA-256、RSA-SHA256、AES 与 HMAC-SHA256 的算法、调用点、硬件/回退路径；
 - 变体 A `0x46cb0` 的 `.b` 外层 AES key、IV、block index、session 字段和 XOR 映射；
 - B/C/D 解码入口 `0x182bc`/`0x48a88`/`0x15e0c` 的独立函数体、session 读写和
   C 的偏移差异；

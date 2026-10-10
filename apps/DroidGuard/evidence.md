@@ -114,6 +114,12 @@ JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 | SHA-1 | `sha1h=20`、`sha1c=5`、`sha1p=10`、`sha1m=5`、`sha1su0=16`、`sha1su1=16` |
 | SHA-256 | `sha256h=16`、`sha256h2=16`、`sha256su0=12`、`sha256su1=12` |
 
+HMAC-SHA256 的独立证据位于变体 A：入口 `0x434c4`，inner/outer pad 常量分别
+在 `0x43fc0`/`0x440d8`，SHA-256 输出写回在 `0x4423c`，5 个调用点为
+`0x1cc80`、`0x1d1f8`、`0x2d4dc`、`0x3a4b8`、`0x3bba0`。`risk.md` §5.5
+给出完整参数与作用域；它不是 `0x46cb0` 使用的 AES，也不是 Java 层的
+RSA-SHA256。
+
 `.b` 解码入口的 session 相对偏移也不能跨变体机械复用。A、B、D 的入口函数
 使用 `0xc58`、`0xc59`、`0xc68`、`0xc70`、`0xca0`、`0xca8`、`0xcac`、
 `0xcb0`、`0xcb8`；C 使用 `0xc58`、`0xc59`、`0xc68`、`0xc80`、`0xc88`、
@@ -163,6 +169,12 @@ CREATE INDEX expiration_idx ON main (h);
 | `0b5272…cdda0.b` | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
 | `4d85a8…aeeb7.b` | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
 | `8f1a78…100e.b` | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
+
+本地 Unicorn 输出文件 `evidence/native/b_decode_0b527259.bin` 是 63666 字节，
+前 63662 字节与独立实现逐字节一致；末尾 4 字节 `c171aa46` 是模拟器按原始
+source 长度读取输出槽造成的尾部余量，不是第四个解码字节。上表和
+`risk.md` §4.4 的 63662 字节/摘要口径是程序的真实解码长度，证据文件的全长
+摘要不作为程序摘要使用。
 
 三个 `.b` 的熵为 7.997305、7.998246、7.997515 bit/byte，均覆盖 256 个字节值。
 代码映射：`bxkw.java:56-79` 读取，`bxkw.java:121-127` 生成摘要文件名，
