@@ -6,8 +6,9 @@ DroidGuard 是 Google Play services 中的本地风控执行器：客户端先�
 上传设备 Build 指纹、GMS 版本、flow 名与运行模式；服务端返回经 RSA 签名的
 程序字节码、VM 地址、校验和与有效期；客户端只允许从固定 gstatic HTTPS 前缀
 下载 VM，并在本地 payload 进程内采集 GPU、触摸、传感器等信号，由 native 动态
-VM 执行风控程序；`.b` 的 AES 外层、寄存器/PC 编码和 handler MBA 均已还原，
-最后把结果字节通过 Binder 交回调用方。
+VM 执行风控程序；固定解释器、`.b` 的 AES 外层、寄存器/PC 编码和 handler MBA
+均已定位，但三个缓存样本尚未形成逐指令、逐控制流的可读程序，最后把结果字节
+通过 Binder 交回调用方。
 
 | 维度 | 最终结论 | 精确依据 |
 |---|---|---|
@@ -17,7 +18,7 @@ VM 执行风控程序；`.b` 的 AES 外层、寄存器/PC 编码和 handler MBA
 | 上传范围 | `create` 为 Build/GMS/flow/模式与上下文；StreamZ 仅为操作计数 | `transfer.md` §1 |
 | 下载范围 | 验签后的 bytecode、VM URL、checksum、有效期 | `transfer.md` §2 |
 | 本地采集 | GPU 32×32、触摸、传感器、方向、Bundle/Map 上下文 | `risk.md` §3 |
-| 动态风控 | 固定 native 解释器执行签名程序；`.b` 外层和数据流编码公式已恢复 | `risk.md` §4 |
+| 动态风控 | 固定解释器、`.b` 外层和编码公式已恢复；逐程序语义未闭合 | `risk.md` §4 |
 | 密码学 | RSA-2048/SHA256withRSA、SHA-1、SHA-256、AES-128 均已定位用途与地址 | `risk.md` §5 |
 | 越权 | 未发现 DroidGuard 自身绕过 Android 权限或访问未声明权限的调用闭环 | `permissions.md` §4 |
 | 提权 | 未发现提权、注入、静默安装或权限修改链 | `permissions.md` §5 |
@@ -107,6 +108,9 @@ Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把�
   root key、reg8 和 type/rotation 推导 PC/operand offset，字符串缓冲按寄存器
   索引导出 XOR key，handler 再执行专属内联 MBA；操作数表 `0x41b8` 共 26 项，
   不支持类型在 `0x45870` 生成 `Conversion not supported: `。
+- 逐程序边界：A 样本经 `0x432c4 → 0x46cb0` 得到 63658 字节线性流；入口级
+  追踪只走到初始化/建帧，`0x4563c` 命中为 0，尚未得到三个 `.b` 的完整
+  instruction-level 控制流、handler 语义和业务可读程序。
 - 环境信号：Build、ABI、GPU renderer/fingerprint、32×32 `glReadPixels`、
   文件/内存摘要、触摸和传感器。
 - 密码学：固定代码包含 RSA-2048/SHA256withRSA、SHA-1、SHA-256 和 AES-128；
@@ -116,6 +120,8 @@ Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把�
 ## 7. 研究边界
 
 本报告使用静态反编译/反汇编、本地受控 Unicorn 执行和设备只读核对；没有在设备
-执行 payload、请求服务端评分或发送网络流量。服务端评分规则、处罚策略、保存
-期限、第三方调用方拿到结果后的上传行为不可由本样本的客户端固定代码证明，
-报告不作推测。
+执行 payload、请求服务端评分或发送网络流量。固定客户端代码中的密码学用途和
+混淆控制流已经逐项定位；服务端交付程序的逐样本语义还原尚未闭合，不能把外层
+解码、线性取流或固定解释器反编译当成三个 `.b` 已全部反混淆。服务端评分规则、
+处罚策略、保存期限、第三方调用方拿到结果后的上传行为也不可由客户端固定代码
+证明，报告不作推测。
