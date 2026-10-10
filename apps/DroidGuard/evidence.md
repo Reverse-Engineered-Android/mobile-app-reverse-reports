@@ -80,17 +80,46 @@ API key 已脱敏。
 | 证据 | 位置 |
 |---|---|
 | JNI 注册恢复 | `JNI_OnLoad/RegisterNatives`，本报告私有分析目录 |
-| native 函数清单与反汇编 | `libd669FBAAEF4B3.so`，SHA-256 `64e32d741efff46fcac0d74884a41dafecda4287cb7b379e18cb2cb4345abe07` |
+| 四个 native 函数清单与反汇编 | 见下表；四份均为独立 payload 变体 |
 | init/注册反编译 | `0x135a0`、`0x14280`、`0x1462c`、`0x14660` |
-| `.b` 解码本地执行 | `0x19308` → `0x1c5e8` → `0x46cb0`，无执行错误 |
+| 变体 A `.b` 解码本地执行 | `0x19308` → `0x1c5e8` → `0x46cb0`，无执行错误 |
 | `JNIEnv*` 恢复 | `0x185a4` 创建 session，`0x186a4` 写 `session+0x1528` |
-| 主 opcode 表 | `0x3ef0`、`0x3db8`、`0x3e88`、`0x3f98`、`0x4068`、`0x3c80`、`0x3ce8`、`0x4110`、`0x3d50`、`0x3e20`、`0x4000` |
-| 数组类型检查 | `0x3e4f4`/`0x3e77c` → `0x447bc` → JNI `256 IsInstanceOf` |
+| 变体 A 主 opcode 表 | `0x3ef0`、`0x3db8`、`0x3e88`、`0x3f98`、`0x4068`、`0x3c80`、`0x3ce8`、`0x4110`、`0x3d50`、`0x3e20`、`0x4000` |
+| 变体 A 数组类型检查 | `0x3e4f4`/`0x3e77c` → `0x447bc` → JNI `256 IsInstanceOf` |
 | 操作数类型表 | `0x41b8`，26 个 16-bit 项，base `0x456c8` |
 | 不支持分支文本 | `0x45870`，解码为 `Conversion not supported: ` |
 
 JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 `0x1462c`、`0x14660`。
+
+### 5.1 四个 native 变体
+
+四个 payload APK 并非同一 native 文件。每份 SO 的字节数、摘要和 `.b` 解码入口
+如下：
+
+| 变体 | SO | 字节数 | SHA-256 | 解码入口 |
+|---|---|---:|---|---:|
+| A | `libd669FBAAEF4B3.so` | 315200 | `64e32d741efff46fcac0d74884a41dafecda4287cb7b379e18cb2cb4345abe07` | `0x46cb0` |
+| B | `libd5CC5EA440436.so` | 315200 | `9a153352fd5196a0dd49387e4efe1c8ec6f33d2278a070dc9a6cc1b41c0dbc95` | `0x182bc` |
+| C | `libd7383C18A1562.so` | 331584 | `cad8cfe0000510227703f5ced7f0d5485c76963cf93dd757c65a277aaf223c13` | `0x48a88` |
+| D | `libd5AF72C7F377B.so` | 315200 | `9aca21a9432196a149af050040f1d178054a9d3d211eed6e750c2f5e2dae74ee` | `0x15e0c` |
+
+四份 SO 均独立通过完整跳转表审计：各 11 张主表、每表 26 个有符号相对位移，
+全部 `target` 都存在于各自反汇编，role 与作用一一对应；精确
+`site/table/base/error` 映射见 `risk.md` §4.6。四份加密指令计数完全一致：
+
+| 算法 | 指令与计数 |
+|---|---|
+| AES | `aese=76`、`aesd=44`、`aesmc=62`、`aesimc=41` |
+| SHA-1 | `sha1h=20`、`sha1c=5`、`sha1p=10`、`sha1m=5`、`sha1su0=16`、`sha1su1=16` |
+| SHA-256 | `sha256h=16`、`sha256h2=16`、`sha256su0=12`、`sha256su1=12` |
+
+`.b` 解码入口的 session 相对偏移也不能跨变体机械复用。A、B、D 的入口函数
+使用 `0xc58`、`0xc59`、`0xc68`、`0xc70`、`0xca0`、`0xca8`、`0xcac`、
+`0xcb0`、`0xcb8`；C 使用 `0xc58`、`0xc59`、`0xc68`、`0xc80`、`0xc88`、
+`0xc90`、`0xea8`、`0xec0`、`0xec8`、`0xed0`、`0xed4`、`0xed8`。C 的
+buffer/AES schedule/cache 字段处于不同布局，因此报告中的固定地址均标明所属
+变体。
 
 ## 6. `app_dgp` 缓存核对
 

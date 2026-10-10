@@ -31,11 +31,15 @@
 - payload 构造、bytecode 二次验签、JNI 注册和全部 native 入口；
 - GPU、触摸、传感器、Bundle/Map 输入如何进入 native session；
 - SHA-1、SHA-256、RSA-SHA256 与 AES 的算法、调用点、硬件/回退路径；
-- `0x46cb0` 的 `.b` 外层 AES key、IV、block index、session 字段和 XOR 映射；
+- 变体 A `0x46cb0` 的 `.b` 外层 AES key、IV、block index、session 字段和 XOR 映射；
+- B/C/D 解码入口 `0x182bc`/`0x48a88`/`0x15e0c` 的独立函数体、session 读写和
+  C 的偏移差异；
 - `0x432c4`/`0x177a4` 的寄存器、PC 与字符串缓冲编码；
-- 11 张主 opcode 表的 site、table、base、越界路径和 26 项相对位移；
+- 四个 native 变体各自的 11 张主 opcode 表：site、table、base、越界路径和
+  26 项相对位移；
 - `session+0x1528` 即 `JNIEnv*`，字段读写、方法调用、数组与分配的精确 JNI slot；
-- `0x3e4f4`/`0x3e77c` 的 `IsInstanceOf` 类型门和对象 `GetObjectClass` 路径；
+- 四份 SO 中对应的 `IsInstanceOf` 类型门和对象 `GetObjectClass` 路径，A 的
+  分派点为 `0x3e4f4`/`0x3e77c`；
 - `0x4563c` 的 26 项半字操作数表、rotation/XOR 公式及 `0x45870` 不支持分支；
 - 解释器的栈、分支、内存、摘要与 AES handler 数据流；
 - `app_dgp` 的 `.b`/`.d` 文件映射、`dg.db` schema、有效期和过期清理；
@@ -51,9 +55,10 @@ APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长�
 正确解码长度和 SHA-256 均已分别核对；外层算法不是未知压缩或未知密码，而是
 §4.4 给出的 AES-128 可变块 XOR。解码后的 opcode、寄存器值、PC、字符串缓冲与
 操作数按固定解释器的索引、rotation/XOR 和 handler 专属 MBA 逐次展开；这些公式
-来自对 `0x46cb0`、`0x432c4`、`0x177a4` 和解释器 XREF 的恢复。主 opcode 表、
-JNI 操作、类型检查和值类型表已全部展开到固定地址，不留未识别的本地加密或
-混淆控制流边界。
+来自对 A 的 `0x46cb0`、`0x432c4`、`0x177a4` 和解释器 XREF 的恢复；B/C/D
+入口为 `0x182bc`/`0x48a88`/`0x15e0c`，已逐份核对各自函数体和 session 偏移。
+四个 native 变体的主 opcode 表、JNI 操作和类型检查均已展开到各自的精确地址，
+不留未识别的本地加密或混淆控制流边界。
 
 本地受控 Unicorn 执行验证了 `0x19308` 初始化、`0x1c5e8` 建帧和 `0x46cb0`
 程序解码，输出与独立实现一致；没有在设备上执行 payload、访问网络或请求评分。
@@ -65,11 +70,13 @@ JNI 操作、类型检查和值类型表已全部展开到固定地址，不留�
 
 - JADX 静态反编译 GMS DEX 与四个 payload APK；
 - r2/r2ghidra 静态反汇编、函数 XREF 与 handler 数据流恢复；
-- 从 ELF 与反汇编提取全部 `opcode - 0x42` 跳转表，并按 JNI header 核对函数偏移；
+- 从四份 ELF 与反汇编提取全部 `opcode - 0x42` 跳转表，并按 JNI header 核对
+  函数偏移、target 存在性和 role；
 - protobuf runtime `RawMessageInfo` 元数据解码；
 - manifest、ELF、数据库 schema 只读解析；
 - `.b`/`.d` 文件 hash/熵、`dg.db` schema 与有效期只读核对；
-- 本地 Unicorn 受控执行 `0x19308`、`0x1c5e8`、`0x46cb0`，并与独立解码实现核对；
+- 本地 Unicorn 受控执行变体 A 的 `0x19308`、`0x1c5e8`、`0x46cb0`，并与独立
+  解码实现核对；
 - Android 设备仅通过只读 SSH，并在需要时进入宿主挂载命名空间的 `data/...`
   路径，核对 schema、哈希与存在性。
 

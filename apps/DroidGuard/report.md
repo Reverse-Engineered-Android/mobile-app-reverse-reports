@@ -92,14 +92,17 @@ Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把�
 - 服务端程序：`byteCode` 由两层 RSA-SHA256 签名保护，带 checksum 与有效期。
 - 本地缓存：`app_dgp` 下 `.b` 为程序字节、`.d` 为辅助字节，`dg.db`
   按 flow/FINGERPRINT 键、创建时间和过期时间管理；过期时删除行和文件。
-- `.b` 外层：前 4 字节 IV，AES-128 key 由 `0x19a70` 初始化，`0x46cb0` 按
-  `IV || uint32_le(block) || 8×00` 生成 keystream 并逐块 XOR，解码长度为
-  `len(raw)-4`；初始与 2026-10-10 复核样本的解码摘要见 `evidence.md` §6。
+- `.b` 外层：前 4 字节 IV，变体 A 的 AES-128 key 由 `0x19a70` 初始化，
+  `0x46cb0` 按 `IV || uint32_le(block) || 8×00` 生成 keystream 并逐块 XOR，
+  解码长度为 `len(raw)-4`；B/C/D 解码入口分别为 `0x182bc`/`0x48a88`/`0x15e0c`，
+  C 使用不同的 session 偏移。初始与 2026-10-10 复核样本的解码摘要见
+  `evidence.md` §6。
 - native 动态 VM：`initNative` 创建 session；`ssNative`/`xssNative` 接收
   flow/Bundle/Map；`heNative` 接收事件；`closeNative` 结束会话。
 - opcode/JNI 分派：11 张表按 `opcode-0x42` 做 26 项有符号跳转；字段、方法、
-  数组和分配分别落到固定 JNI `Get/Set/Call/New*` slot，数组读写前由
-  `0x447bc` 调 `IsInstanceOf`，对象路径先 `GetObjectClass`。
+  数组和分配分别落到固定 JNI `Get/Set/Call/New*` slot；四个 native 变体均有
+  完整的 11×26 表，变体 A 的数组读写前由 `0x447bc` 调 `IsInstanceOf`，
+  对象路径先 `GetObjectClass`，精确变体地址见 `risk.md` §4.6。
 - 数据流编码：寄存器 type/value 按 `frame+(i+1)*16(+8)` 存放，`0x432c4` 以
   root key、reg8 和 type/rotation 推导 PC/operand offset，字符串缓冲按寄存器
   索引导出 XOR key，handler 再执行专属内联 MBA；操作数表 `0x41b8` 共 26 项，
