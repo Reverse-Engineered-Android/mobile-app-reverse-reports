@@ -141,13 +141,14 @@ native/Java 中的密码学实现均已按算法和用途定位。
 `ad_attest`；键值长度为 80、87、85 字节，VM 版本一致。报告不复制 `main.a`
 中的真实 `Build.FINGERPRINT`。
 
-三个 `.b` 文件分别为 63666、87050、64561 字节，逐字节 Shannon 熵为
-7.997305、7.998246、7.997515 bit/byte，且 256 个取值全部出现；zlib、gzip、
-bzip2、xz 头/解压探测均失败。它们是服务端交付后原样缓存的高熵程序数据，
-不是 APK 内未识别的压缩包或固定业务源码。三个 `.d` 文件均为 66 字节，属于
-`hvpj.h` 辅助字节，不是私钥。固定代码里的 RSA、SHA 与 AES 已在 §5 按算法、
-调用点和参数还原；服务端程序交付后的评分阈值仍属于服务端内容，不能从客户端
-样本凭空改写。
+初始抓取时三个 `.b` 文件分别为 63666、87050、64561 字节，逐字节 Shannon 熵
+为 7.997305、7.998246、7.997515 bit/byte，且 256 个取值全部出现；zlib、gzip、
+bzip2、xz 头/解压探测均失败。2026-10-10 的只读复核显示同一文件名对象已轮换为
+64857、85727、63844 字节，证明缓存是可更新的服务端交付物。它们是交付后原样
+缓存的高熵程序数据，不是 APK 内未识别的压缩包或固定业务源码。三个 `.d` 文件
+两次核对均为 66 字节，属于 `hvpj.h` 辅助字节，不是私钥。固定代码里的 RSA、
+SHA 与 AES 已在 §5 按算法、调用点和参数还原；服务端程序交付后的评分阈值仍
+属于服务端内容，不能从客户端样本凭空改写。
 
 ### 4.4 `.b` 外层解码算法
 
@@ -188,7 +189,7 @@ j > 0: raw[16j:16j+16] XOR keystream -> decoded[16j-4:16j+12]
 
 末尾只 XOR 实际剩余字节。`+0xcb8` 只在首次 cache miss 读取一次，之后不刷新；
 `+0xca0` 保存命中的 block index，后续 miss 从缓存 keystream 取数据。
-三个样本的正确解码结果如下（不发布原始或解码后的程序字节）：
+初始抓取三个样本的正确解码结果如下（不发布原始或解码后的程序字节）：
 
 | 文件前缀 | 原始长度 | 解码长度 | 解码 SHA-256 |
 |---|---:|---:|---|
@@ -198,6 +199,15 @@ j > 0: raw[16j:16j+16] XOR keystream -> decoded[16j-4:16j+12]
 
 该变换后的高熵来自后两层 VM 数据流编码，而不是残余 AES 密文：解码结果仍需
 按 handler 的操作数公式、寄存器索引和 MBA 语义逐次展开。
+
+2026-10-10 只读复核得到的同一文件名对象快照如下；raw SHA-256 与解码 SHA-256
+都发生变化，文件名仍只是缓存键摘要，不是内容不变量：
+
+| 文件前缀 | raw 长度 | raw SHA-256 | 解码长度 | 解码 SHA-256 |
+|---|---:|---|---:|---|
+| `0b5272…cdda0.b` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
+| `4d85a8…aeeb7.b` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
+| `8f1a78…100e.b` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
 
 ### 4.5 寄存器、PC 与字符串编码
 
@@ -219,6 +229,80 @@ reg8.value = rotate(root_key, derived(type/rotation)) XOR returned_pc
 operand 解码互相绑定。字符串/缓冲区使用同样的“寄存器索引 + VM key”导出 XOR
 key；搬运缓冲时直接做两次 XOR，避免临时变量暴露明文。handler 读取寄存器索引
 后还要执行该 handler 专属的内联 MBA；MBA 只改变索引/操作数，不改变其语义。
+
+### 4.6 opcode 分派、JNI 接口与操作数解码
+
+`session+0x1528` 不是自定义 C++ vtable，而是 `0x185a4` 在创建 session 时保存的
+Android `JNIEnv*`。`0x186a4` 写入该字段；后续每个间接调用都先从 `[JNIEnv*]`
+取函数表，再以固定字节偏移取 JNI 函数。下表中的偏移因此是标准 JNI 函数表偏移，
+不是动态程序自带的函数编号。
+
+外层 opcode 统一按 `index = opcode - 0x42`、`0 <= index <= 0x19` 校验。合法项
+从有符号 32 位表读取相对位移，`target = adr_base + int32(table[index])`；越界
+进入对应错误路径。全部主分派点为：
+
+| 分派点 | 表地址 | `adr` base | 作用 | 越界路径 |
+|---|---:|---:|---|---|
+| `0x329ec` | `0x3ef0` | `0x32a28` | 数组/对象数组分配 | `0x3e0d8` |
+| `0x3e4f4` | `0x3db8` | `0x3e508` | 写数组前类型检查 | `0x4044c` |
+| `0x3e6b8` | `0x3e88` | `0x3e6cc` | 实例字段写 | `0x41e90` |
+| `0x3e77c` | `0x3f98` | `0x3e790` | 读数组前类型检查 | `0x405e8` |
+| `0x3f594` | `0x4068` | `0x3f5a8` | 静态字段写 | `0x42e2c` |
+| `0x3fbb4` | `0x3c80` | `0x3fbc8` | 实例字段读 | `0x413ec` |
+| `0x3ff3c` | `0x3ce8` | `0x3ff54` | 实例方法调用 | `0x426c4` |
+| `0x40004` | `0x4110` | `0x4001c` | 静态方法调用 | `0x42754` |
+| `0x400a0` | `0x3d50` | `0x400b4` | 静态字段读 | `0x41fd4` |
+| `0x4036c` | `0x3e20` | `0x40380` | 数组写 | `0x40c34` |
+| `0x4056c` | `0x4000` | `0x40580` | 数组读 | `0x405e8` |
+
+`0x48cdc`、`0x48d54` 虽同样做 `opcode - 0x42`，但位于类型解析/规范化路径，
+不是解释循环的主 opcode 表。
+
+各表的受支持类型与精确 JNI slot 如下；`0x4c` 与 `0x5b` 均走对象引用路径。
+
+| 类型 | opcode | 分配 | 实例字段读/写 | 静态字段读/写 | 实例调用 | 静态调用 |
+|---|---|---|---|---|---|---|
+| byte | `0x42` | `1408 NewByteArray` | `776/848` | `1176/1248` | `336 CallByteMethodA` | `976 CallStaticByteMethodA` |
+| char | `0x43` | `1416 NewCharArray` | `784/856` | `1184/1256` | `360 CallCharMethodA` | `1000 CallStaticCharMethodA` |
+| double | `0x44` | `1456 NewDoubleArray` | `824/896` | `1224/1296` | `480 CallDoubleMethodA` | `1120 CallStaticDoubleMethodA` |
+| float | `0x46` | `1448 NewFloatArray` | `816/888` | `1216/1288` | `456 CallFloatMethodA` | `1096 CallStaticFloatMethodA` |
+| int | `0x49` | `1432 NewIntArray` | `800/872` | `1200/1272` | `408 CallIntMethodA` | `1048 CallStaticIntMethodA` |
+| long | `0x4a` | `1440 NewLongArray` | `808/880` | `1208/1280` | `432 CallLongMethodA` | `1072 CallStaticLongMethodA` |
+| object/reference | `0x4c`,`0x5b` | `48 FindClass` + `1376 NewObjectArray` | `760/832` | `1160/1232` | `288 CallObjectMethodA` | `928 CallStaticObjectMethodA` |
+| short | `0x53` | `1424 NewShortArray` | `792/864` | `1192/1264` | `384 CallShortMethodA` | `1024 CallStaticShortMethodA` |
+| void | `0x56` | 不支持 | 不支持 | 不支持 | `504 CallVoidMethodA` | `1144 CallStaticVoidMethodA` |
+| boolean | `0x5a` | `1400 NewBooleanArray` | `768/840` | `1168/1240` | `312 CallBooleanMethodA` | `952 CallStaticBooleanMethodA` |
+
+对象数组的公共尾部是 `0x3eb64`–`0x3ebf8`：`FindClass` 得到元素类，在 `0x3ebf4`
+调用 `1376 NewObjectArray`，随后 `184 DeleteLocalRef` 清理临时类引用。数组读
+先在对应 handler 调 `1368 GetArrayLength` 并做边界检查，再调 `GetBoolean/Byte/
+Char/Short/Int/Long/Float/DoubleArrayRegion` 的 `1592/1600/1608/1616/1624/1632/
+1640/1648`；数组写对应 `1656/1664/1672/1680/1688/1696/1704/1712`。对象数组读
+和写分别直接使用 `1384 GetObjectArrayElement` 与 `1392 SetObjectArrayElement`。
+
+`0x3e4f4`、`0x3e77c` 在真正读写数组前按 opcode 选择缓存的类型描述对象，加载
+`x2=[x8]` 后调用 `0x447bc`。`0x447bc` 的 `0x447ec`–`0x447f0` 调用 JNI `256
+IsInstanceOf`；失败进入 `0x17380` 的类型/运行时错误路径。对象类型还会先经过
+`248 GetObjectClass`。因此这些表是动态程序的运行时类型门，不是另一套业务 opcode。
+
+`fcn.0004563c` 是独立的操作数/值类型解码器。它同样要求 `opcode-0x42 <= 0x19`，
+但从表 `0x41b8` 读取 16 位相对量，按 `target = 0x456c8 + 4*uint16` 跳转，共
+26 项。明确支持的值类型是：`0x42` byte、`0x43`/`0x53` 16-bit、`0x44` double、
+`0x46` float、`0x49` int、`0x4a`/`0x4c`/`0x5b` 64-bit/object、`0x56` no-op、
+`0x5a` boolean；其他项在 `0x45870` 汇合。每个解码 handler 都执行：
+
+```text
+control = session[+0xc18]
+root    = session[+0xc10]
+rot     = -(((control & 0x10) | reg_index)
+            & ((~control) | 0x3e)) & 0x3f
+value   = ror64(root, rot) XOR encoded_value
+```
+
+`ror(root, -8 & 63)` 等价于 `rotl(root, 8)`，该等价关系已数值核对。`0x45870`
+用 XOR/rotate key `0xc3f77cf110beca42` 构造 28 字节错误文本，独立解码为
+`Conversion not supported: `。至此，动态程序的外层 opcode、JNI 操作、类型检查、
+值类型、寄存器/PC 解码和不支持分支均已给出固定地址、公式或精确 JNI slot。
 
 ## 5. 密码学精确位置
 

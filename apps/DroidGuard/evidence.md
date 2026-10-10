@@ -83,6 +83,11 @@ API key 已脱敏。
 | native 函数清单与反汇编 | `libd669FBAAEF4B3.so`，SHA-256 `64e32d741efff46fcac0d74884a41dafecda4287cb7b379e18cb2cb4345abe07` |
 | init/注册反编译 | `0x135a0`、`0x14280`、`0x1462c`、`0x14660` |
 | `.b` 解码本地执行 | `0x19308` → `0x1c5e8` → `0x46cb0`，无执行错误 |
+| `JNIEnv*` 恢复 | `0x185a4` 创建 session，`0x186a4` 写 `session+0x1528` |
+| 主 opcode 表 | `0x3ef0`、`0x3db8`、`0x3e88`、`0x3f98`、`0x4068`、`0x3c80`、`0x3ce8`、`0x4110`、`0x3d50`、`0x3e20`、`0x4000` |
+| 数组类型检查 | `0x3e4f4`/`0x3e77c` → `0x447bc` → JNI `256 IsInstanceOf` |
+| 操作数类型表 | `0x41b8`，26 个 16-bit 项，base `0x456c8` |
+| 不支持分支文本 | `0x45870`，解码为 `Conversion not supported: ` |
 
 JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 `0x1462c`、`0x14660`。
@@ -101,7 +106,7 @@ CREATE TABLE main (
 CREATE INDEX expiration_idx ON main (h);
 ```
 
-脱敏后的记录只保留 flow、键值长度、时间与版本：
+初始抓取的脱敏记录只保留 flow、键值长度、时间与版本：
 
 | flow | `a` 长度 | `b` 创建秒 | `h` 过期秒 | `d` 版本 |
 |---|---:|---:|---:|---|
@@ -110,6 +115,8 @@ CREATE INDEX expiration_idx ON main (h);
 | `ad_attest` | 85 | 1791504633 | 1791504643 | `8348DD80A734238B4413C219FE27351BE6B49361` |
 
 `main.a` 的真实值包含 `Build.FINGERPRINT`，不在报告中复制。
+
+以下为初始抓取快照：
 
 | 缓存对象 | 字节数 | SHA-256 |
 |---|---:|---|
@@ -132,6 +139,16 @@ CREATE INDEX expiration_idx ON main (h);
 代码映射：`bxkw.java:56-79` 读取，`bxkw.java:121-127` 生成摘要文件名，
 `bxkw.java:137-162` 按缓存键和有效期查询，`bxkw.java:230-292` 原子写入与过期清理。
 
+2026-10-10 只读复核的同一文件名对象已经轮换；raw 与解码摘要均不复用初始快照值：
+
+| 文件前缀 | raw 字节数 | raw SHA-256 | 解码字节数 | 解码 SHA-256 |
+|---|---:|---|---:|---|
+| `0b5272…cdda0.b` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
+| `4d85a8…aeeb7.b` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
+| `8f1a78…100e.b` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
+
+三个 `.d` 文件的复核长度仍为 66 字节。只发布长度与摘要，不发布 raw 或解码内容。
+
 ## 7. 设备只读核对
 
 Android data 目录在 SSH 进程的挂载命名空间中不可直接遍历，实际核对时通过
@@ -144,11 +161,13 @@ Android data 目录在 SSH 进程的挂载命名空间中不可直接遍历，�
 - Vending phenotype：`static_config_packages`、`experiment_states`、
   `param_partitions`、`accounts`；
 - `data/user/0/com.google.android.gms/databases/dg.db`：
-  24576 字节，SHA-256
-  `3304d831f32914029d65212fd9f63949532565749f005897cffcec93cca1e12b`，
-  与本地只读副本完全相同；
+  2026-10-10 复核仍为 24576 字节，SHA-256
+  `e1ae9aa386833b04eb969df7a7617dc95edce34b4234ae1060141832174cdbf5`；
+  初始抓取值为 `3304d831f32914029d65212fd9f63949532565749f005897cffcec93cca1e12b`，
+  说明运行数据库会更新，不能把任一 hash 当作持久格式常量；
 - `data/user/0/com.google.android.gms/app_dgp/` 中三组
-  `.b`/`.d` 的长度与 SHA-256 均与本地副本完全相同；
+  `.b`/`.d` 文件名与 `.d` 长度仍存在，三组 `.b` 的长度和内容摘要已按 §6
+  的 2026-10-10 表更新；
 - `data/data/com.google.android.gms/files/clearcut/0/STREAMZ_DROIDGUARD`
   存在但为空，证明 log source spool 已配置，不证明该样本发生实际发送；
 - `data/user/0/com.android.vending/databases/verify_apps.db`
@@ -159,7 +178,8 @@ Android data 目录在 SSH 进程的挂载命名空间中不可直接遍历，�
   存在，大小 152 字节，属于 Vending 的 payload 配置存储；
 - DroidGuard phenotype 配置文件存在。
 
-数据库行内容、真实账号与 payload 内容未写入本报告。
+数据库行内容、真实账号与 payload 内容未写入本报告；复核只读取元数据、schema、
+长度和摘要。
 
 ## 8. 资源与操作边界
 

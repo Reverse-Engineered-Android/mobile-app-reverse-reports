@@ -5,8 +5,9 @@
 已缓存 DroidGuard payload APK。GMS APK SHA-256 为
 `bda6a95f1bb8dd707ad9333dce9639cc8104c4bbc97a639e14a428e63b4a6852`。
 
-调查使用 DEX/JADX 静态反编译、ELF 静态反汇编、protobuf 反射元数据解码、
-本地 Unicorn 受控执行初始化/解码函数，以及设备只读数据库/schema 核对。没有
+调查使用 DEX/JADX 静态反编译、ELF 静态反汇编、全部 opcode 跳转表/JNI slot
+提取、protobuf 反射元数据解码、本地 Unicorn 受控执行初始化/解码函数，以及
+设备只读数据库/schema/哈希复核。没有
 构造或发送 DroidGuard 请求，没有从网络下载服务端 VM，没有在设备运行完整
 payload 或评分程序，没有绕过风控，也没有写入或修改手机数据。
 

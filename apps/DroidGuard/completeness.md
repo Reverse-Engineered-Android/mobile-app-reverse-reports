@@ -14,7 +14,7 @@
 | 未经告知判断 | 已覆盖 | `privacy.md` §4–§5 |
 | 超范围判断 | 已覆盖 | `privacy.md` §5 |
 | 风控机制精确代码 | 已覆盖 | `risk.md` §1–§6 |
-| 混淆与动态程序机制 | 已覆盖 | `risk.md` §4 |
+| 混淆与动态程序机制 | 已覆盖 | `risk.md` §4.1–§4.6 |
 | 密码学用途、算法与地址 | 已覆盖 | `risk.md` §5 |
 | Google 官方 GMS/StreamZ/解释器代码 | 已覆盖 | `network.md` §4、`risk.md` §2–§5 |
 | 公钥位置与算法 | 已覆盖 | `auth.md` §2–§3、`evidence.md` §3 |
@@ -33,7 +33,11 @@
 - SHA-1、SHA-256、RSA-SHA256 与 AES 的算法、调用点、硬件/回退路径；
 - `0x46cb0` 的 `.b` 外层 AES key、IV、block index、session 字段和 XOR 映射；
 - `0x432c4`/`0x177a4` 的寄存器、PC 与字符串缓冲编码；
-- 解释器的栈、opcode、分支、内存、JNI/syscall、摘要与 AES handler 数据流；
+- 11 张主 opcode 表的 site、table、base、越界路径和 26 项相对位移；
+- `session+0x1528` 即 `JNIEnv*`，字段读写、方法调用、数组与分配的精确 JNI slot；
+- `0x3e4f4`/`0x3e77c` 的 `IsInstanceOf` 类型门和对象 `GetObjectClass` 路径；
+- `0x4563c` 的 26 项半字操作数表、rotation/XOR 公式及 `0x45870` 不支持分支；
+- 解释器的栈、分支、内存、摘要与 AES handler 数据流；
 - `app_dgp` 的 `.b`/`.d` 文件映射、`dg.db` schema、有效期和过期清理；
 - `_seigd` Base64 Parcel/Bundle 编码、结果返回 Binder 链；
 - Clearcut/StreamZ 的 15 个 DroidGuard 指标、字段、log source 与 uploader 端点；
@@ -43,11 +47,13 @@
 ### 动态交付物的最终结论
 
 `hvpj.byteCode` 是服务端签名交付的数据程序，由固定 native 解释器执行，不是随
-APK 固定的业务源码。三个 `.b` 样本的原始长度和 SHA-256、正确解码长度和
-SHA-256 均已核对；外层算法不是未知压缩或未知密码，而是 §4.4 给出的
-AES-128 可变块 XOR。解码后的 opcode、寄存器值、PC、字符串缓冲与操作数仍按
-固定解释器的索引、rotation/XOR 和 handler 专属 MBA 逐次展开；这些公式来自
-对 `0x46cb0`、`0x432c4`、`0x177a4` 和解释器 XREF 的恢复。
+APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长度、SHA-256、
+正确解码长度和 SHA-256 均已分别核对；外层算法不是未知压缩或未知密码，而是
+§4.4 给出的 AES-128 可变块 XOR。解码后的 opcode、寄存器值、PC、字符串缓冲与
+操作数按固定解释器的索引、rotation/XOR 和 handler 专属 MBA 逐次展开；这些公式
+来自对 `0x46cb0`、`0x432c4`、`0x177a4` 和解释器 XREF 的恢复。主 opcode 表、
+JNI 操作、类型检查和值类型表已全部展开到固定地址，不留未识别的本地加密或
+混淆控制流边界。
 
 本地受控 Unicorn 执行验证了 `0x19308` 初始化、`0x1c5e8` 建帧和 `0x46cb0`
 程序解码，输出与独立实现一致；没有在设备上执行 payload、访问网络或请求评分。
@@ -59,6 +65,7 @@ AES-128 可变块 XOR。解码后的 opcode、寄存器值、PC、字符串缓�
 
 - JADX 静态反编译 GMS DEX 与四个 payload APK；
 - r2/r2ghidra 静态反汇编、函数 XREF 与 handler 数据流恢复；
+- 从 ELF 与反汇编提取全部 `opcode - 0x42` 跳转表，并按 JNI header 核对函数偏移；
 - protobuf runtime `RawMessageInfo` 元数据解码；
 - manifest、ELF、数据库 schema 只读解析；
 - `.b`/`.d` 文件 hash/熵、`dg.db` schema 与有效期只读核对；
