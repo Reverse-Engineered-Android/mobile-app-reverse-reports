@@ -3,13 +3,13 @@
   "executed_sites": {
     "A": {
       "0x223e8": {
-        "program": "0b527259423eb1507aed800f2b8cf2a0f41a851788f63077357d4811657cdda0.b",
+        "program": "fast",
         "flow": "fast",
         "iterations": 17222,
         "destination_buffer": "0x69f000",
         "fetched_buffer_sha256": "1e22bbf8c2cdad5f9a0c190108b878e01bb67a98f267cda4bfa4e221316bf625",
         "stored_buffer_sha256": "f541b3226e27367ac1d0777f88fabdf1b90832ea038345e21b396a04c43919ed",
-        "trace": "evidence/native/trace_vm_semantics_0b527259_fast.json",
+        "trace_alias": "fast",
         "verification": "stored[i] == (fetched[i] + keystream[i % 8]) mod 256 for all 17222 bytes; the inverse recovers the range-decoder output byte for byte"
       }
     }

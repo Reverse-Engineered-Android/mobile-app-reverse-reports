@@ -96,8 +96,8 @@ API key 已脱敏。
 | A 线性取流 | `0x432c4 → 0x46cb0`，63658 字节，SHA-256 `63ded1fab3a6c2616d34967e6d785dbe85bba182962f5681527cfd547cb935b5` |
 | 早期入口级追踪 | `0x1462c`/`0x14280`/`0x14368` 正常返回；只到初始化/建帧，`0x4563c` 0 次 |
 | 三个缓存程序完整 `ssNative` 追踪 | `fast` 607366 条/24 段/49 字节输出；`pia_express` 14097 条/14 段/41 字节；`ad_attest` 15807 条/54 段/41 字节；均 `returned=true`、errors=0 |
-| 可读 selector 程序 | [`b-programs.md`](b-programs.md)，20846 字节，SHA-256 `f9bf6dd1893ab5005430766f3820f74600e2339d09029e874d02b0ab5d45c70f` |
-| 结构化逐指令提升 | [`b-program-lift.json`](b-program-lift.json)，1455690 字节，SHA-256 `4e366bcc408a8da2653065ea4320ff32302d1165cd1ffd03c0ef05aef816046c` |
+| 可读 selector 程序 | [`b-programs.md`](b-programs.md)，20795 字节，SHA-256 `970da792edc2586dd1bedd1c921ff113a7c058e6e3e2784a692c72c3b395f57f` |
+| 结构化逐指令提升 | [`b-program-lift.json`](b-program-lift.json)，1455408 字节，SHA-256 `a9ffa1824c69e5b6e1a897d5b8d4bddbf30b27cc7ceda40a6fbe4e189c680669` |
 
 JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 `0x1462c`、`0x14660`。
@@ -174,13 +174,13 @@ CREATE INDEX expiration_idx ON main (h);
 
 `.b` 的正确解码结果（只发布长度与摘要，不发布字节）：
 
-| 文件前缀 | 解码字节数 | 解码 SHA-256 |
+| 样本别名 | 解码字节数 | 解码 SHA-256 |
 |---|---:|---|
-| `0b5272…cdda0.b` | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
-| `4d85a8…aeeb7.b` | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
-| `8f1a78…100e.b` | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
+| `fast` | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
+| `pia_express` | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
+| `ad_attest` | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
 
-本地 Unicorn 输出文件 `evidence/native/b_decode_0b527259.bin` 是 63666 字节，
+本地 Unicorn 输出证据以 `fast` 样本别名引用，是 63666 字节，
 前 63662 字节与独立实现逐字节一致；末尾 4 字节 `c171aa46` 是模拟器按原始
 source 长度读取输出槽造成的尾部余量，不是第四个解码字节。上表和
 `risk.md` §4.4 的 63662 字节/摘要口径是程序的真实解码长度，证据文件的全长
@@ -196,11 +196,11 @@ source 长度读取输出槽造成的尾部余量，不是第四个解码字节�
 
 2026-10-10 只读复核的同一文件名对象已经轮换；raw 与解码摘要均不复用初始快照值：
 
-| 文件前缀 | raw 字节数 | raw SHA-256 | 解码字节数 | 解码 SHA-256 |
+| 样本别名 | raw 字节数 | raw SHA-256 | 解码字节数 | 解码 SHA-256 |
 |---|---:|---|---:|---|
-| `0b5272…cdda0.b` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
-| `4d85a8…aeeb7.b` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
-| `8f1a78…100e.b` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
+| `fast` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
+| `pia_express` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
+| `ad_attest` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
 
 三个 `.d` 文件的复核长度仍为 66 字节。只发布长度与摘要，不发布 raw 或解码内容。
 

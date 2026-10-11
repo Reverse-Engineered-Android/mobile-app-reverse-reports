@@ -204,11 +204,11 @@ j > 0: raw[16j:16j+16] XOR keystream -> decoded[16j-4:16j+12]
 `+0xca0` 保存命中的 block index，后续 miss 从缓存 keystream 取数据。
 初始抓取三个样本的正确解码结果如下（不发布原始或解码后的程序字节）：
 
-| 文件前缀 | 原始长度 | 解码长度 | 解码 SHA-256 |
+| 样本别名 | 原始长度 | 解码长度 | 解码 SHA-256 |
 |---|---:|---:|---|
-| `0b5272…cdda0.b` | 63666 | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
-| `4d85a8…aeeb7.b` | 87050 | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
-| `8f1a78…100e.b` | 64561 | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
+| `fast` | 63666 | 63662 | `f6d2bc80bc4c98ebcc5f5dac558db0de123f2b1e69891755bdb79c588408ae4a` |
+| `pia_express` | 87050 | 87046 | `b801bb20e9537aeddccd35a1dac579870733560afe71402f1c76532fe89c0e56` |
+| `ad_attest` | 64561 | 64557 | `04c2a5de929ecd2a1956fbc20bfedd98899b9e0fd94f0546f8620ca5a3b9e087` |
 
 该变换后的高熵来自后两层 VM 数据流编码，而不是残余 AES 密文：解码结果仍需
 按 handler 的操作数公式、寄存器索引和 MBA 语义逐次展开。
@@ -225,11 +225,11 @@ rotation/XOR 与 operand decode，恢复了变体 A 的完整逻辑流：8 次�
 2026-10-10 只读复核得到的同一文件名对象快照如下；raw SHA-256 与解码 SHA-256
 都发生变化，文件名仍只是缓存键摘要，不是内容不变量：
 
-| 文件前缀 | raw 长度 | raw SHA-256 | 解码长度 | 解码 SHA-256 |
+| 样本别名 | raw 长度 | raw SHA-256 | 解码长度 | 解码 SHA-256 |
 |---|---:|---|---:|---|
-| `0b5272…cdda0.b` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
-| `4d85a8…aeeb7.b` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
-| `8f1a78…100e.b` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
+| `fast` | 64857 | `3fd499e17b570837420c751611bf8a7dbd1b7d3a3ad3adf77d2a0770f2c3dcf4` | 64853 | `6be6d284aa2dbdb352c3ef299d2816039b172021246f3c4b21b42d76541130fe` |
+| `pia_express` | 85727 | `2d7ae94ca6b1c08c21d1bef1ccfaefee529eaebe9046e6d2980a71f47aefeb0d` | 85723 | `787c3a7c9c5f11fbecdfe5eb2521c107678ad8bdca49ebda679379c95069d14e` |
+| `ad_attest` | 63844 | `b65959d65e3c0b7e146a937086cfa1ddb1769f3961cb648181766e29b24428c6` | 63840 | `1e38e343a748e6c3af3d143adc2367bafd31b2eb693e405a5228b8043d85559a` |
 
 ### 4.5 寄存器、PC 与字符串编码
 
@@ -538,11 +538,11 @@ value   = ror64(root, rot) XOR encoded_value
 真实 fetch wrapper 再恢复 63666 字节逻辑流。随后三个缓存程序均完成本地受控
 `ssNative` 执行：
 
-| flow | 程序前缀 | flow 关联依据 | native 指令 | selector 段 | 输出字节 |
-|---|---|---|---:|---:|---:|
-| `fast` | `0b527259…cdda0` | 初始 `app_dgp` 快照关联；后续 DB 行独立保留 | 607366 | 24 | 49 |
-| `pia_express` | `4d85a8af…aeeb7` | 初始 `app_dgp` 快照关联；后续 DB 行独立保留 | 14097 | 14 | 41 |
-| `ad_attest` | `8f1a7840…100e` | 初始 `app_dgp` 快照关联；缓存分析映射保留 | 15807 | 54 | 41 |
+| flow | flow 关联依据 | native 指令 | selector 段 | 输出字节 |
+|---|---|---:|---:|---:|
+| `fast` | 初始 `app_dgp` 快照关联；后续 DB 行独立保留 | 607366 | 24 | 49 |
+| `pia_express` | 初始 `app_dgp` 快照关联；后续 DB 行独立保留 | 14097 | 14 | 41 |
+| `ad_attest` | 初始 `app_dgp` 快照关联；缓存分析映射保留 | 15807 | 54 | 41 |
 
 三者均 `returned=true` 且 errors=0。每个 selector 段都发布实际执行的唯一
 ARM64 PC 与次数、handler 地址、实际/备选 selector、比较谓词和实际结果、

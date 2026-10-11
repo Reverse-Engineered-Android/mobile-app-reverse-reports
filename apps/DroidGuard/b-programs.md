@@ -12,7 +12,7 @@
 
 三者均产生两个重复 message。外层 field 1 是固定 6 字节 `57 5e b8 cd f1 29`；外层 field 5 内 field 1=3、field 2=4→5、field 12=1→2、field 6=1，field 3 保存执行前后的 VM 寄存器 1。字段顺序、varint 和负数编码均在 JSON 中逐字段展开。
 
-## fast · `0b527259…`
+## fast
 
 - flow 关联依据：initial app_dgp snapshot association。
 - raw：63666 字节，SHA-256 `174ad7b1d99dc83353ee2db2350352d8222a8b367ceed737b3d10d7bc74d9688`。
@@ -75,7 +75,7 @@
 - `0x1e575b23` handler `0x22350`：594019 条执行指令、1063 个唯一 PC；long execution handler: AES single-block ×1076, fetch/decode ×3, range decode ×3。
 - `0x9d2333bd` handler `0x43244`：7249 条执行指令、1269 个唯一 PC；finalization: HMAC-SHA256 ×2, serialize ×2。
 
-## pia_express · `4d85a8af…`
+## pia_express
 
 - flow 关联依据：initial app_dgp snapshot association, independently retained by later DB rows。
 - raw：87050 字节，SHA-256 `c58dc0c4b283568544663f8a92a7187d112e588ca3b01c52c82f97a9c0ebb72d`。
@@ -129,7 +129,7 @@
 - `0xa1a26a7e` handler `0x1edc4`：2661 条执行指令、808 个唯一 PC；long execution handler: fetch/decode ×4, range decode ×4。
 - `0x9d2333bd` handler `0x43244`：5780 条执行指令、1268 个唯一 PC；finalization: HMAC-SHA256 ×2, serialize ×2。
 
-## ad_attest · `8f1a7840…`
+## ad_attest
 
 - flow 关联依据：initial app_dgp snapshot association retained by the cached analysis mapping。
 - raw：64561 字节，SHA-256 `dad1dc2600626a3ec8130a30eb8b2d30c17fe7bc153639ca756f1464cc6164d9`。
