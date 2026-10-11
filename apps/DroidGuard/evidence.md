@@ -91,7 +91,10 @@ API key 已脱敏。
 | 操作数类型表 | `0x41b8`，26 个 16-bit 项，base `0x456c8` |
 | 不支持分支文本 | `0x45870`，解码为 `Conversion not supported: ` |
 | A 线性取流 | `0x432c4 → 0x46cb0`，63658 字节，SHA-256 `63ded1fab3a6c2616d34967e6d785dbe85bba182962f5681527cfd547cb935b5` |
-| 入口级追踪边界 | `0x1462c`/`0x14280`/`0x14368` 正常返回；只到初始化/建帧，`0x4563c` 0 次 |
+| 早期入口级追踪 | `0x1462c`/`0x14280`/`0x14368` 正常返回；只到初始化/建帧，`0x4563c` 0 次 |
+| 三个缓存程序完整 `ssNative` 追踪 | `fast` 607366 条/24 段/49 字节输出；`pia_express` 14097 条/14 段/41 字节；`ad_attest` 15807 条/54 段/41 字节；均 `returned=true`、errors=0 |
+| 可读 selector 程序 | [`b-programs.md`](b-programs.md)，20846 字节，SHA-256 `f9bf6dd1893ab5005430766f3820f74600e2339d09029e874d02b0ab5d45c70f` |
+| 结构化逐指令提升 | [`b-program-lift.json`](b-program-lift.json)，1455690 字节，SHA-256 `4e366bcc408a8da2653065ea4320ff32302d1165cd1ffd03c0ef05aef816046c` |
 
 JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 `0x1462c`、`0x14660`。

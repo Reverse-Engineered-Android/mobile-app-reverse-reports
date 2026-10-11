@@ -14,10 +14,10 @@
 | 未经告知判断 | 已覆盖 | `privacy.md` §4–§5 |
 | 超范围判断 | 已覆盖 | `privacy.md` §5 |
 | 风控机制精确代码 | 固定客户端已覆盖 | `risk.md` §1–§6 |
-| 混淆与动态程序机制 | 机制已覆盖；逐程序语义未闭合 | `risk.md` §4.1–§4.7 |
+| 混淆与动态程序机制 | 已覆盖 | `risk.md` §4.1–§4.7、`b-programs.md` |
 | 密码学用途、算法与地址 | 已覆盖 | `risk.md` §5 |
 | Google 官方 GMS/StreamZ/固定解释器代码 | 已覆盖 | `network.md` §4、`risk.md` §2–§5 |
-| `.b` 服务端程序逐条反编译 | 未闭合 | `risk.md` §4.7、`completeness.md` §4 |
+| `.b` 服务端程序逐条反编译 | 已覆盖 | `b-programs.md`、`b-program-lift.json` |
 | 公钥位置与算法 | 已覆盖 | `auth.md` §2–§3、`evidence.md` §3 |
 | 设备数据库格式 | 已覆盖 | `evidence.md` §6–§7 |
 | 上传示例 | 已覆盖 | `protocol.md` §5 |
@@ -59,14 +59,31 @@ APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长�
 `63ded1fab3a6c2616d34967e6d785dbe85bba182962f5681527cfd547cb935b5`；
 该结果证明取流函数可连续工作，但线性流仍为高熵数据，不等同于指令级反编译。
 
-固定解释器侧已经恢复：opcode 范围和 `opcode-0x42` 跳转规则、四份 SO 的
+固定解释器侧已恢复：opcode 范围和 `opcode-0x42` 跳转规则、四份 SO 的
 11×26 主分派表、JNI slot、类型门、`0x4563c` 的 26 项操作数解码器、寄存器/PC
-的 rotation/XOR 和 B/C/D 独立入口。可是，针对三个缓存样本的 Unicorn 入口
-`entryHelperNative`/`ssNative`/`xssNative` 复核均无执行错误，但只进入初始化和
-帧建立路径，`0x4563c` 命中为 0，没有产生程序级 opcode、PC、handler 和控制流
-轨迹。因此本报告不对三个 `.b` 声称逐程序可读化，也不声称已经恢复服务端评分
-阈值或业务规则。固定 native 中已识别的密码学原语均有算法和用途；逐 `.b`
-语义尚未闭合，这一边界保留在最终结论中。
+的 rotation/XOR 和 B/C/D 独立入口。设备缓存的三个程序随后全部完成受控
+`ssNative` 执行，均正常返回且无执行错误：
+
+| flow | 程序前缀 | native 指令 | selector 段 | 输出字节 |
+|---|---|---:|---:|---:|
+| `fast` | `0b527259…cdda0` | 607366 | 24 | 49 |
+| `pia_express` | `4d85a8af…aeeb7` | 14097 | 14 | 41 |
+| `ad_attest` | `8f1a7840…100e` | 15807 | 54 | 41 |
+
+每个 selector 段均记录实际执行的唯一 ARM64 PC 与次数、实际/备选 selector、
+比较谓词与实际结果、状态增量、取流范围和函数调用；全部分支均落入实际或备选
+路径，没有保留未解析比较。短 handler 已还原为表加载、游标递减和比较选择链：
+`0x83ec33cc` 读取 `table[(x26 & 0xff)]`，`0x15529b4a` 递减游标，
+`0x682fc45e` 精确执行 `cmp w20, w27` 后以 `csel` 选择
+`0xe8afad93`/`0x15529b4a`，`0x7914e417` 推进终态，
+`0x9d2333bd` 完成 HMAC 与序列化。
+
+密码学执行也已逐次计数：三个程序各有 1 个外层 range-decode AES block；
+`fast` 长 handler `0x1e575b23`/`0x22350` 另执行 1076 次 portable
+AES block，硬件路径对应 `0x71a0`；`hmac_sha256` 事件分别为 4/4/6，
+`serialize_value` 均为 2。完整可读提升见 `b-programs.md`，结构化逐指令证据
+见 `b-program-lift.json`。服务端未下发的评分阈值、处罚策略和调用方二次上传
+行为仍不由固定客户端证明，报告不作推测。
 
 本地受控 Unicorn 执行验证了 `0x19308` 初始化、`0x1c5e8` 建帧和 `0x46cb0`
 程序解码，输出与独立实现一致。随后通过真实 fetch wrapper 恢复变体 A 的完整逻辑
@@ -93,7 +110,10 @@ APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长�
   解码实现核对；
 - 以 `0x432c4` 逐次调用 `0x46cb0` 记录 A 样本的 63658 字节线性取流，
   并用真实 fetch wrapper 恢复 63666 字节逻辑流；
-- 对 `entryHelperNative`、`ssNative`、`xssNative` 做入口级执行追踪。
+- 对三个缓存 `.b` 程序执行完整 `ssNative` 路径，按 dispatcher 段重建
+  unique-PC、selector 分支、状态增量、调用表、取流范围与输出 protobuf；
+- 将原始追踪提升为 `b-programs.md` 与 `b-program-lift.json`，发布长度、摘要和
+  指令结构，不发布原始程序字节。
 - Android 设备仅通过只读 SSH，并在需要时进入宿主挂载命名空间的 `data/...`
   路径，核对 schema、哈希与存在性。
 
@@ -103,7 +123,8 @@ APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长�
 - 未构造或发送 DroidGuard 请求；
 - 未从服务端下载 VM/bytecode；
 - 未在手机上运行 payload 或 native 风控；
-- 未取得三个 `.b` 样本的完整 instruction-level 执行轨迹或逐程序语义树；
+- 缓存程序的完整指令级轨迹和逐程序语义树已由本地受控执行取得；
+- 未向服务端请求当前或新的评分程序，分析对象仍是设备已有缓存样本；
 - 未测试越权、提权或导出组件；
 - 未抓取真实业务网络流量；
 - 未写入或修改手机数据库、文件或配置；
