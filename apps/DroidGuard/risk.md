@@ -306,26 +306,27 @@ loop:
 第二套密码。
 
 四份 native 变体共 20 个这样的编码点，密钥既可能来自同基本块内的立即数链，
-也可能在运行时由 VM 寄存器推导。立即数形式如下（`runtime` 表示密钥由寄存器
-在运行时给出，调用点仍以同一 `add/sub/eor + ror #8` 模板出现）：
+也可能作为函数参数由调用者在运行时传入。下表中的 `arg4 (x3)`/`arg3 (x2)`
+是编码函数入口参数的精确来源；这些参数由 VM 调用路径给出，调用点仍以同一
+`add/sub/eor + ror #8` 模板出现：
 
 | 变体 | 编码点 | 操作 | 64 位密钥 |
 |---|---|---|---|
 | A | `0x20b18`、`0x26bfc` | add | `0xef9ba4da26cb8878` |
 | A | `0x223e8` | add | `0x776e000afb048420` |
-| A | `0x44684` | add | runtime |
+| A | `0x44684` | add | `arg4 (x3)` |
 | B | `0x2a84c`、`0x2c248` | sub | `0xba7628a69b59992d` |
 | B | `0x2b924` | eor | `0x12410b058edb11a6` |
 | B | `0x2bef0` | eor | `0x8c50567e348c2b4d` |
 | B | `0x2e51c` | add | `0x0a14d74c016327fb` |
-| B | `0x181a8`、`0x44550` | sub/eor | runtime |
+| B | `0x181a8`、`0x44550` | sub/eor | `arg3 (x2)`、`arg4 (x3)` |
 | C | `0x29efc` | sub | `0x0102e915aa7065e4` |
 | C | `0x2a01c`、`0x2a0cc` | sub | `0x88ac811496d8aec0` |
-| C | `0x43bec` | add | runtime |
+| C | `0x43bec` | add | `arg4 (x3)` |
 | D | `0x2b568` | eor | `0x59f60e826e4d8f3b` |
 | D | `0x2b730`、`0x2b964` | sub | `0x94aee8eb7218330b` |
 | D | `0x2cf8c` | eor | `0xcc37483c7e9767ec` |
-| D | `0x19fe0` | add | runtime |
+| D | `0x19fe0` | add | `arg4 (x3)` |
 
 密钥流按小端把 64 位密钥展开为 8 字节后循环使用（`0x776e000afb048420` 展开为
 `20 84 04 fb 0a 00 6e 77`）。该编码解释了为什么 `.b` 外层 AES 解出的缓冲

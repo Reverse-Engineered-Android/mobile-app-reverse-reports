@@ -115,7 +115,7 @@
           "counter_instruction": "subs\tw8, w8, #0x1",
           "key": {
             "origin": "runtime",
-            "source": "unresolved"
+            "source": "function_arg:x3"
           }
         }
       ]
@@ -138,7 +138,7 @@
           "counter_instruction": "subs\tw23, w23, #0x1",
           "key": {
             "origin": "runtime",
-            "source": "unresolved"
+            "source": "function_arg:x2"
           }
         },
         {
@@ -289,7 +289,7 @@
           "counter_instruction": "subs\tw8, w8, #0x1",
           "key": {
             "origin": "runtime",
-            "source": "unresolved"
+            "source": "function_arg:x3"
           }
         }
       ]
@@ -393,7 +393,7 @@
           "counter_instruction": "subs\tw8, w8, #0x1",
           "key": {
             "origin": "runtime",
-            "source": "unresolved"
+            "source": "function_arg:x3"
           }
         }
       ]
@@ -416,7 +416,7 @@
           "counter_instruction": "subs\tw8, w8, #0x1",
           "key": {
             "origin": "runtime",
-            "source": "unresolved"
+            "source": "function_arg:x3"
           }
         },
         {

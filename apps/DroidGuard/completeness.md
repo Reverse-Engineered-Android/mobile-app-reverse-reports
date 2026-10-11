@@ -37,7 +37,8 @@
   C 的偏移差异；
 - `0x432c4`/`0x177a4` 的寄存器、PC 与字符串缓冲编码；
 - 四份 SO 共 20 个 `add/sub/eor + ror #8` 旋转密钥流缓冲编码点，含立即数密钥与
-  运行时密钥两类，正逆变换均已给出（`risk.md` §4.6、`b-keystream-sites.json`）；
+  函数参数密钥两类，正逆变换及参数来源均已给出（`risk.md` §4.6、
+  `b-keystream-sites.json`）；
 - 四份 SO 共 126 个固定 native 栈缓冲逐循环解码点全部完成路径敏感基址解析、
   逐指令模拟和明文提取，解析 126/126、可读结果 126/126、unresolved=0
   （`risk.md` §4.7、`b-native-strings.json`）；

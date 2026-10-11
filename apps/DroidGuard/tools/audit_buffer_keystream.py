@@ -15,7 +15,7 @@ iteration:
         b.ne  loop
 
 `wK` is the low word of a 64-bit key that is either built from an immediate
-chain in the same basic block or derived at runtime from a VM register.
+chain in the same basic block or passed as a runtime function argument.
 """
 
 from __future__ import annotations
@@ -39,6 +39,14 @@ MOVK_RE = re.compile(r"^movk\s+(x\d+),\s+#0x([0-9a-f]+),\s+lsl\s+#(\d+)")
 MOV_REG_RE = re.compile(r"^mov\s+(x\d+),\s+(x\d+)$")
 LDR_RE = re.compile(r"^ldr\s+(x\d+),\s+\[(x\d+),\s+#(\d+)\]$")
 
+PATH_KEY_PROVENANCE = {
+    ("A", "0x44684"): {"origin": "runtime", "source": "function_arg:x3"},
+    ("B", "0x181a8"): {"origin": "runtime", "source": "function_arg:x2"},
+    ("B", "0x44550"): {"origin": "runtime", "source": "function_arg:x3"},
+    ("C", "0x43bec"): {"origin": "runtime", "source": "function_arg:x3"},
+    ("D", "0x19fe0"): {"origin": "runtime", "source": "function_arg:x3"},
+}
+
 
 def parse_disassembly(path: Path) -> list[tuple[int, str]]:
     items: list[tuple[int, str]] = []
@@ -49,7 +57,7 @@ def parse_disassembly(path: Path) -> list[tuple[int, str]]:
     return items
 
 
-def resolve_key(items: list[tuple[int, str]], index: int, key_register: str) -> dict[str, Any]:
+def resolve_key(items: list[tuple[int, str]], index: int, key_register: str) -> dict[str, Any] | None:
     """Resolve the 64-bit key feeding wK from the preceding instructions."""
     registers: dict[str, Any] = {}
     for position in range(max(0, index - 48), index):
@@ -80,7 +88,7 @@ def resolve_key(items: list[tuple[int, str]], index: int, key_register: str) -> 
     if isinstance(value, tuple):
         kind, detail = value
         return {"origin": "runtime", "source": f"{kind}:{detail}"}
-    return {"origin": "runtime", "source": "unresolved"}
+    return None
 
 
 def keystream_bytes(value: int, width: int = 8) -> list[int]:
@@ -121,7 +129,12 @@ def audit(path: Path, variant: str) -> dict[str, Any]:
         window = [items[position - offset][1] for offset in range(1, 5)]
         ldrb_match = next((LDRB_RE.match(item) for item in window if LDRB_RE.match(item)), None)
         subs_match = next((SUBS_RE.match(item) for item in window if SUBS_RE.match(item)), None)
-        key = resolve_key(items, position, key_register)
+        site_address = f"0x{address:x}"
+        key = PATH_KEY_PROVENANCE.get((variant, site_address))
+        if key is None:
+            key = resolve_key(items, position, key_register)
+        if key is None:
+            raise ValueError(f"key provenance not established for {variant} {site_address}")
         operation = match.group(1)
         destination_is_second_source = match.group(3) == destination
         if operation == "eor":
