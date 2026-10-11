@@ -14,7 +14,7 @@
 | 未经告知判断 | 已覆盖 | `privacy.md` §4–§5 |
 | 超范围判断 | 已覆盖 | `privacy.md` §5 |
 | 风控机制精确代码 | 固定客户端已覆盖 | `risk.md` §1–§6 |
-| 混淆与动态程序机制 | 已覆盖 | `risk.md` §4.1–§4.7、`b-programs.md` |
+| 混淆与动态程序机制 | 已覆盖 | `risk.md` §4.1–§4.9、`b-programs.md` |
 | 密码学用途、算法与地址 | 已覆盖 | `risk.md` §5 |
 | Google 官方 GMS/StreamZ/固定解释器代码 | 已覆盖 | `network.md` §4、`risk.md` §2–§5 |
 | `.b` 服务端程序逐条反编译 | 已覆盖 | `b-programs.md`、`b-program-lift.json` |
@@ -36,6 +36,11 @@
 - B/C/D 解码入口 `0x182bc`/`0x48a88`/`0x15e0c` 的独立函数体、session 读写和
   C 的偏移差异；
 - `0x432c4`/`0x177a4` 的寄存器、PC 与字符串缓冲编码；
+- 四份 SO 共 20 个 `add/sub/eor + ror #8` 旋转密钥流缓冲编码点，含立即数密钥与
+  运行时密钥两类，正逆变换均已给出（`risk.md` §4.6、`b-keystream-sites.json`）；
+- 四份 SO 共 126 个固定 native 栈缓冲逐循环解码点全部完成路径敏感基址解析、
+  逐指令模拟和明文提取，解析 126/126、可读结果 126/126、unresolved=0
+  （`risk.md` §4.7、`b-native-strings.json`）；
 - 四个 native 变体各自的 11 张主 opcode 表：site、table、base、越界路径和
   26 项相对位移；
 - `session+0x1528` 即 `JNIEnv*`，字段读写、方法调用、数组与分配的精确 JNI slot；
@@ -82,7 +87,10 @@ APK 固定的业务源码。初始抓取与 2026-10-10 复核的 `.b` 原始长�
 `fast` 长 handler `0x1e575b23`/`0x22350` 另执行 1076 次 portable
 AES block，硬件路径对应 `0x71a0`；`hmac_sha256` 事件分别为 4/4/6，
 `serialize_value` 均为 2。完整可读提升见 `b-programs.md`，结构化逐指令证据
-见 `b-program-lift.json`。服务端未下发的评分阈值、处罚策略和调用方二次上传
+见 `b-program-lift.json`。完成检查覆盖三个 `.b` 程序的全部执行 PC、selector、
+比较谓词、状态变化、取流范围、AES/HMAC/序列化调用和输出结构；三个样本均
+`returned=true`、errors=0，没有保留不可读 handler、未解析分支或未说明的
+密码学边界。服务端未下发的评分阈值、处罚策略和调用方二次上传
 行为仍不由固定客户端证明，报告不作推测。
 
 本地受控 Unicorn 执行验证了 `0x19308` 初始化、`0x1c5e8` 建帧和 `0x46cb0`

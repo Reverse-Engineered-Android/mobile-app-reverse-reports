@@ -17,6 +17,8 @@ Python 工具只使用标准库；Java 助手通过反射调用样本运行库�
 | `apps/pinduoduo/tools/jnibind.py` | 判定绑定方式：`Java_*` 导出 / `RegisterNatives` / 未判定 |
 | `apps/pinduoduo/tools/so_manifest2.py` | 交叉比对 `SoBuildInfo` 清单、设备落盘与 DEX 加载点 |
 | `apps/pinduoduo/tools/db_snapshot.py` | 只读 SQLite 快照（含 WAL 重放），只输出列形状聚合而不输出行值 |
+| `apps/DroidGuard/tools/audit_buffer_keystream.py` | 从四份 DroidGuard native 反汇编提取 `add/sub/eor + ror #8` 旋转密钥流缓冲编码点及其正逆变换 |
+| `apps/DroidGuard/tools/audit_native_strings.py` | 路径敏感解析并逐指令模拟四份 DroidGuard native 的全部栈缓冲 XOR 解码循环 |
 | `assemble_xhs_shield.py` | 用合成/私有输入重放小红书 shield 外层 |
 | `xor_strings.py` | 恢复单字节 XOR 字符串 |
 | `sanitize.py` | 发布前扫描凭据、路径、IP、UUID 和坐标 |
@@ -33,6 +35,8 @@ python3 apps/amap/tools/dice_container_inspect.py --help
 XHS_RC4_KEY='synthetic-value' python3 tools/assemble_xhs_shield.py --app-id 1 --build 4896 --device-id FAKE --token-type 0
 python3 apps/pinduoduo/tools/obfscan.py --help
 python3 apps/pinduoduo/tools/db_snapshot.py <src-dir> <out.txt>
+python3 apps/DroidGuard/tools/audit_buffer_keystream.py --root <analysis-root> --json-out out.json
+python3 apps/DroidGuard/tools/audit_native_strings.py --root <analysis-root> --json-out out.json
 python3 tools/sanitize.py .
 javac -d /tmp/wcdb-classes tools/wcdb-probe.java
 ```

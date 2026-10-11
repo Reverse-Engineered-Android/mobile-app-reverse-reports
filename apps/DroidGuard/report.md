@@ -103,11 +103,13 @@ Bundle/Map。结果通过 Binder 返回调用方。已分析链路中没有把�
 - opcode/JNI 分派：11 张表按 `opcode-0x42` 做 26 项有符号跳转；字段、方法、
   数组和分配分别落到固定 JNI `Get/Set/Call/New*` slot；四个 native 变体均有
   完整的 11×26 表，变体 A 的数组读写前由 `0x447bc` 调 `IsInstanceOf`，
-  对象路径先 `GetObjectClass`，精确变体地址见 `risk.md` §4.6。
+  对象路径先 `GetObjectClass`，精确变体地址见 `risk.md` §4.8。
 - 数据流编码：寄存器 type/value 按 `frame+(i+1)*16(+8)` 存放，`0x432c4` 以
   root key、reg8 和 type/rotation 推导 PC/operand offset，字符串缓冲按寄存器
   索引导出 XOR key，handler 再执行专属内联 MBA；操作数表 `0x41b8` 共 26 项，
-  不支持类型在 `0x45870` 生成 `Conversion not supported: `。
+  不支持类型在 `0x45870` 生成 `Conversion not supported: `。固定 native 的
+  栈字符串/内部缓冲循环共 126 处，全部按 ARM64 语义模拟并取得可读结果，
+  见 `risk.md` §4.7 与 `b-native-strings.json`。
 - 逐程序控制流：三个 `.b` 分别执行 607366、14097、15807 条 native 指令，
   形成 24、14、54 个 selector 段；所有实际与备选 selector、比较谓词和状态
   变化均已落盘，见 `b-programs.md` 与 `b-program-lift.json`。

@@ -1,0 +1,533 @@
+{
+  "schema": "droidguard-buffer-keystream-audit-v1",
+  "executed_sites": {
+    "A": {
+      "0x223e8": {
+        "program": "0b527259423eb1507aed800f2b8cf2a0f41a851788f63077357d4811657cdda0.b",
+        "flow": "fast",
+        "iterations": 17222,
+        "destination_buffer": "0x69f000",
+        "fetched_buffer_sha256": "1e22bbf8c2cdad5f9a0c190108b878e01bb67a98f267cda4bfa4e221316bf625",
+        "stored_buffer_sha256": "f541b3226e27367ac1d0777f88fabdf1b90832ea038345e21b396a04c43919ed",
+        "trace": "evidence/native/trace_vm_semantics_0b527259_fast.json",
+        "verification": "stored[i] == (fetched[i] + keystream[i % 8]) mod 256 for all 17222 bytes; the inverse recovers the range-decoder output byte for byte"
+      }
+    }
+  },
+  "description": "Static inventory of the inlined rotating-keystream buffer transform (add/sub/eor with an 8-byte key rotated one byte per iteration) in the four DroidGuard native variants.",
+  "variants": [
+    {
+      "variant": "A",
+      "binary_disassembly": "base.disasm",
+      "site_count": 4,
+      "sites": [
+        {
+          "site": "0x20b18",
+          "operation": "add",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x20b10",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 17265574853315627128,
+            "value_hex": "0xef9ba4da26cb8878"
+          },
+          "keystream_bytes": [
+            120,
+            136,
+            203,
+            38,
+            218,
+            164,
+            155,
+            239
+          ]
+        },
+        {
+          "site": "0x223e8",
+          "operation": "add",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x223e0",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 8605815985112646688,
+            "value_hex": "0x776e000afb048420"
+          },
+          "keystream_bytes": [
+            32,
+            132,
+            4,
+            251,
+            10,
+            0,
+            110,
+            119
+          ]
+        },
+        {
+          "site": "0x26bfc",
+          "operation": "add",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x26bf4",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 17265574853315627128,
+            "value_hex": "0xef9ba4da26cb8878"
+          },
+          "keystream_bytes": [
+            120,
+            136,
+            203,
+            38,
+            218,
+            164,
+            155,
+            239
+          ]
+        },
+        {
+          "site": "0x44684",
+          "operation": "add",
+          "destination_register": "w10",
+          "key_register": "w20",
+          "rotation_bits": 8,
+          "loop_back": "0x4467c",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw10, [x9]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "runtime",
+            "source": "unresolved"
+          }
+        }
+      ]
+    },
+    {
+      "variant": "B",
+      "binary_disassembly": "libd5CC5EA440436.disasm",
+      "site_count": 7,
+      "sites": [
+        {
+          "site": "0x181a8",
+          "operation": "sub",
+          "destination_register": "w8",
+          "key_register": "w19",
+          "rotation_bits": 8,
+          "loop_back": "0x181a0",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw8, [x20]",
+          "counter_instruction": "subs\tw23, w23, #0x1",
+          "key": {
+            "origin": "runtime",
+            "source": "unresolved"
+          }
+        },
+        {
+          "site": "0x2a84c",
+          "operation": "sub",
+          "destination_register": "w10",
+          "key_register": "w9",
+          "rotation_bits": 8,
+          "loop_back": "0x2a844",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw10, [x23]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 13435971234342476077,
+            "value_hex": "0xba7628a69b59992d"
+          },
+          "keystream_bytes": [
+            45,
+            153,
+            89,
+            155,
+            166,
+            40,
+            118,
+            186
+          ]
+        },
+        {
+          "site": "0x2b924",
+          "operation": "eor",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2b91c",
+          "encode": "stored = decoded XOR keystream_byte",
+          "decode": "decoded = stored XOR keystream_byte",
+          "load_instruction": "ldrb\tw9, [x21]",
+          "counter_instruction": "subs\tw23, w23, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 1315344684668359078,
+            "value_hex": "0x12410b058edb11a6"
+          },
+          "keystream_bytes": [
+            166,
+            17,
+            219,
+            142,
+            5,
+            11,
+            65,
+            18
+          ]
+        },
+        {
+          "site": "0x2bef0",
+          "operation": "eor",
+          "destination_register": "w10",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2bee8",
+          "encode": "stored = decoded XOR keystream_byte",
+          "decode": "decoded = stored XOR keystream_byte",
+          "load_instruction": "ldrb\tw10, [x9]",
+          "counter_instruction": "subs\tw23, w23, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 10110676263494232909,
+            "value_hex": "0x8c50567e348c2b4d"
+          },
+          "keystream_bytes": [
+            77,
+            43,
+            140,
+            52,
+            126,
+            86,
+            80,
+            140
+          ]
+        },
+        {
+          "site": "0x2c248",
+          "operation": "sub",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2c240",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw9, [x21]",
+          "counter_instruction": "subs\tw23, w23, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 13435971234342476077,
+            "value_hex": "0xba7628a69b59992d"
+          },
+          "keystream_bytes": [
+            45,
+            153,
+            89,
+            155,
+            166,
+            40,
+            118,
+            186
+          ]
+        },
+        {
+          "site": "0x2e51c",
+          "operation": "add",
+          "destination_register": "w11",
+          "key_register": "w9",
+          "rotation_bits": 8,
+          "loop_back": "0x2e514",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw11, [x10]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 726442161354254331,
+            "value_hex": "0x0a14d74c016327fb"
+          },
+          "keystream_bytes": [
+            251,
+            39,
+            99,
+            1,
+            76,
+            215,
+            20,
+            10
+          ]
+        },
+        {
+          "site": "0x44550",
+          "operation": "eor",
+          "destination_register": "w10",
+          "key_register": "w21",
+          "rotation_bits": 8,
+          "loop_back": "0x44548",
+          "encode": "stored = decoded XOR keystream_byte",
+          "decode": "decoded = stored XOR keystream_byte",
+          "load_instruction": "ldrb\tw10, [x9]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "runtime",
+            "source": "unresolved"
+          }
+        }
+      ]
+    },
+    {
+      "variant": "C",
+      "binary_disassembly": "libd7383C18A1562.disasm",
+      "site_count": 4,
+      "sites": [
+        {
+          "site": "0x29efc",
+          "operation": "sub",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x29ef4",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 72876823254427108,
+            "value_hex": "0x0102e915aa7065e4"
+          },
+          "keystream_bytes": [
+            228,
+            101,
+            112,
+            170,
+            21,
+            233,
+            2,
+            1
+          ]
+        },
+        {
+          "site": "0x2a01c",
+          "operation": "sub",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2a014",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 9848388410582544064,
+            "value_hex": "0x88ac811496d8aec0"
+          },
+          "keystream_bytes": [
+            192,
+            174,
+            216,
+            150,
+            20,
+            129,
+            172,
+            136
+          ]
+        },
+        {
+          "site": "0x2a0cc",
+          "operation": "sub",
+          "destination_register": "w10",
+          "key_register": "w9",
+          "rotation_bits": 8,
+          "loop_back": "0x2a0c4",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw10, [x22]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 9848388410582544064,
+            "value_hex": "0x88ac811496d8aec0"
+          },
+          "keystream_bytes": [
+            192,
+            174,
+            216,
+            150,
+            20,
+            129,
+            172,
+            136
+          ]
+        },
+        {
+          "site": "0x43bec",
+          "operation": "add",
+          "destination_register": "w10",
+          "key_register": "w20",
+          "rotation_bits": 8,
+          "loop_back": "0x43be4",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw10, [x9]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "runtime",
+            "source": "unresolved"
+          }
+        }
+      ]
+    },
+    {
+      "variant": "D",
+      "binary_disassembly": "libd5AF72C7F377B.disasm",
+      "site_count": 5,
+      "sites": [
+        {
+          "site": "0x19fe0",
+          "operation": "add",
+          "destination_register": "w10",
+          "key_register": "w20",
+          "rotation_bits": 8,
+          "loop_back": "0x19fd8",
+          "encode": "stored = (decoded + keystream_byte) mod 256",
+          "decode": "decoded = (stored - keystream_byte) mod 256",
+          "load_instruction": "ldrb\tw10, [x9]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "runtime",
+            "source": "unresolved"
+          }
+        },
+        {
+          "site": "0x2b568",
+          "operation": "eor",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2b560",
+          "encode": "stored = decoded XOR keystream_byte",
+          "decode": "decoded = stored XOR keystream_byte",
+          "load_instruction": "ldrb\tw9, [x21]",
+          "counter_instruction": "subs\tw20, w20, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 6482384667005521723,
+            "value_hex": "0x59f60e826e4d8f3b"
+          },
+          "keystream_bytes": [
+            59,
+            143,
+            77,
+            110,
+            130,
+            14,
+            246,
+            89
+          ]
+        },
+        {
+          "site": "0x2b730",
+          "operation": "sub",
+          "destination_register": "w10",
+          "key_register": "w9",
+          "rotation_bits": 8,
+          "loop_back": "0x2b728",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw10, [x22]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 10713756661490135819,
+            "value_hex": "0x94aee8eb7218330b"
+          },
+          "keystream_bytes": [
+            11,
+            51,
+            24,
+            114,
+            235,
+            232,
+            174,
+            148
+          ]
+        },
+        {
+          "site": "0x2b964",
+          "operation": "sub",
+          "destination_register": "w9",
+          "key_register": "w8",
+          "rotation_bits": 8,
+          "loop_back": "0x2b95c",
+          "encode": "stored = (keystream_byte - decoded) mod 256",
+          "decode": "decoded = (keystream_byte - stored) mod 256",
+          "load_instruction": "ldrb\tw9, [x20]",
+          "counter_instruction": "subs\tw21, w21, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 10713756661490135819,
+            "value_hex": "0x94aee8eb7218330b"
+          },
+          "keystream_bytes": [
+            11,
+            51,
+            24,
+            114,
+            235,
+            232,
+            174,
+            148
+          ]
+        },
+        {
+          "site": "0x2cf8c",
+          "operation": "eor",
+          "destination_register": "w11",
+          "key_register": "w9",
+          "rotation_bits": 8,
+          "loop_back": "0x2cf84",
+          "encode": "stored = decoded XOR keystream_byte",
+          "decode": "decoded = stored XOR keystream_byte",
+          "load_instruction": "ldrb\tw11, [x10]",
+          "counter_instruction": "subs\tw8, w8, #0x1",
+          "key": {
+            "origin": "immediate",
+            "value": 14715309732115474412,
+            "value_hex": "0xcc37483c7e9767ec"
+          },
+          "keystream_bytes": [
+            236,
+            103,
+            151,
+            126,
+            60,
+            72,
+            55,
+            204
+          ]
+        }
+      ]
+    }
+  ]
+}

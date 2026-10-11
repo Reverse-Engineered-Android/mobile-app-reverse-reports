@@ -90,6 +90,9 @@ API key 已脱敏。
 | 变体 A 数组类型检查 | `0x3e4f4`/`0x3e77c` → `0x447bc` → JNI `256 IsInstanceOf` |
 | 操作数类型表 | `0x41b8`，26 个 16-bit 项，base `0x456c8` |
 | 不支持分支文本 | `0x45870`，解码为 `Conversion not supported: ` |
+| 变体 A 旋转密钥流编码 | `0x223e0`–`0x223f4`：17222 次迭代，key `0x776e000afb048420`，`0x69f000` 存储摘要 `f541b3226e27367ac1d0777f88fabdf1b90832ea038345e21b396a04c43919ed` |
+| 四份 SO 旋转密钥流编码点 | 共 20 处（A 4、B 7、C 4、D 5），静态清单见 `b-keystream-sites.json`，审计工具 `tools/audit_buffer_keystream.py` |
+| 四份 SO 栈缓冲逐循环解码 | 共 126 处（A 30、B 32、C 32、D 32），126/126 均解析并取得可读结果，静态清单见 `b-native-strings.json`，审计工具 `tools/audit_native_strings.py` |
 | A 线性取流 | `0x432c4 → 0x46cb0`，63658 字节，SHA-256 `63ded1fab3a6c2616d34967e6d785dbe85bba182962f5681527cfd547cb935b5` |
 | 早期入口级追踪 | `0x1462c`/`0x14280`/`0x14368` 正常返回；只到初始化/建帧，`0x4563c` 0 次 |
 | 三个缓存程序完整 `ssNative` 追踪 | `fast` 607366 条/24 段/49 字节输出；`pia_express` 14097 条/14 段/41 字节；`ad_attest` 15807 条/54 段/41 字节；均 `returned=true`、errors=0 |
@@ -113,7 +116,7 @@ JNI 方法地址：`0x135a0`、`0x14280`、`0x14368`、`0x14464`、`0x144e8`、
 
 四份 SO 均独立通过完整跳转表审计：各 11 张主表、每表 26 个有符号相对位移，
 全部 `target` 都存在于各自反汇编，role 与作用一一对应；精确
-`site/table/base/error` 映射见 `risk.md` §4.6。四份加密指令计数完全一致：
+`site/table/base/error` 映射见 `risk.md` §4.8。四份加密指令计数完全一致：
 
 | 算法 | 指令与计数 |
 |---|---|

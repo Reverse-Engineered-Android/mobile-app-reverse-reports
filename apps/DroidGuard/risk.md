@@ -100,17 +100,24 @@ Unicorn 对 `0x19308`、`0x1c5e8`、`0x46cb0` 的受控执行分别完成初始�
 - `pthread_once` 初始化；
 - SHA 上下文更新/收尾。
 
-因此混淆是四条可分离的数据流：
+因此混淆是七条可分离的数据流：
 
 1. `.b` 缓存的 AES 可变块密码外层；
 2. 服务端程序字节码的动态 opcode 与操作数索引；
 3. 寄存器值、PC 和字符串缓冲区的 XOR/轮换编码；
-4. 每个解释器 handler 内联的 Mixed Boolean-Arithmetic（MBA）操作数变换。
+4. 每个解释器 handler 内联的 Mixed Boolean-Arithmetic（MBA）操作数变换；
+5. 取数点后对每个缓冲再施加的 8 字节旋转密钥流编码（`add`/`sub`/`eor` +
+   `ror #8`，§4.6）；
+6. 固定 native 代码里逐字节在栈上拼装、随后就地 XOR 解码的短字符串，用于
+   JNI 签名与内部消息（§4.7）；
+7. 固定 native 代码里对可读文本之外的内部缓冲执行的同一逐循环 XOR 变换，
+   这些变换与短字符串解码共享完整指令族（§4.7）。
 
 程序字节码必须先通过两层 RSA-SHA256 与 checksum；`.b` 外层使用固定
-AES-128，不是第二套独立认证。外层密文、寄存器/PC 编码和 handler 内联 MBA
-已分别从 `0x46cb0`、`0x432c4`/`0x177a4` 与解释器 XREF 还原；固定
-native/Java 中的密码学实现均已按算法和用途定位。
+AES-128，不是第二套独立认证。外层密文、寄存器/PC 编码、handler 内联 MBA
+和缓冲旋转密钥流编码已分别从 `0x46cb0`、`0x432c4`/`0x177a4`、解释器 XREF、
+§4.6 的 20 个编码点与 §4.7 的 126 个逐循环栈缓冲点还原；固定 native/Java 中的
+密码学实现均已按算法和用途定位。
 
 ### 4.2 JNI/输入混淆
 
@@ -251,7 +258,148 @@ IV、返回写入目标的首字节 `0x07`，并把寄存器 8 的新 PC 推进�
 的推进差正好对应“4 字节 IV 后才是程序字节”，说明报告给出的 offset、读取长度、
 返回 PC 与寄存器编码四者是一套闭合公式，不是只按字节流猜测出的格式。
 
-### 4.6 opcode 分派、JNI 接口与操作数解码
+### 4.6 缓冲区旋转密钥流编码
+
+range decoder 返回的字节不会以明文停留在寄存器缓冲里。固定解释器在每个取数
+点后面紧跟一段内联循环，用 8 字节密钥流逐字节重编码目标缓冲，密钥每处理一
+字节循环右移 8 位：
+
+```text
+loop:
+    ldrb  wD, [xR]            ; 取一个已解码字节
+    subs  wN, wN, #1          ; 剩余长度
+    <op>  wD, wD, wK          ; add / sub / eor，wK 为密钥低 32 位
+    ror   xK, xK, #8          ; 密钥流右移一个字节
+    strb  wD, [xR], #1        ; 写回同一缓冲
+    b.ne  loop
+```
+
+`<op>` 与操作数顺序决定编码方向：`add wD,wD,wK` 是
+`stored = (decoded + ks[i mod 8]) mod 256`；`eor wD,wD,wK` 是
+`stored = decoded XOR ks[i mod 8]`；`sub wD,wK,wD`（密钥在第一个源操作数，
+即变体 B/C/D 的形式）是 `stored = (ks[i mod 8] - decoded) mod 256`。
+三者的逆变换唯一：`decoded` 分别由减、异或、以及
+`stored = (decoded - ks) mod 256` 的加法形式还原。
+
+变体 A 中真正执行的是 `0x223e0`–`0x223f4`：
+
+```text
+0x0223d0 mov  x8, #0x8420
+0x0223d4 movk x8, #0xfb04, lsl #16
+0x0223d8 movk x8, #0xa,    lsl #32
+0x0223dc movk x8, #0x776e, lsl #48      ; x8 = 0x776e000afb048420
+0x0223e0 ldrb w9, [x20]
+0x0223e4 subs w21, w21, #0x1
+0x0223e8 add  w9, w9, w8                ; w9 = decoded + keystream_byte
+0x0223ec ror  x8, x8, #8                ; 密钥流右移一字节
+0x0223f0 strb w9, [x20], #1
+0x0223f4 b.ne 223e0                     ; 循环 w21 次
+```
+
+本地受控执行中该循环执行 17222 次，把 range decoder 从逻辑偏移 10 取回的
+17222 字节缓冲（SHA-256
+`1e22bbf8c2cdad5f9a0c190108b878e01bb67a98f267cda4bfa4e221316bf625`）逐字节
+重编码为 `0x69f000` 中的存储形态（SHA-256
+`f541b3226e27367ac1d0777f88fabdf1b90832ea038345e21b396a04c43919ed`）。对
+全部 17222 字节逐字节核对 `stored[i] == (fetched[i] + ks[i mod 8]) mod 256`
+成立，逆变换精确还原 range decoder 的输出，说明这是纯可逆的数据流编码，不是
+第二套密码。
+
+四份 native 变体共 20 个这样的编码点，密钥既可能来自同基本块内的立即数链，
+也可能在运行时由 VM 寄存器推导。立即数形式如下（`runtime` 表示密钥由寄存器
+在运行时给出，调用点仍以同一 `add/sub/eor + ror #8` 模板出现）：
+
+| 变体 | 编码点 | 操作 | 64 位密钥 |
+|---|---|---|---|
+| A | `0x20b18`、`0x26bfc` | add | `0xef9ba4da26cb8878` |
+| A | `0x223e8` | add | `0x776e000afb048420` |
+| A | `0x44684` | add | runtime |
+| B | `0x2a84c`、`0x2c248` | sub | `0xba7628a69b59992d` |
+| B | `0x2b924` | eor | `0x12410b058edb11a6` |
+| B | `0x2bef0` | eor | `0x8c50567e348c2b4d` |
+| B | `0x2e51c` | add | `0x0a14d74c016327fb` |
+| B | `0x181a8`、`0x44550` | sub/eor | runtime |
+| C | `0x29efc` | sub | `0x0102e915aa7065e4` |
+| C | `0x2a01c`、`0x2a0cc` | sub | `0x88ac811496d8aec0` |
+| C | `0x43bec` | add | runtime |
+| D | `0x2b568` | eor | `0x59f60e826e4d8f3b` |
+| D | `0x2b730`、`0x2b964` | sub | `0x94aee8eb7218330b` |
+| D | `0x2cf8c` | eor | `0xcc37483c7e9767ec` |
+| D | `0x19fe0` | add | runtime |
+
+密钥流按小端把 64 位密钥展开为 8 字节后循环使用（`0x776e000afb048420` 展开为
+`20 84 04 fb 0a 00 6e 77`）。该编码解释了为什么 `.b` 外层 AES 解出的缓冲
+仍是高熵：外层解密之后还有 range decode 的 rotation/XOR 取流、本节的
+add/sub/eor 旋转密钥流编码，以及 §4.5 的寄存器/PC 编码，明文只在每次访问时
+短暂存在于临时缓冲中。
+
+静态清单见 [`b-keystream-sites.json`](b-keystream-sites.json)，由
+`tools/audit_buffer_keystream.py` 从四份反汇编重新生成，包含每个编码点的
+操作、密钥、密钥流字节、循环回跳地址与正逆变换公式。
+
+### 4.7 固定 native 栈缓冲逐循环还原
+
+固定 native 代码用逐字节 `mov`/`strb` 构造 JNI 描述符、异常文本和内部状态，
+再用一个原地 XOR 循环取得可读文本。该循环不是单一固定序列：地址计算同时
+存在 index 与 displacement 两种拼写，计数器同时存在递减到 1 和递减到负数
+两种退出形式，基址还可能来自调用者栈帧。以下定义覆盖四份变体的全部实例。
+
+```text
+idx = 起始索引
+loop:
+    r   = ror64(K, rotate_base - idx)
+    z   = (((idx + addend) & 0x40) == 0)
+    c   = carry_base + (1 if z else 0)
+    addr = base + idx + displacement
+    stored = memory[addr]
+    memory[addr] = (r - idx + c - boundary) XOR stored
+    idx = idx - 1
+    goto loop while counter remains
+```
+
+`rotate_base` 可由 `sub rotate_base, constant, idx` 或 `neg rotate_base, idx`
+给出；`boundary` 在递减到负数的形式中还包含 `cmn/subs` 使用的循环常量。
+对 index 形式 `displacement=0`；对 displacement 形式，计数器先与基址相加，
+再加固定的 `displacement`。`idx`、寄存器宽度和两次符号转换都按 ARM64
+真实语义执行：写 `wN` 将 64 位寄存器零扩展，负计数器以有符号值参与地址
+计算，`ror64` 的移位量按 64 取模。
+
+| 变体 | 循环点 | index/displacement | 到 1/到负数 | 基址解析 |
+|---|---:|---:|---:|---|
+| A | 30 | 6 / 24 | 6 / 24 | 28 控制流、2 调用者帧 |
+| B | 32 | 8 / 24 | 8 / 24 | 30 控制流、2 调用者帧 |
+| C | 32 | 6 / 26 | 6 / 26 | 30 控制流、2 调用者帧 |
+| D | 32 | 12 / 20 | 12 / 20 | 31 控制流、1 同门控块 |
+| 合计 | 126 | 32 / 94 | 32 / 94 | 125 控制流、1 同门控块 |
+
+代表性精确位置包括 A `0x112a8` 的 91 次 index 循环，输出
+`La#(Landroid/content/Context;Ljava/lang/String;[BLjava/lang/Object;Landroid/os/Bundle;II)J`；
+C `0x4a08c` 的守卫位 1 displacement 循环输出
+`Could not query exception.toString().`；D `0x47920` 与 `0x47c5c` 输出同一
+39 字节缓冲的 `SCould not query exception.toString().`。B `0x13b6c` 与
+`0x13c10` 均输出 `(Ljava/lang/String;)[I`。这些结果来自逐条指令模拟，不是
+字符串表猜测。
+
+模拟器以路径敏感前驱遍历解析循环入口的基址，跳过自身回边；共享尾块按
+`bl` 调用图确定函数边界；栈地址键带所属函数；调用者传入的 `x0` 基址通过
+调用点及 helper 的 `[x0+k]` 写入映射到帧；线性存储扫描缺失时再做控制流
+反向 reaching-store 遍历。门控键必须同时匹配函数、flag 栈槽、bit 以及
+完整地址集合，避免把同函数内不同字符串误合并。
+
+完整性对账使用“跨度同时含 `tst #0x40`、`cinc` 和 `ror`”的签名，四份
+变体分别命中 31、33、33、32，共 129 个跨度；其中 A `0x169bc`、
+B `0x16c30`、C `0x4a134` 是包住真实解码循环的外层尾检查循环，其内部
+已分别包含 1 个被接受的循环头。因此 129 个签名跨度精确对账为 126 个
+解码头 + 3 个非解码外层循环，没有遗漏的解码循环。
+
+逐点清单见 [`b-native-strings.json`](b-native-strings.json)，字段包含变体、
+回跳地址、地址形式、计数器、基址与栈偏移、门控位、rotate key、carry base、
+完整 keystream、密文/明文摘要和明文文本。`tools/audit_native_strings.py`
+按同一反汇编重新生成时输出 126/126 个解析点、126/126 个可读结果、
+unresolved=0，且两次生成逐字节相同。该层是可逆 XOR 数据流编码，不属于
+额外密码算法；固定 native 中没有保留未解释的加密或混淆代码。
+
+### 4.8 opcode 分派、JNI 接口与操作数解码
 
 `session+0x1528` 不是自定义 C++ vtable，而是 `0x185a4` 在创建 session 时保存的
 Android `JNIEnv*`。`0x186a4` 写入该字段；后续每个间接调用都先从 `[JNIEnv*]`
@@ -382,7 +530,7 @@ value   = ror64(root, rot) XOR encoded_value
 `Conversion not supported: `。至此，动态程序的外层 opcode、JNI 操作、类型检查、
 值类型、寄存器/PC 解码和不支持分支均已给出固定地址、公式或精确 JNI slot。
 
-### 4.7 三个 `.b` 程序的完整可读提升
+### 4.9 三个 `.b` 程序的完整可读提升
 
 固定解释器与缓存程序分别分析。A 样本先经 `0x432c4 → 0x46cb0` 连续取流，
 返回 63658 个解码字节，SHA-256 为
@@ -534,5 +682,5 @@ CRYPTOGAMS SHA-256 原语和 AES 指令；A 的地址是本节基准，其他变
 5. native session 中的动态程序执行结果。
 
 客户端可执行的固定判定链、输入、解码和认证门均给出精确地址与公式；三个缓存
-程序的逐指令语义仍是 §4.7 所列边界。服务端返回什么阈值、如何把结果转成
+程序的逐指令语义仍是 §4.9 所列边界。服务端返回什么阈值、如何把结果转成
 拒绝/挑战/放行，以及处罚策略，不在客户端固定代码中；本报告不编造阈值。

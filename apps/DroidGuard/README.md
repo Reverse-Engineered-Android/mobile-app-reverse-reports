@@ -23,6 +23,8 @@ payload 或评分程序，没有绕过风控，也没有写入或修改手机数
 - `risk.md`：具体风控机制、native 采集、动态 VM、`.b` 解码和密码学还原。
 - `b-programs.md`：三个 `.b` 程序逐 selector、逐分支、逐状态的可读提升结果。
 - `b-program-lift.json`：机器可读的完整 ARM64 指令、调用、取流与输出结构。
+- `b-keystream-sites.json`：四份 SO 共 20 个旋转密钥流缓冲编码点（操作、密钥、密钥流字节、回跳地址、正逆公式）。
+- `b-native-strings.json`：四份 SO 共 126 个固定 native 栈缓冲逐循环解码点（基址、门控、rotate key、carry、keystream 与明文）。
 - `permissions.md`：权限与越权、提权判断。
 - `privacy.md`：告知、采集与超范围判断。
 - `evidence.md`：哈希、代码位置、公钥位置和设备只读核对。
