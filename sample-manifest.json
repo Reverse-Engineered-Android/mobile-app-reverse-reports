@@ -208,6 +208,19 @@
           "sha256": "41b58d9504c9a497ffefabbb89a7829352758bcb65f57266b671531dba35338a"
         }
       ]
+    },
+    {
+      "app": "Bilibili",
+      "package": "tv.danmaku.bili",
+      "version_name": "9.14.0",
+      "version_code": 9140400,
+      "files": [
+        {
+          "name": "base.apk",
+          "size": 220271429,
+          "sha256": "63c14370673d74233df211e2efe553c4ce1219c08e6a83fdbd441845ef72cc91"
+        }
+      ]
     }
   ]
 }

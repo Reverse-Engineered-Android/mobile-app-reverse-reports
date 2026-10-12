@@ -32,6 +32,7 @@
 - [风控机制](risk-control.md)
 - [权限与隐私](privacy.md)
 - [番剧 DRM](drm.md)
+- [番剧播放链实测（9.14.0）](playback/README.md)
 - [本地数据库](database-inventory.md)
 - [逆向证据](evidence.md)
 - [完成度矩阵](completeness.md)
