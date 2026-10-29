@@ -221,6 +221,19 @@
           "sha256": "63c14370673d74233df211e2efe553c4ce1219c08e6a83fdbd441845ef72cc91"
         }
       ]
+    },
+    {
+      "app": "Qunar",
+      "package": "com.Qunar",
+      "version_name": "10.4.23",
+      "version_code": 345,
+      "files": [
+        {
+          "name": "qunar-10.4.23-base.apk",
+          "size": 92254498,
+          "sha256": "6834433914f2ad469fc63b64b0bbd6ff4bc1f072377b3509be96e2cf046a3c2b"
+        }
+      ]
     }
   ]
 }

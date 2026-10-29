@@ -1,6 +1,6 @@
 # Android App Reverse Reports
 
-本仓库公开十五份授权 Android 样本（含哔哩哔哩 9.14.0 播放链实测）的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储、美团网络与设备风控、闲鱼网络协议/认证/上传下载/风控与本地存储、大麦网络协议/认证/上传下载/风控与权限隐私、滴滴出行网络/认证/上传下载/风控与权限隐私、知乎网络协议/认证/盐选与视频/风控与本地存储、哔哩哔哩网络协议/认证/上传下载/风控/DRM 与本地存储、纷玩岛网络协议/认证/上传下载/风控与本地存储、原神 Android 网络协议/认证/上传下载/风控/权限隐私与客户端渲染管线。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
+本仓库公开十六份授权 Android 样本（含哔哩哔哩 9.14.0 播放链实测）的静态逆向与本地数据取证结果：高德地图数据库封装、小红书原生签名/风控组件、支付宝数据库与登录/支付/风控调用面、微信数据库与登录/消息/支付/设备风控、拼多多网络协议/风控/动态库与本地存储、美团网络与设备风控、闲鱼网络协议/认证/上传下载/风控与本地存储、大麦网络协议/认证/上传下载/风控与权限隐私、滴滴出行网络/认证/上传下载/风控与权限隐私、知乎网络协议/认证/盐选与视频/风控与本地存储、哔哩哔哩网络协议/认证/上传下载/风控/DRM 与本地存储、纷玩岛网络协议/认证/上传下载/风控与本地存储、原神 Android 网络协议/认证/上传下载/风控/权限隐私与客户端渲染管线、去哪儿旅行 Hotdog/Pitcher 协议与 `libgoblin` 信封/编译型 VM、两套设备风控与明文落盘。内容聚焦可验证的版本、哈希、方法、函数地址、代码片段、数据库结构和脱敏聚合结果。
 
 ## 样本清单
 
@@ -20,6 +20,7 @@
 | 哔哩哔哩（播放链实测） | `tv.danmaku.bili` | `9.14.0` | `9140400` | 明文 HTTP 媒体分发、AV1/DASH 无 CENC、`upsig` 令牌、CDN 302 调度 |
 | 纷玩岛 | `cn.com.livelab` | `3.42.0` | `362` | Flutter HTTP 协议、Geetest 风控、`.datadiv_decode*` 还原、SharedPreferences 流密码结构、权限隐私 |
 | 原神 | `com.miHoYo.GenshinImpact` | `7.1.0_48052158_48145775` | `1242` | DS/HMAC 签名、Aigis/Geetest4、KCP/UDP 与 mbedTLS AES-GCM/CCM record、无权限 exported 状态服务、Unity IL2CPP/Animage/Vulkan-GLES |
+| 去哪儿旅行 | `com.Qunar` | `10.4.23` | `345` | Hotdog/Pitcher 协议、`libgoblin` 信封与编译型 VM、cparam 指纹、两套设备风控、明文落盘 |
 
 完整文件哈希见 [sample-manifest.json](sample-manifest.json)。报告入口：
 
@@ -37,6 +38,7 @@
 - 哔哩哔哩：[概览](apps/tv.danmaku.bili/README.md)、[报告](apps/tv.danmaku.bili/report.md)、[网络](apps/tv.danmaku.bili/network.md)、[协议](apps/tv.danmaku.bili/protocol.md)、[认证](apps/tv.danmaku.bili/auth.md)、[上传下载](apps/tv.danmaku.bili/transfer.md)、[风控](apps/tv.danmaku.bili/risk-control.md)、[权限与隐私](apps/tv.danmaku.bili/privacy.md)、[DRM](apps/tv.danmaku.bili/drm.md)、[数据库](apps/tv.danmaku.bili/database-inventory.md)、[证据](apps/tv.danmaku.bili/evidence.md)、[完成度](apps/tv.danmaku.bili/completeness.md)
 - 纷玩岛：[概览](apps/cn.com.livelab/README.md)、[报告](apps/cn.com.livelab/report.md)、[网络与协议](apps/cn.com.livelab/network.md)、[认证](apps/cn.com.livelab/auth.md)、[上传下载](apps/cn.com.livelab/transfer.md)、[风控](apps/cn.com.livelab/risk.md)、[权限](apps/cn.com.livelab/permissions.md)、[隐私](apps/cn.com.livelab/privacy.md)、[本地存储](apps/cn.com.livelab/storage.md)、[证据](apps/cn.com.livelab/evidence.md)、[完成度](apps/cn.com.livelab/completeness.md)
 - 原神：[概览](apps/com.miHoYo.GenshinImpact/README.md)、[报告](apps/com.miHoYo.GenshinImpact/report.md)、[网络与协议](apps/com.miHoYo.GenshinImpact/network.md)、[认证](apps/com.miHoYo.GenshinImpact/auth.md)、[上传下载](apps/com.miHoYo.GenshinImpact/transfer.md)、[风控](apps/com.miHoYo.GenshinImpact/risk.md)、[权限](apps/com.miHoYo.GenshinImpact/permissions.md)、[隐私](apps/com.miHoYo.GenshinImpact/privacy.md)、[客户端与渲染](apps/com.miHoYo.GenshinImpact/client.md)、[IL2CPP 与 GUI 状态机](apps/com.miHoYo.GenshinImpact/il2cpp.md)、[证据](apps/com.miHoYo.GenshinImpact/evidence.md)、[完成度](apps/com.miHoYo.GenshinImpact/completeness.md)
+- 去哪儿旅行：[概览](apps/com.Qunar/README.md)、[报告](apps/com.Qunar/report.md)、[网络与协议](apps/com.Qunar/network.md)、[认证](apps/com.Qunar/auth.md)、[上传下载](apps/com.Qunar/transfer.md)、[风控](apps/com.Qunar/risk.md)、[权限](apps/com.Qunar/permissions.md)、[隐私](apps/com.Qunar/privacy.md)、[本地存储](apps/com.Qunar/storage.md)、[证据](apps/com.Qunar/evidence.md)、[完成度](apps/com.Qunar/completeness.md)
 - 通用：[逆向方法](docs/methodology.md)、[证据标准](docs/evidence-standard.md)、[脱敏规则](SECURITY.md)
 
 ## 公开范围
