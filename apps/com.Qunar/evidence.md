@@ -191,7 +191,7 @@ JNI 方法名 `getCrc32`、`ePoll`、`dPoll`（`(Ljava/lang/String;)Ljava/lang/S
 | `JNI_OnLoad` | `0xf3808`，`bl 0x22aee0 <vmEntry@plt>`；返回值 `> 1` 则 `brk #1` |
 | `Java_*` 导出 | **无**（动态注册） |
 
-`.rodata` 中的短名块（`0x26796c` 附近）：
+`.rodata` 中的短名块（`0x267950`–`0x2679d8`，NUL 分隔）：
 `setSaveVal`、`init_fp`、`qje`、`risk_file`、`hf`、`jbp`、`uti`、
 `get_opengl_info`、`init_base_env`、`root`、`cjd`、`get_fp`、
 `build_env_deal`、`has`、`get_w`。
