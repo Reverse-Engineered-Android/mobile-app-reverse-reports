@@ -193,11 +193,19 @@ this.bStr = object.toString();
 
 ## 8. 静态域名面
 
-268 个去重主机串（`classes*.dex` 字面量扫描，含 `qunar`/`qunarzz`/`ctrip`
-家族）。按调用频次排名前列的是 `s.qunarzz.com`（静态资源）、`pay.qunar.com`、
-`mob.uc.qunar.com`、`touch.qunar.com`、`m.flight.qunar.com`、
-`browser.qunar.com`、`qim.qunar.com`（IM）、`jr.qunar.com`（金融）、
-`rn.qunar.com`（RN 离线包）、`hotel/qunar` 与 `train` 系列。
+对 15 个 `classes*.dex` 按两种口径统计（口径必须写明，否则数字不可复现）：
+
+| 口径 | 去重主机数 |
+|---|---:|
+| 原始字节扫描 `*.qunar.com` / `*.qunarzz.com` / `*.ctrip.com`（含 `.cn`） | **202** |
+| DEX 字符串池解析后取完整主机名，同族后缀 | **212** |
+
+两种口径下的头部排名一致：`s.qunarzz.com`（静态资源）、`pay.qunar.com`、
+`mob.uc.qunar.com`、`touch.qunar.com`、`touch.dujia.qunar.com`、
+`m.flight.qunar.com`、`browser.qunar.com`、`qim.qunar.com`（IM）、
+`jr.ctrip.com`/`jr.qunar.com`（金融）、`zhuanche.qunar.com`、
+`rn.qunar.com`（RN 离线包）与 `hotel`/`train` 系列。
+本文早先写的“268”无法由上述任一口径复现，已改为实测值。
 测试与内网主机（`*.beta.qunar.com`、`*.qa.nt.ctripcorp.com`、`*.corp.qunar.com`）
 只作为存在性证据列出，不用于任何请求。
 
