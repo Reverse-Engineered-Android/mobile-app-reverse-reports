@@ -18,7 +18,7 @@
 | `AndroidManifest.xml` SHA-256 | `8dc48ccb9db03f8063922ac73d51d5dd4929775828b32eda35e5c1a802cf4a5f` |
 | `resources.arsc` SHA-256 | `d518c1bb47fe8289638f362a1171c782ca75d847512ac213903f51936dbac254` |
 | 声明权限 | 52 条 `uses-permission`（51 个去重，其中 9 条非 `android.permission.*`） |
-| 组件 | 441 个；显式导出 29 个，其中 25 个未加 `android:permission` |
+| 组件 | 438 个；显式导出 26 个，其中 22 个未加 `android:permission` |
 | `<queries>` 探测 | 183 个包名（182 去重）+ 12 个 intent 过滤器 |
 | 应用入口 | `com.mqunar.spider.QunarApp` |
 
@@ -149,7 +149,7 @@
 | 判断 | 结论 | 依据 |
 |---|---|---|
 | 越权 | **客户端未发现越权调用** | 无 `pm grant`、无 `su`、无静默安装链；`READ_CONTACTS`/`WRITE_CALENDAR` 仅有声明，未找到进入业务上报的调用闭环（`permissions.md` §4） |
-| 提权 | **未发现** | `SYSTEM_ALERT_WINDOW`、`REQUEST_INSTALL_PACKAGES`、`MOUNT_UNMOUNT_FILESYSTEMS` 有声明，但导出面 25 个无保护组件均为支付回调/分享/推送/快捷设置类，未构成提权路径（`permissions.md` §5） |
+| 提权 | **未发现** | `SYSTEM_ALERT_WINDOW`、`REQUEST_INSTALL_PACKAGES`、`MOUNT_UNMOUNT_FILESYSTEMS` 有声明，但导出面 22 个无保护组件均为支付回调/分享/推送/快捷设置类，未构成提权路径（`permissions.md` §5） |
 | 未经告知 | **存在告知粒度不足风险** | `<queries>` 显式探测 183 个包名（含 Magisk/KernelSU/APatch/虚拟摄像头/32 家银行类包名），`Cmd` 读取外部存储目录列表；隐私政策正文在服务端，客户端无法静态证明逐项告知（`privacy.md` §2、§6） |
 | 超范围获取 | **存在“声明即可采集”的强耦合点** | 设备指纹 SDK 的 `AppListInfoCollector` 会上报非系统应用列表；`ext.ai()` 上报已安装包名、首装时间、`sourceDir`、`versionName`、`flags`、`uid`；位置仅在有缓存定位时进入 cparam（`privacy.md` §3、§6） |
 

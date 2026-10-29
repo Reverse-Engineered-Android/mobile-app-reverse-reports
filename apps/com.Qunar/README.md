@@ -29,8 +29,8 @@
   `Cmd` 的 `ls`/`SystemProperties` 采集、`d.getcc()` 的 TLS 证书链+本地 IP+DNS）
   与 `com.ctripfinance.risk.device`（17 个收集器、`id5`/`instUUID`/`oaid`、
   AES-CBC 结果加密、`/m/quser/upDevice.do` 上报与 5 分钟节流）。
-- **权限与组件面**：52 条 `uses-permission`、441 个组件、29 个导出组件
-  （25 个无 `android:permission`）、183 条 `<queries>` 探测包名。
+- **权限与组件面**：52 条 `uses-permission`（51 去重）、438 个组件、26 个导出组件
+  （22 个无 `android:permission`）、183 条 `<queries>` 探测包名。
 - **本地存储**：13 个明文 SQLite 与 1 个 netty 存储、50 个明文
   `shared_prefs`（362 个键名，与 livelab 的密文落盘不同）、16 个 MMKV。
 - **离线包 `assets/*.qp`**：23 个包的 `qp` + 小端 u32 清单长度 + JSON 清单 +

@@ -294,10 +294,10 @@ QASMDispatcher.dispatchVirtualMethod(p, "java.lang.Process|destroy|[]|void|0");
 |---|---|
 | `uses-permission` | 52 条，51 去重，9 条非 `android.permission.*` |
 | 自定义 `<permission>` | 4 条 |
-| 组件 | 441（activity 394 / alias 3 / service 23 / receiver 12 / provider 9） |
-| 导出 | 29（无权限 25：activity 14 + alias 3 + service 4 + receiver 4） |
+| 组件 | 438（activity 391 / alias 3 / service 23 / receiver 12 / provider 9） |
+| 导出 | 26（无权限 22：activity 11 + alias 3 + service 4 + receiver 4） |
 | `<queries>` | 183 个 `<package>`（182 去重）+ 12 个 `<intent>` |
-| `<meta-data>` | 43 条 |
+| `<meta-data>` | 52 条 |
 | `res/xml/*.xml` | 27 个 |
 | `usesCleartextTraffic` | `true` |
 
@@ -306,6 +306,28 @@ Root/Hook/反检测 17、虚拟摄像头 4、银行金融类 32、支付 11、
 OAID provider 6、其余知名应用 100+。
 
 `assets/*.qp`：23 个，`85,564,564` 字节。
+
+### 5.1 计数口径与被修正项
+
+清单计数只按 XML 元素字面量统计，且**同类元素不重复计入**：
+
+| 计数项 | 值 | 方法 |
+|---|---:|---|
+| `<activity>` | 391 | 元素数 |
+| `<activity-alias>` | 3 | 元素数 |
+| `<service>` | 23 | 元素数 |
+| `<receiver>` | 12 | 元素数 |
+| `<provider>` | 9 | 元素数 |
+| 组件合计 | **438** | 上五项相加 |
+| 显式 `android:exported="true"` | **26** | 字面量 `exported="true"` 26 处 |
+| 其中无 `android:permission` | **22** | 逐组件读 `android:permission` |
+| 其中带 `android:permission` | **4** | 同上 |
+| 带 `intent-filter` 但省略 `exported` | **0** | 无隐式导出项 |
+
+早期草稿曾把 3 个 `activity-alias` 同时算作 `activity`（得出 441 个组件、
+29 个导出、25 个无权限），并误记为“alias 与同名 Activity 并存”。核对清单后
+更正为 438 / 26 / 22，且 3 个 alias 名在清单里**只以 alias 出现**、
+指向的 `targetActivity` 类名与之不同。本节表格即更正后的口径。
 
 ## 6. 设备端只读核对
 

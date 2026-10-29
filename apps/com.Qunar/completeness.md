@@ -11,7 +11,7 @@
 | 上传具体范围 | 完成，静态 | `transfer.md` §1、§3 | 未上传文件、未触发实名 |
 | 下载具体范围 | 完成，静态 | `transfer.md` §2、§3 | 未实际拉取 CDN/离线包增量 |
 | 越权 | 完成 | `permissions.md` §4 | 未安装恶意第三方应用复现 |
-| 提权 | 完成 | `permissions.md` §5 | 25 个无保护导出组件均为支付回调/分享/推送类；未发现 `su`/`pm grant`/静默安装闭环 |
+| 提权 | 完成 | `permissions.md` §5 | 22 个无保护导出组件均为支付回调/分享/推送类；未发现 `su`/`pm grant`/静默安装闭环 |
 | 未经告知 | 完成 | `privacy.md` §2、§6；`permissions.md` §6.1 | 隐私政策正文在服务端，客户端无法证明逐项告知 |
 | 超范围获取 | 完成 | `permissions.md` §3、§6.2；`privacy.md` §3、§6 | 按“已采集 / 条件触发 / 未发现”三层划分 |
 | 完整风控代码 | 完成，静态闭包 | `risk.md` §1–§8 | 服务端评分、处罚与配置下发结果不可见 |
@@ -34,7 +34,7 @@
 | `auth.md` | 登录功能键、票据与 Cookie 载体、本地凭据、第三方回调 |
 | `transfer.md` | `trans` 上传形态、上传目标、下载面与数据范围 |
 | `risk.md` | 三层风控：`libgoblin` 信封、cparam 指纹、两套设备风控 SDK |
-| `permissions.md` | 52 条权限、441 个组件、导出面、越权/提权/超范围判定 |
+| `permissions.md` | 52 条权限声明、438 个组件、导出面、越权/提权/超范围判定 |
 | `privacy.md` | 同意闸门、告知链、采集触发条件与分层结论 |
 | `storage.md` | 明文落盘结论、14 个库、`shared_prefs`、MMKV、离线包、平台面 |
 | `evidence.md` | 哈希、地址、反汇编片段、`RegisterNatives` 表、设备只读核对、模拟证据 |

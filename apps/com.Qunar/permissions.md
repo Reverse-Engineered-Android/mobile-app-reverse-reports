@@ -55,16 +55,20 @@
 
 ## 2. 导出组件
 
-441 个组件：`activity` 394、`activity-alias` 3、`service` 23、`receiver` 12、
-`provider` 9。显式 `android:exported="true"` 的 **29** 个，其中
-**25 个没有 `android:permission`**。
+438 个组件：`activity` 391、`activity-alias` 3、`service` 23、`receiver` 12、
+`provider` 9。显式 `android:exported="true"` 的 **26** 个，其中
+**22 个没有 `android:permission`**。
 
-### 2.1 导出且无权限保护（25）
+> 计数口径：只统计清单里显式写出的 `android:exported="true"`（26 处字面量）。
+> 该清单没有任何“带 `intent-filter` 但省略 `exported`”的组件（0 个），
+> 所以不存在隐式导出的额外项。`activity-alias` 是独立组件，且其
+> 3 个名字与 3 个真实 Activity 的类名重合（见下），不可与 Activity 混为一谈。
+
+### 2.1 导出且无权限保护（22）
 
 | 类型 | 组件 |
 |---|---|
 | activity | `com.mqunar.pay.inner.activity.pay.WXPayEntryActivity` |
-| activity | `com.Qunar.wxapi.WXPayEntryActivity` |
 | activity | `com.mqunar.pay.inner.react.ThirdPayActivity` |
 | activity | `com.mqunar.atom.attemper.ulink.UlinkRouteActivity` |
 | activity | `com.alipay.sdk.app.AlipayResultActivity` |
@@ -72,14 +76,12 @@
 | activity | `com.mqunar.splash.SplashActivity` |
 | activity | `com.mqunar.atom.quicksetting.pricecompare.CaptureAndUploadActivity` |
 | activity | `com.mqunar.atom.share.weixin.WXEntryActivity` |
-| activity | `com.mqunar.atom.share.wxapi.WXEntryActivity` |
-| activity | `com.Qunar.wxapi.WXEntryActivity` |
 | activity | `com.mqunar.dispatcher.DispatcherActivity` |
 | activity | `com.mqunar.dispatcher.DispatcherProxyHomeActivity` |
 | activity | `com.xiaomi.mipush.sdk.NotificationClickedActivity` |
-| activity-alias | `com.Qunar.wxapi.WXPayEntryActivity` |
-| activity-alias | `com.mqunar.atom.share.wxapi.WXEntryActivity` |
-| activity-alias | `com.Qunar.wxapi.WXEntryActivity` |
+| activity-alias | `com.Qunar.wxapi.WXPayEntryActivity` → `…pay.WXPayEntryActivity` |
+| activity-alias | `com.mqunar.atom.share.wxapi.WXEntryActivity` → `…share.weixin.WXEntryActivity` |
+| activity-alias | `com.Qunar.wxapi.WXEntryActivity` → `…share.weixin.WXEntryActivity` |
 | service | `com.baidu.location.f` |
 | service | `com.xiaomi.mipush.sdk.MessageHandleService` |
 | service | `com.xiaomi.push.service.XMPushService` |
@@ -93,6 +95,14 @@
 深链分发、桌面小组件、推送唤起。它们是功能必需导出，但攻击面在于
 **入参未在清单层收窄**——是否有来源校验只能在各自 `onCreate`/`onReceive`
 里逐个人工确认。
+
+三个 `activity-alias` 在清单里**只以 alias 形式出现**，不对应任何独立声明的
+`<activity>`，名字也与 `targetActivity` 的类名不同：
+`com.Qunar.wxapi.WXPayEntryActivity` → `com.mqunar.pay.inner.activity.pay.WXPayEntryActivity`；
+`com.Qunar.wxapi.WXEntryActivity` 与 `com.mqunar.atom.share.wxapi.WXEntryActivity`
+均 → `com.mqunar.atom.share.weixin.WXEntryActivity`。因此“微信回调入口”在
+清单里是 3 个 alias 组件，加上被指向的 2 个真实 Activity 类，共 5 个组件名，
+不是 6 个同名条目。
 
 ### 2.2 导出且有权限保护（4）
 
@@ -153,7 +163,7 @@
   `WRITE_SETTINGS` 有声明；`REQUEST_INSTALL_PACKAGES` 对应
   `androidx.core.content.FileProvider` + `.install.authority`，
   属正常“下载 APK 后引导安装”流程，未见静默安装。
-- 25 个无保护导出组件中无 `BroadcastReceiver` 监听 `PACKAGE_ADDED` 后
+- 22 个无保护导出组件中无 `BroadcastReceiver` 监听 `PACKAGE_ADDED` 后
   自动拉起安装的行为。
 - `DETECT_SCREEN_CAPTURE` / `CAPTURE_AUDIO_OUTPUT` 属防御性权限，未见反向利用。
 

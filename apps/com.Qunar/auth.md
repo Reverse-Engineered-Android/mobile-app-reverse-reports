@@ -98,16 +98,19 @@ ChiefGuard.getInstance().addTask(..., new Ticket(Ticket.RequestFeature.ADD_INSER
 
 | 组件 | 用途 |
 |---|---|
-| `com.Qunar.wxapi.WXEntryActivity`（activity + activity-alias） | 微信登录/分享回调 |
-| `com.Qunar.wxapi.WXPayEntryActivity`（activity + activity-alias） | 微信支付回调 |
-| `com.mqunar.atom.share.wxapi.WXEntryActivity`（activity + activity-alias） | 分享模块的微信回调 |
+| `com.Qunar.wxapi.WXEntryActivity`（**仅** `activity-alias` → `…share.weixin.WXEntryActivity`） | 微信登录/分享回调 |
+| `com.Qunar.wxapi.WXPayEntryActivity`（**仅** `activity-alias` → `…pay.WXPayEntryActivity`） | 微信支付回调 |
+| `com.mqunar.atom.share.wxapi.WXEntryActivity`（**仅** `activity-alias` → `…share.weixin.WXEntryActivity`） | 分享模块的微信回调 |
 | `com.alipay.sdk.app.PayResultActivity`、`AlipayResultActivity` | 支付宝结果回传 |
 | `com.mqunar.pay.inner.activity.pay.WXPayEntryActivity`、`ThirdPayActivity` | 收银台第三方支付 |
 | `com.mqunar.atom.attemper.ulink.UlinkRouteActivity` | 深链路由 |
 | `com.mqunar.dispatcher.DispatcherActivity` / `DispatcherProxyHomeActivity` | 统一分发入口 |
 
-这 14 个导出 Activity 与 3 个 activity-alias 全部**没有** `android:permission`
-保护（`permissions.md` §2）。它们承担外部 App 回调，属必需导出，但意味着任何
+上表对应的 11 个导出 Activity 与 3 个 `activity-alias` 共 14 个 Activity 类入口，
+全部**没有** `android:permission` 保护（`permissions.md` §2）。三个
+`…wxapi.*` 名字在清单里**只以 `activity-alias` 出现**，不是独立声明的
+`<activity>`；它们的类名与被指向的 Activity 类名不同，实现由
+`targetActivity` 决定。它们承担外部 App 回调，属必需导出，但意味着任何
 本地应用都能向这些入口发 Intent；这些入口是否对入参做来源校验，需逐个读代码
 确认，本报告不宣称已覆盖全部入口。
 
