@@ -219,7 +219,7 @@ JNI 方法名 `getCrc32`、`ePoll`、`dPoll`（`(Ljava/lang/String;)Ljava/lang/S
 | `qrc_sp`（`Store` 的 SharedPreferences 名） | `classes7.dex@0x351a7e` |
 | `aardtroPdEaallt`（`StringUtil.f9345a` 固定 IV） | `classes.dex@0x6ca51c`、`classes6.dex@0x1af7f1` |
 | `risk_install_uuid` | `classes.dex@0x77ec93` |
-| `ls -al /sdcard/Android/data/ | head -n 50` | `classes7.dex@0x32861e` |
+| `ls -al /sdcard/Android/data/ \| head -n 50` | `classes7.dex@0x32861e` |
 | `ZygoteInit` | `classes.dex@0x6ec4a1`、`classes4.dex@0x19a2d5` |
 | `de.robv.android.xposed.XposedBridge` | `classes.dex@0x6f3de9`、`classes4.dex@0x19cd10` |
 | `com.saurik.substrate.MS$2` | `classes.dex@0x6ed672`、`classes4.dex@0x19a8c3` |

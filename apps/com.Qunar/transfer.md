@@ -82,6 +82,6 @@ this.bParts.add(new FormPart("ext", encodeValue(string)));
 | 是否上传安装应用列表 | **是**，`ext.ai()` 与 `AppListInfoCollector` 上报包名/版本/首装时间/`sourceDir`/`flags`/`uid`（`privacy.md` §3） |
 | 是否上传位置 | 条件性：`cpHasPrivacyInfo` 在拿到缓存定位时写入 `lat`/`lgt`；另有 `qpub_locationUpload` 功能键 |
 | 是否上传 TLS 证书链与出口 IP | **是**，`d.getcc()`（`risk.md` §5.3） |
-| 是否上传外部存储目录列表 | **是**，`Cmd.a()` 执行 `ls -al /sdcard/Android/data/ | head -n 50` |
+| 是否上传外部存储目录列表 | **是**，`Cmd.a()` 执行 `ls -al /sdcard/Android/data/ \| head -n 50` |
 
 所有判断均为静态调用点结论，本次未产生任何真实传输。

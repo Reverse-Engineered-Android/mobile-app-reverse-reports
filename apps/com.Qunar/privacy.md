@@ -76,7 +76,7 @@ if (bool.booleanValue()) {
 | `fp` | `NUtils.ep()`（原生），服务端可下发 `df` 覆盖（`sfp`），落 `qrc_sp` | 长期 |
 | `gid` | `GlobalEnv` | 长期 |
 | `instid` | `GlobalEnv.getInstId()` | 安装期 |
-| `id5` | `f(BRAND|MODEL|androidId|StorageUtil.a()|WxH)` | 设备期 |
+| `id5` | `f(BRAND\|MODEL\|androidId\|StorageUtil.a()\|WxH)` | 设备期 |
 | `instUUID` | `UUID.randomUUID()`，落 `risk_install_uuid` | 安装期 |
 | `oaid` | 厂商 OAID 服务（6 个 provider 在 `<queries>` 中声明） | 可重置 |
 | `vid` | 版本维度 | 版本期 |
