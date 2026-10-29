@@ -302,7 +302,7 @@ QASMDispatcher.dispatchVirtualMethod(p, "java.lang.Process|destroy|[]|void|0");
 | `usesCleartextTraffic` | `true` |
 
 `<queries>` 分类计数（按包名字符串匹配，存在性证据）：
-Root/Hook/反检测 17、虚拟摄像头 4、银行金融类 32、支付 11、
+Root/Hook/反检测 15、虚拟摄像头 4、银行金融类 34、支付 11、
 OAID provider 6、其余知名应用 100+。
 
 `assets/*.qp`：23 个，`85,564,564` 字节。

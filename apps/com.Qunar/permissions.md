@@ -175,9 +175,9 @@
 
 | 类别 | 数量 | 示例（存在性证据） |
 |---|---|---|
-| Root / Hook / 反检测工具 | 17 | Magisk（2 个签名变体）、KernelSU、KernelSU Next、SukiSU Ultra、APatch（2 个变体）、APatch Next、`com.variable.apkhook`、`com.tsng.hidemyapplist`、`io.github.vvb2060.mahoshojo`、`com.byxiaorun.detector`、`icu.nullptr.nativetest`、3 个 secureguard |
+| Root / Hook / 反检测工具 | 15 | `com.topjohnwu.magisk`、`io.github.huskydg.magisk`、`me.weishu.kernelsu`、`com.rifsxd.ksunext`、`com.sukisu.ultra`、`me.bmax.apatch`、`me.garfieldhan.apatch.next`、`com.variable.apkhook`、`com.tsng.hidemyapplist`、`io.github.vvb2060.mahoshojo`、`com.byxiaorun.detector`、`icu.nullptr.nativetest`、`com.android.secureguard`、`com.freeme.secureguard`、`com.zhuoyi.security.lite` |
 | 虚拟摄像头 | 4 | `virtual.camera.app`、`com.example.vcam`、`com.wangyiheng.vcamsx`、`com.pedia.vcamsx` |
-| 银行/金融 App | 32 | 工行、建行、农行、中行、招行、浦发、邮储、中信、兴业、华夏、光大、上海银行、北京银行、民生、平安、深发展系列等 |
+| 银行/金融 App | 34 | 工行 `com.icbc`/`com.icbc.elife`；中行 `com.chinamworld.main`/`com.chinamworld.bocmbci`；招行 `cmb.pb`/`com.cmbchina.ccd.pluto.cmbActivity`；浦发 `cn.com.spdb.mobilebank.per`/`com.spdbccc.app`；邮储 `com.yitong.mbank.psbc`/`….creditcard`；兴业 `com.cib.cibmb`/`com.cib.xyk`；上海银行 `cn.com.shbank.mper`/`…pension`；建行 `com.ccb.longjiLife`；农行 `com.android.bankabc`；民生 `cn.com.cmbc.newmbank`/`com.cmbc.cc.mbank`；交行 `com.bankcomm.Bankcomm`/`…maidanba`；光大 `com.cebbank.mobile.cemb`；华夏 `com.HuaXiaBank.HuaCard`；中信 `com.citiccard.mobilebank`/`com.ecitic.bank.mobile`；北京银行 `com.bankofbeijing.mobilebanking`；广发 `com.cgbchina.xpt`；数字人民币 `cn.gov.pbc.dcep`；`com.ctrip.jr` 等 |
 | 支付 | 11 | 支付宝（含 RC 变体）、云闪付、微信、各钱包 |
 | OAID 提供方 | 6 | `com.mdid.msa`、`com.samsung.android.deviceidservice`、`com.coolpad.deviceidsupport`、`com.heytap.openid`、`com.qiku.id`、`com.vivo.vhome` |
 | 其它知名 App | 100+ | 淘宝、京东、拼多多、美团、携程、小红书、高德、百度、快手、抖音、网易云音乐等 |
