@@ -159,8 +159,10 @@ offset 6+n : body (明文 JS，Metro 打包)
 `extra` 字段直接给出运行引擎：
 `{bundleType:"JSC", engineVersion:"0.0.1", platform:"android",
 hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
-`f_order_rn_android_324_...` 的 `ramEnabled` 为 `"true"`，说明不同 bundle
-可以按需切换 RAM 包模式。
+`f_order_rn_android_849_10010_20260911174339_prod.qp` 的 `ramEnabled` 为
+`"true"`，说明不同 bundle 可以按需切换 RAM 包模式。23 个包里 `ramEnabled`
+为 `true` 的是 6 个（`cmn_order`、`f_home`、`f_order`、`hotel`、
+`pf_grand_search`、`t_mavericks`），其余 17 个为 `false`。
 
 23 个 `.qp` 覆盖 `f_major_bundle`、`f_home`、`h_home`、`hotel`、`train`、
 `flight_booking`、`f_flight_search`、`f_order`、`cmn_order`、`p_cashier`、

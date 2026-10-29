@@ -229,8 +229,24 @@ harmony_vid, pid, extra, rnpackage, platform, dependency_qp, common_qp,
 weak_common_qp`；`extra` 为
 `{bundleType:"JSC", engineVersion:"0.0.1", platform:"android",
 hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
-`files[]` 每项含 `url`、`md5`、`sha256`（均为 Base64）与 `sl:"start,length"`
-在正文中的切片。
+`files[]` 每项含 `url`、`md5`、`sha256` 与 `sl:"start,length"`。
+
+`sl` 的语义是“在正文里的起始偏移与长度”，已对全部 23 个包核验。以最大的
+`f_major_bundle` 为例：203 项都从偏移 0 起首尾相接、互不重叠，长度之和
+`10,837,904` 与正文长度**精确相等**，即分片连续铺满正文。
+
+23 个包分成两类：**16 个**是连续铺满（`sum(sl) == body` 且范围首尾相接），
+**7 个**是稀疏分布——范围之间留有大段空洞、`sum(sl)` 远小于正文长度，
+但所有范围的末端仍正好等于正文长度。7 个稀疏包里有 6 个的 `extra.ramEnabled`
+为 `true`（另一个 `cmn_mine` 为 `false`），说明稀疏形态与 RAM 包/按需加载
+相关：这类包里 `files[]` 只列出运行期真正需要下载的片段，其余正文内容
+留待增量下发。
+
+`md5`/`sha256` 两个字段虽名为摘要、取值形如 Base64，但**不满足摘要语义**：
+Base64 解码后分别是 `43` 与 `86` 字节（不是 16 / 32），且对 `sl` 指出的
+对应分片重算 `md5`/`sha256`（含 `sha1`、`sha512` 对照）**全部不匹配**。
+字段是 203/203 互不相同的高熵串，因此它们是服务端下发的比对材料，
+本次未复原其构造，也不把它当作“分片摘要”使用。
 
 ## 11. 静态化说明
 
