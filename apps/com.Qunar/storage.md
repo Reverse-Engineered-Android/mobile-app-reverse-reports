@@ -30,7 +30,7 @@
 
 | 目录 | 文件数 | 大小 | 说明 |
 |---|---:|---:|---|
-| `databases/` | 33 个条目 | 2.6 MB | 14 个库 + journal/wal/shm |
+| `databases/` | 33 个条目 | 2.6 MB | 18 个 SQLite 格式文件（17 库 + 1 空壳）+ 15 个 journal/wal/shm |
 | `shared_prefs/` | 50 个 XML | 684,312 B | **全部明文**，362 个键名 |
 | `files/` | — | 33 MB | 含 16 个 MMKV（`kv_storage/`，16.4 MB） |
 | `cache/` | — | 219 MB | 图片/离线包/WebView |
@@ -39,7 +39,8 @@
 
 ## 3. SQLite 库清单
 
-13 个库 + 1 个 netty 落盘文件，`PRAGMA integrity_check` **全部 `ok`**。
+17 个库 + 1 个 netty 落盘空壳（共 18 个 SQLite 格式文件），
+`PRAGMA integrity_check` **全部 `ok`**（18/18）。
 
 ### 3.1 城市/公共数据（业务静态库）
 
@@ -171,7 +172,7 @@ hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
 
 | 判定 | 结论 |
 |---|---|
-| 数据库是否加密 | **否**，13/13 明文，`integrity_check` 全 `ok` |
+| 数据库是否加密 | **否**，17/17 明文，`integrity_check` 全 `ok` |
 | `shared_prefs` 是否加密 | **否**，50/50 明文 XML |
 | MMKV 是否加密 | **否**，默认格式 |
 | 离线包是否加密 | **否**，`qp` 正文为明文 JS |

@@ -335,7 +335,7 @@ OAID provider 6、其余知名应用 100+。
 
 | 项 | 结果 |
 |---|---|
-| `databases/` 条目 | 33（含 journal/wal/shm），14 个库文件 |
+| `databases/` 条目 | 33（含 15 个 journal/wal/shm），18 个 SQLite 格式文件：17 库 + 1 个 0 表 netty 空壳 |
 | `integrity_check` | 18/18 个可打开库全部 `ok` |
 | `shared_prefs/` | 50 个文件，684,312 字节，362 个键名，**全部明文 XML** |
 | `files/kv_storage/` | 16 个 MMKV + 16 个 `.crc`，16,441,344 字节 |

@@ -155,7 +155,8 @@
 
 ### 1.8 存储结论
 
-- 13 个明文 SQLite 库 + 1 个 netty 落盘文件，`integrity_check` 全部 `ok`；
+- 17 个明文 SQLite 库 + 1 个 netty 落盘空壳（共 18 个 SQLite 格式文件），
+  `integrity_check` 18/18 全部 `ok`；
   无 SQLCipher/WCDB 封装，无页级加密。
 - 50 个 `shared_prefs` XML **全部明文可解析**（362 个键名），与同一仓库中
   纷玩岛的密文偏好形成鲜明对比：同一 OEM 体系下不同 App 的存储策略并不一致。

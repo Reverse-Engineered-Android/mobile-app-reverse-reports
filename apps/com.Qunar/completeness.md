@@ -36,7 +36,7 @@
 | `risk.md` | 三层风控：`libgoblin` 信封、cparam 指纹、两套设备风控 SDK |
 | `permissions.md` | 52 条权限声明、438 个组件、导出面、越权/提权/超范围判定 |
 | `privacy.md` | 同意闸门、告知链、采集触发条件与分层结论 |
-| `storage.md` | 明文落盘结论、14 个库、`shared_prefs`、MMKV、离线包、平台面 |
+| `storage.md` | 明文落盘结论、17 个库、`shared_prefs`、MMKV、离线包、平台面 |
 | `evidence.md` | 哈希、地址、反汇编片段、`RegisterNatives` 表、设备只读核对、模拟证据 |
 | `completeness.md` | 本完成度矩阵 |
 
