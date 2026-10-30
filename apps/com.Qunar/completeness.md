@@ -34,9 +34,9 @@
 | `auth.md` | 登录功能键、票据与 Cookie 载体、本地凭据、第三方回调 |
 | `transfer.md` | `trans` 上传形态、上传目标、下载面与数据范围 |
 | `risk.md` | 三层风控：`libgoblin` 信封、cparam 指纹、两套设备风控 SDK |
-| `permissions.md` | 52 条权限声明、438 个组件、导出面、越权/提权/超范围判定 |
+| `permissions.md` | 52 个权限请求元素、438 个组件、导出面、越权/提权/超范围判定 |
 | `privacy.md` | 同意闸门、告知链、采集触发条件与分层结论 |
-| `storage.md` | 明文落盘结论、17 个库、`shared_prefs`、MMKV、离线包、平台面 |
+| `storage.md` | 明文落盘结论、18 个 SQLite 格式文件（17 个业务/SDK 库 + 1 个动态 netty IM 库）、`shared_prefs`、MMKV、离线包、平台面 |
 | `evidence.md` | 哈希、地址、反汇编片段、`RegisterNatives` 表、设备只读核对、模拟证据 |
 | `completeness.md` | 本完成度矩阵 |
 

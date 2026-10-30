@@ -305,7 +305,7 @@ QASMDispatcher.dispatchVirtualMethod(p, "java.lang.Process|destroy|[]|void|0");
 
 | 项目 | 数值 |
 |---|---|
-| `uses-permission` | 52 条，51 去重，9 条非 `android.permission.*` |
+| 权限请求 | 51 条 `uses-permission` + 1 条 `uses-permission-sdk-23`，共 52 个元素、51 去重，9 个非 `android.permission.*` |
 | 自定义 `<permission>` | 4 条 |
 | 组件 | 438（activity 391 / alias 3 / service 23 / receiver 12 / provider 9） |
 | 导出 | 26（无权限 22：activity 11 + alias 3 + service 4 + receiver 4） |
@@ -348,7 +348,7 @@ OAID provider 6、其余知名应用 **112**。六类加总 = 182，与去重总
 
 | 项 | 结果 |
 |---|---|
-| `databases/` 条目 | 33（含 15 个 journal/wal/shm），18 个 SQLite 格式文件：17 库 + 1 个 0 表 netty 空壳 |
+| `databases/` 条目 | 33（含 15 个 journal/wal/shm），18 个 SQLite 格式文件：17 个业务/SDK 库 + 1 个 netty IM 库 |
 | `integrity_check` | 18/18 个可打开库全部 `ok` |
 | `shared_prefs/` | 50 个文件，684,312 字节，362 个键名，**全部明文 XML** |
 | `files/kv_storage/` | 16 个 MMKV + 16 个 `.crc`，16,441,344 字节 |
@@ -357,6 +357,13 @@ OAID provider 6、其余知名应用 **112**。六类加总 = 182，与去重总
 
 未写入任何文件、未修改任何数据库、未发起网络请求。
 数据库行值、偏好值、MMKV 内容一律未采集。
+
+设备落盘是运行时快照。2026-10-30 再次以只读方式从 init 根目录流式复制
+`databases/` 的 DB/WAL/SHM 到主机临时目录后检查：仍为 33 个条目、18 个
+SQLite 格式文件、18/18 `integrity_check=ok`，合计 89 张表；netty 文件已有
+`IM_Cache_Data`、`IM_MESSAGE_NEW`、`IM_SessionList`、`IM_User` 四张表。
+早先的“0 表 netty 空壳”只描述原始快照，不是跨快照不变量。复查仍只读取设备，
+未在设备上打开、写入数据库或发起网络请求。
 
 ## 7. 模拟与重放证据
 

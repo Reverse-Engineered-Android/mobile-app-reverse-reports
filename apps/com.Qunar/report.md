@@ -17,7 +17,7 @@
 | `assets/*.qp` 离线包 | `23` 个，合计 `85,564,564` 字节 |
 | `AndroidManifest.xml` SHA-256 | `8dc48ccb9db03f8063922ac73d51d5dd4929775828b32eda35e5c1a802cf4a5f` |
 | `resources.arsc` SHA-256 | `d518c1bb47fe8289638f362a1171c782ca75d847512ac213903f51936dbac254` |
-| 声明权限 | 52 条 `uses-permission`（51 个去重，其中 9 条非 `android.permission.*`） |
+| 声明权限 | 51 条 `uses-permission` 加 1 条 `uses-permission-sdk-23`（共 52 个请求元素、51 个去重，其中 9 个非 `android.permission.*`） |
 | 组件 | 438 个；显式导出 26 个，其中 22 个未加 `android:permission` |
 | `<queries>` 探测 | 183 个包名（182 去重）+ 12 个 intent 过滤器 |
 | 应用入口 | `com.mqunar.spider.QunarApp` |
@@ -156,8 +156,9 @@
 
 ### 1.8 存储结论
 
-- 17 个明文 SQLite 库 + 1 个 netty 落盘空壳（共 18 个 SQLite 格式文件），
-  `integrity_check` 18/18 全部 `ok`；
+- 17 个业务/SDK 明文 SQLite 库 + 1 个 netty IM SQLite（共 18 个 SQLite 格式文件），
+  `integrity_check` 18/18 全部 `ok`；后续只读复查时 netty 库已有 4 张 IM 表，
+  说明它是运行时创建 schema 的动态存储，而不是固定空壳；
   无 SQLCipher/WCDB 封装，无页级加密。
 - 50 个 `shared_prefs` XML **全部明文可解析**（362 个键名），与同一仓库中
   纷玩岛的密文偏好形成鲜明对比：同一 OEM 体系下不同 App 的存储策略并不一致。

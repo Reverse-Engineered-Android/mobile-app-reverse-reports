@@ -30,7 +30,7 @@
 
 | 目录 | 文件数 | 大小 | 说明 |
 |---|---:|---:|---|
-| `databases/` | 33 个条目 | 2.6 MB | 18 个 SQLite 格式文件（17 库 + 1 空壳）+ 15 个 journal/wal/shm |
+| `databases/` | 33 个条目 | 2.6 MB | 18 个 SQLite 格式文件（17 个业务/SDK 库 + 1 个 netty IM 库）+ 15 个 journal/wal/shm |
 | `shared_prefs/` | 50 个 XML | 684,312 B | **全部明文**，362 个键名 |
 | `files/` | — | 33 MB | 含 16 个 MMKV（`kv_storage/`，16.4 MB） |
 | `cache/` | — | 219 MB | 图片/离线包/WebView |
@@ -41,8 +41,11 @@
 
 ## 3. SQLite 库清单
 
-17 个库 + 1 个 netty 落盘空壳（共 18 个 SQLite 格式文件），
-`PRAGMA integrity_check` **全部 `ok`**（18/18）。
+17 个业务/SDK 库 + 1 个 netty IM 库（共 18 个 SQLite 格式文件），
+`PRAGMA integrity_check` **全部 `ok`**（18/18）。原始快照中 netty 文件未建表；
+2026-10-30 的后续只读复查在连同 WAL/SHM 取得一致快照后看到
+`IM_Cache_Data`、`IM_MESSAGE_NEW`、`IM_SessionList`、`IM_User` 四张表，
+所以该库的 schema 是随长连会话动态创建的，不能把“空壳”写成稳定属性。
 
 ### 3.1 城市/公共数据（业务静态库）
 
