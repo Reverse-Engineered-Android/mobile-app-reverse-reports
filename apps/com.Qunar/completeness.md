@@ -78,13 +78,13 @@
 | 响应侧有效状态词集 | **未复原** | 前 400 个候选键中仅 `0c4ad3e0` 不返回 `3`，且返回 `2`；其余键值语义未还原 |
 | `sand` → `drift` 互逆性 | 已否定 | 请求侧状态词取自 `T29`，29/29 不在响应侧键集；两函数方向不同，非互逆 |
 | `NUtils` 六个 native（`cd`/`ep`/`uti`/`jcd`/`sepa`/`sfp`） | **未复原** | 经 `libqlynx_v++` 的 `vmEntry` 动态注册，无 `Java_*` 导出；`uti` 槽位已定位（`.data.rel.ro 0x23e5a8` → `.rodata 0x26797c`），其余 5 个槽位未逐一解析 |
-| `com.ctripfinance.risk.device` 结果加密 | 闭包 | `AES/CBC/PKCS5Padding`，key = `MD5(gid)[0:8] + timestamp[0:8]`，IV 为固定 16 字节常量，Base64 后上报 |
+| `com.ctripfinance.risk.device` 结果加密 | 闭包 | `AES/CBC/PKCS5Padding`，key = `MD5hex(gid)` 前 8 个 hex 字符 + 时间戳前 8 位（共 16 字节 ASCII），IV 为固定 16 字节常量，Base64 后上报 |
 | `com.qunar.rc` `FpService` 上报体 | 结构已证实 | `multipart/form-data` 单字段 `b`，最多重试 3 次；`b` 的字节内容由 `NUtils.cd()` 生成，内部实现未复原 |
 | `shared_prefs` / `files` 落盘 | 闭包 | 全部明文，无应用层加密，机密性依赖 `/data/data` Unix 权限 |
 | MMKV 存储 | 闭包 | MMKV 默认 mmap + CRC 格式，非应用自定义加密 |
 | `res/xml/network_config.xml` | 闭包 | 只被 `R.xml` 引用，未在清单挂载，属未生效的冗余策略 |
-| `assets/*.qp` 离线包正文 | 闭包 | `qp` + u32le 清单长度 + UTF-8 JSON 清单 + 明文 Metro JS 正文，无字节码加密 |
-| `.qp` 清单 `sl` 分片表 | 闭包 | 203 项首尾相接、无重叠，长度和等于正文长度 |
+| `assets/*.qp` 离线包正文 | 闭包 | `qp` + u32le 清单长度 + UTF-8 JSON 清单 + 明文正文，无字节码加密（20 个 Metro JS；`finance_cashier_hy`/`q_design_hy`/`qpadjust` 为 H5/字体/JSON） |
+| `.qp` 清单 `sl` 分片表 | 闭包（含 2 处例外） | 16 个包连续铺满、7 个稀疏；`f_major_bundle` 203 项首尾相接且和等于正文长度。例外：`cmn_mine` 有一处重复声明（`sum(sl)` 比正文多 483 字节）；3 个旧格式包无 `extra` 且正文非 JS |
 | `.qp` 清单 `md5`/`sha256` 字段 | **未复原** | 解码为 43/86 字节、与分片重算不符，非摘要语义，构造未知 |
 
 报告未复原的两项（`Ena1907_req`/`Dea1907_resp` 的内部变换，含响应侧有效

@@ -178,9 +178,26 @@
 | Root / Hook / 反检测工具 | 15 | `com.topjohnwu.magisk`、`io.github.huskydg.magisk`、`me.weishu.kernelsu`、`com.rifsxd.ksunext`、`com.sukisu.ultra`、`me.bmax.apatch`、`me.garfieldhan.apatch.next`、`com.variable.apkhook`、`com.tsng.hidemyapplist`、`io.github.vvb2060.mahoshojo`、`com.byxiaorun.detector`、`icu.nullptr.nativetest`、`com.android.secureguard`、`com.freeme.secureguard`、`com.zhuoyi.security.lite` |
 | 虚拟摄像头 | 4 | `virtual.camera.app`、`com.example.vcam`、`com.wangyiheng.vcamsx`、`com.pedia.vcamsx` |
 | 银行/金融 App | 34 | 工行 `com.icbc`/`com.icbc.elife`；中行 `com.chinamworld.main`/`com.chinamworld.bocmbci`；招行 `cmb.pb`/`com.cmbchina.ccd.pluto.cmbActivity`；浦发 `cn.com.spdb.mobilebank.per`/`com.spdbccc.app`；邮储 `com.yitong.mbank.psbc`/`….creditcard`；兴业 `com.cib.cibmb`/`com.cib.xyk`；上海银行 `cn.com.shbank.mper`/`…pension`；建行 `com.ccb.longjiLife`；农行 `com.android.bankabc`；民生 `cn.com.cmbc.newmbank`/`com.cmbc.cc.mbank`；交行 `com.bankcomm.Bankcomm`/`…maidanba`；光大 `com.cebbank.mobile.cemb`；华夏 `com.HuaXiaBank.HuaCard`；中信 `com.citiccard.mobilebank`/`com.ecitic.bank.mobile`；北京银行 `com.bankofbeijing.mobilebanking`；广发 `com.cgbchina.xpt`；数字人民币 `cn.gov.pbc.dcep`；`com.ctrip.jr` 等 |
-| 支付 | 11 | 支付宝（含 RC 变体）、云闪付、微信、各钱包 |
+| 支付 | 11 | `com.unionpay`、`com.unionpay.tsmservice`、`com.unionpay.tsmservice.mi`、`com.huawei.wallet`、`com.eg.android.AlipayGphone`、`com.eg.android.AlipayGphoneRC`、`hk.alipay.wallet`、`hk.alipay.walletRC`、`com.tencent.mm`、`com.ly.wallet`、`com.duxiaoman.wallet` |
 | OAID 提供方 | 6 | `com.mdid.msa`、`com.samsung.android.deviceidservice`、`com.coolpad.deviceidsupport`、`com.heytap.openid`、`com.qiku.id`、`com.vivo.vhome` |
-| 其它知名 App | 100+ | 淘宝、京东、拼多多、美团、携程、小红书、高德、百度、快手、抖音、网易云音乐等 |
+| 其它知名 App | 112 | 淘宝 `com.taobao.taobao`、京东 `com.jingdong.app.mall`、拼多多 `com.xunmeng.pinduoduo`、美团 `com.sankuai.meituan`、同程 `com.tongcheng.android`、小红书 `com.xingin.xhs`、高德 `com.autonavi.minimap`、百度地图 `com.baidu.BaiduMap`、快手 `com.kuaishou.nebula`、抖音 `com.ss.android.ugc.aweme`、网易云音乐 `com.netease.cloudmusic` 等 |
+
+**计数闭合校验**（去重后 182 个包名，六类互不重叠，加总等于总数）：
+
+| 类别 | 数量 |
+|---|---:|
+| Root / Hook / 反检测 | 15 |
+| 虚拟摄像头 | 4 |
+| 银行 / 金融 | 34 |
+| 支付 | 11 |
+| OAID 提供方 | 6 |
+| 其它知名 App | 112 |
+| **合计** | **182** |
+
+口径：`aapt2 dump xmltree` 读出 `<queries>` 下全部 `<package android:name>` 元素
+共 183 个，去重后 182 个（`com.csii.bj.ui` 重复声明两次，计入"银行/金融"类）。
+类别按包名的业务归属人工划分，同一包名只归一类，因此六类加总严格等于 182；
+`com.tencent.mm` 归"支付"而非"其它"，`com.ctrip.jr` 归"银行/金融"而非"其它"。
 
 `<queries>` 本身是 Android 11+ 的可见性声明，只有被声明的包名才能被
 `PackageManager` 查询到。声明 183 个包名意味着应用**主动要求**能查询这些

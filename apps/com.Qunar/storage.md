@@ -162,9 +162,12 @@ offset 6+n : body (明文 JS，Metro 打包)
 `{bundleType:"JSC", engineVersion:"0.0.1", platform:"android",
 hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
 `f_order_rn_android_849_10010_20260911174339_prod.qp` 的 `ramEnabled` 为
-`"true"`，说明不同 bundle 可以按需切换 RAM 包模式。23 个包里 `ramEnabled`
+`"true"`，说明不同 bundle 可以按需切换 RAM 包模式。23 个包中 `ramEnabled`
 为 `true` 的是 6 个（`cmn_order`、`f_home`、`f_order`、`hotel`、
-`pf_grand_search`、`t_mavericks`），其余 17 个为 `false`。
+`pf_grand_search`、`t_mavericks`）；`false` 的是 14 个；另外 **3 个包根本没有
+`extra` 字段**（`finance_cashier_hy`、`q_design_hy`、`qpadjust` — 它们的清单只有
+`android_vid / files / hybridid / iOS_vid / pid / timestamp / version` 七个键，
+属早期格式），所以不能把"其余"笼统算作 `false`。
 
 23 个 `.qp` 覆盖 `f_major_bundle`、`f_home`、`h_home`、`hotel`、`train`、
 `flight_booking`、`f_flight_search`、`f_order`、`cmn_order`、`p_cashier`、
@@ -179,7 +182,7 @@ hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
 | 数据库是否加密 | **否**，17/17 明文，`integrity_check` 全 `ok` |
 | `shared_prefs` 是否加密 | **否**，50/50 明文 XML |
 | MMKV 是否加密 | **否**，默认格式 |
-| 离线包是否加密 | **否**，`qp` 正文为明文 JS |
+| 离线包是否加密 | **否**，`qp` 正文为明文（20 个 Metro JS；3 个旧格式包为 H5/字体/JSON） |
 | 会话是否明文落盘 | **是**，`authStatus_*` / `ssoconfigs` / `userdefault` 均在明文 XML 中 |
 | 风控配置是否明文 | **是**，`sec_gd_config_mshield` / `msfffppcfg` / `msgzpfc` |
 | 唯一屏障 | `/data/data/com.Qunar` 的 Unix 权限 + `allowBackup=false` |

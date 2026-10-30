@@ -132,16 +132,29 @@ aca4: cmp  x21, x0            ; x21 = BE64(hdr[0:8])
 
 ### 2.4 `.rodata` 字符串编码
 
-`0x20c240` 起 `0xb6c` 字节全部是 ASCII 十六进制字符，按字节 `XOR 0xFF`
-解码后为可打印字符串。解码结果 41 条，含
+`.rodata` 是 `0x20c240` 起 `0xb6c`（2,924）字节，**并非全部被编码**：
+
+| 区段 | 内容 |
+|---|---|
+| `0x20c240`–`0x20c24f` | 16 字节 `0123456789abcdef fedcba98 76543210`，即 SHA-256 初始向量的小端形态 |
+| `0x20c250`–`0x20cb56` | 46 段 ASCII 十六进制串（共 2,113 字节），按字节 `XOR 0xFF` 解码 |
+| 其余 677 字节 | **明文**，编码区段之间的填充与第二组字符串 |
+
+因此准确说法是"**`.rodata` 的字符串区主要由 ASCII 十六进制串按字节 `XOR 0xFF` 编码，
+另有散布其间的明文串（含 `0x20cb5d` 的 `qunar/lego/utils/Goblin`）**"，不是"全部"。
+
+按"解码后长度 ≥ 4 的可打印串"计为 **41 条**（含 `hehe : NNN` 埋点 **9 条**：
+843 / 855 / 865 / 883 / 998 / 1004 / 1046 / 1065 / 1074）；若把 1–3 字符的碎片
+（`ve`、`dn1`、`ea`、`da`、`eg`、`SHR` 及单字符噪声）也算上，共 53 条。41 条中含
 `com/mqunar/core/basectx/application/QApplication`、`getContext`、
 `getPackageName`、`getPackageManager`、`getPackageInfo`、
 `(Ljava/lang/String;I)Landroid/content/pm/PackageInfo;`、`signatures`、
 `[Landroid/content/pm/Signature;`、`getInstance`、
 `(Ljava/lang/String;)Ljava/security/MessageDigest;`、`SHA1`、`digest`。
-JNI 方法名 `getCrc32`、`ePoll`、`dPoll`（`(Ljava/lang/String;)Ljava/lang/String;`）、
-`espirt`、`roller`、`duch`、`getPayKey`、`version`、`drift`、`sand` 位于
-`0x20c7a4`–`0x20c832`。`hehe : NNN` 形式共 6 条，是内部埋点。
+JNI 方法名区间实际为 `0x20c660`–`0x20c828`（`getCrc32` 起、`sand` 止），
+依次为 `getCrc32`、`ve`、`ePoll`、`dPoll`、`dn1`、`ea`、`da`、`espirt`、`roller`、
+`eg`、`duch`、`SHR`、`getPayKey`、`version`、`drift`、`sand`；
+表中**没有**独立的 `dn` 条目（`dn1` 是唯一以 `dn` 开头的名字）。
 
 ### 2.5 两张完整性表（`.rodata`）
 
@@ -272,7 +285,7 @@ return s;
 
 ```java
 String d = d(str);                                     // 每字符 ^1 + Base64
-sb.append(c(str2.getBytes(UTF_8)).substring(0, 8));    // MD5(gid) 前 8
+sb.append(c(str2.getBytes(UTF_8)).substring(0, 8));    // MD5(gid) 的 hex 串前 8 个字符
 sb.append(str3.substring(0, 8));                       // timestamp 前 8
 Cipher.getInstance("AES/CBC/PKCS5Padding")
       .init(ENCRYPT_MODE, new SecretKeySpec(sb.toString().getBytes(), "AES"),
@@ -301,9 +314,9 @@ QASMDispatcher.dispatchVirtualMethod(p, "java.lang.Process|destroy|[]|void|0");
 | `res/xml/*.xml` | 27 个 |
 | `usesCleartextTraffic` | `true` |
 
-`<queries>` 分类计数（按包名字符串匹配，存在性证据）：
+`<queries>` 分类计数（按包名字符串匹配，存在性证据，**去重 182 个包名、六类互斥**）：
 Root/Hook/反检测 15、虚拟摄像头 4、银行金融类 34、支付 11、
-OAID provider 6、其余知名应用 100+。
+OAID provider 6、其余知名应用 **112**。六类加总 = 182，与去重总数闭合。
 
 `assets/*.qp`：23 个，`85,564,564` 字节。
 

@@ -126,11 +126,12 @@
    - `com.ctripfinance.risk.device`（金融设备指纹）：17 个收集器
      （`AppListInfo`、`Build`、`Cpu`、`Hardware`、`Identity`、`Permission`、
      `Sensor`、`Sim`、`Network`、`Screen`、`Battery`、`BasicState`、`Safe`、
-     `BKB`、`Others`、`AppInfo`、`Basic`）；`id5 = MD5(BRAND|MODEL|androidId|
-     StorageUtil.a()|WxH)`；`instUUID` 持久化在 `risk_install_uuid`；
-     `PermissionInfoCollector` 输出 8 个授权布尔；结果经
-     `AES/CBC/PKCS5Padding`（key = `MD5(gid)[0:8] + timestamp[0:8]`，
-     IV = 固定 16 字节常量）加密后 Base64，POST 到
+     `BKB`、`Others`、`AppInfo`、`Basic`）；`id5 = MD5hex(BRAND|MODEL|androidId|
+     StorageUtil.a()|WxH)`（取 MD5 的 **hex 字符串**，非裸摘要）；`instUUID` 持久化在
+     `risk_install_uuid`；`PermissionInfoCollector` 输出 8 个授权布尔；结果经
+     `AES/CBC/PKCS5Padding`（key = `MD5hex(gid)[0:8] + timestamp[0:8]`，
+     即 8 个 hex 字符 + 8 位时间戳 = 16 字节 ASCII；IV = 固定 16 字节常量）
+     加密后 Base64，POST 到
      `https://jr.qunar.com/m/quser/upDevice.do`，头部带 `clientId`/`reqChannel`，
      最短 300 秒节流。
 
@@ -150,7 +151,7 @@
 |---|---|---|
 | 越权 | **客户端未发现越权调用** | 无 `pm grant`、无 `su`、无静默安装链；`READ_CONTACTS`/`WRITE_CALENDAR` 仅有声明，未找到进入业务上报的调用闭环（`permissions.md` §4） |
 | 提权 | **未发现** | `SYSTEM_ALERT_WINDOW`、`REQUEST_INSTALL_PACKAGES`、`MOUNT_UNMOUNT_FILESYSTEMS` 有声明，但导出面 22 个无保护组件均为支付回调/分享/推送/快捷设置类，未构成提权路径（`permissions.md` §5） |
-| 未经告知 | **存在告知粒度不足风险** | `<queries>` 显式探测 183 个包名（含 Magisk/KernelSU/APatch/虚拟摄像头/32 家银行类包名），`Cmd` 读取外部存储目录列表；隐私政策正文在服务端，客户端无法静态证明逐项告知（`privacy.md` §2、§6） |
+| 未经告知 | **存在告知粒度不足风险** | `<queries>` 显式探测 183 个包名（含 Magisk/KernelSU/APatch/虚拟摄像头/34 家银行类包名），`Cmd` 读取外部存储目录列表；隐私政策正文在服务端，客户端无法静态证明逐项告知（`privacy.md` §2、§6） |
 | 超范围获取 | **存在“声明即可采集”的强耦合点** | 设备指纹 SDK 的 `AppListInfoCollector` 会上报非系统应用列表；`ext.ai()` 上报已安装包名、首装时间、`sourceDir`、`versionName`、`flags`、`uid`；位置仅在有缓存定位时进入 cparam（`privacy.md` §3、§6） |
 
 ### 1.8 存储结论

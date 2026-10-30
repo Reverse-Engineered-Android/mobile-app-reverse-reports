@@ -42,14 +42,15 @@
 | 大小 | `2,156,224` 字节 |
 | 导出函数 | `DriftsandEn` `0xa744`、`DriftsandDe` `0xa9fc`、`EnBufferLHint` `0xa714`、`DeBufferLHint` `0xa72c`、`Ena1907_req` `0x125f58`、`Dea1907_resp` `0xacd8`、`JNI_OnLoad` `0xe7c`、`en` `0xd80`、`register_handler` `0xcac` |
 | `.rodata` | `0x20c240`，`0xb6c` 字节 |
-| 字符串编码 | `.rodata` 全部为 **ASCII 十六进制串按字节 `XOR 0xFF`**；解码后得到 JNI 类名/方法名与 `hehe : <行号>` 标记 |
+| 字符串编码 | 字符串区**主要为 ASCII 十六进制串按字节 `XOR 0xFF`**（`0x20c250`–`0x20cb56`，46 段 / 2,113 字节），解码后得到 JNI 类名/方法名与 `hehe : <行号>` 标记；`.rodata` **并非全部编码**——2,924 字节中另有 677 字节明文，含 `0x20cb5d` 的 `qunar/lego/utils/Goblin` |
 
 解码后的字符串族（节选）：`com/mqunar/core/basectx/application/QApplication`、
 `getContext`、`getPackageName`、`getPackageManager`、`getPackageInfo`、
-`signatures`、`java/security/MessageDigest`、`SHA1`、`digest`、
-`qunar/lego/utils/Goblin`，以及 `getCrc32 / ve / ePoll / dPoll / dn1 / ea / da /
-espirt / roller / eg / duch / SHR / getPayKey / version / drift / sand / dn`。
-`hehe : NNN` 形式的标记是该库自身的行号/阶段埋点。
+`signatures`、`java/security/MessageDigest`、`SHA1`、`digest`，以及
+`getCrc32 / ve / ePoll / dPoll / dn1 / ea / da / espirt / roller / eg / duch / SHR /
+getPayKey / version / drift / sand`（`0x20c660`–`0x20c828`）。
+`qunar/lego/utils/Goblin`（`0x20cb5d`）、`alpha`（`0x20cb57`）等是**明文**，
+不经 XOR 解码；`hehe : NNN` 形式的标记共 9 条，是该库自身的行号/阶段埋点。
 
 ### 3.2 `JNI_OnLoad`（`0xe7c`）
 
@@ -298,7 +299,7 @@ c("androidId", ...);  c("androidId_1", DeviceUtil.j(ctx));  c("oaid", BaseCentra
 sb.append(Build.BRAND).append("|").append(Build.MODEL).append("|")
   .append(androidId).append("|").append(StorageUtil.a()).append("|")
   .append(width).append("x").append(height);
-c("id5", <digest of sb>);
+c("id5", EncryptUtil.a(sb.toString()));   // = MD5(sb) 的 32 位 hex 字符串
 String s = BaseCentral.h().getString("risk_install_uuid", "", false);
 if (StringUtil.c(s)) { s = UUID.randomUUID().toString();
                        BaseCentral.h().setString("risk_install_uuid", s, false); }
@@ -306,8 +307,9 @@ c("instUUID", s);
 c("clientId", BaseCentral.d().e());  c("gid", BaseCentral.d().h());
 ```
 
-即 `id5 = f(BRAND|MODEL|androidId|StorageUtil.a()|WxH)`，`instUUID` 落
-`risk_install_uuid`，两者分别代表“设备维度”与“安装维度”标识。
+即 `id5 = MD5hex(BRAND|MODEL|androidId|StorageUtil.a()|WxH)`（`EncryptUtil.a` →
+`c` → `MD5` → `f()` 转小写十六进制串，**输出 32 个 hex 字符，不是 16 字节裸摘要**），
+`instUUID` 落 `risk_install_uuid`，两者分别代表“设备维度”与“安装维度”标识。
 
 `PermissionInfoCollector` 输出 8 个布尔：`phoneStateAuthorized`、
 `locationAuthorized`、`rStorageAuthorized`、`wStorageAuthorized`、
@@ -323,8 +325,8 @@ c("clientId", BaseCentral.d().e());  c("gid", BaseCentral.d().h());
 // com/ctripfinance/risk/device/util/EncryptUtil
 public static String b(String str, String str2, String str3) {   // str2=gid, str3=timestamp
     String d = d(str);                                           // 每个字符 ^1，再 Base64
-    String key = c(str2.getBytes(UTF_8)).substring(0, 8)         // MD5(gid) hex 前 8 位
-               + str3.substring(0, 8);                           // 时间戳前 8 位
+    String key = c(str2.getBytes(UTF_8)).substring(0, 8)         // MD5(gid) 的【hex 串】前 8 个字符
+               + str3.substring(0, 8);                           // 时间戳前 8 个字符
     Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
     cipher.init(ENCRYPT_MODE, new SecretKeySpec(key.getBytes(), "AES"),
                 new IvParameterSpec(StringUtil.f9345a.getBytes()));
@@ -334,8 +336,15 @@ public static String b(String str, String str2, String str3) {   // str2=gid, st
 ```
 
 三段结构：先做一次 `^1` 混淆 + Base64，再做 AES-CBC，再 Base64。
-密钥的前 8 字节来自 `MD5(gid)`，即**设备标识本身参与派生**；后 8 字节是时间戳，
+口径必须写准：`c()`（同文件 `EncryptUtil.c`）内部先 `MD5` 再经 `f()` 转成 **32 个
+小写十六进制字符**的字符串返回，因此 `substring(0, 8)` 取的是**摘要 hex 串的前 8 个
+字符（8 字节 ASCII）**，等价于原始摘要的前 4 字节 —— 不是"MD5 前 8 字节"。后 8 个
+字符是时间戳的前 8 位（十进制串）。合起来正好 16 字节，作为 AES-128 密钥。
+
+密钥前半来自 `MD5(gid)` 的 hex 前缀，即**设备标识本身参与派生**；后半是时间戳，
 所以同一设备不同时刻的密文密钥不同，但两者服务端都已知。
+（`str2` 由调用方作为 gid 传入；`BaseInfoProvider.a()` 是抽象方法，本报告未追到
+具体实现类，故 `gid` 的确切构造只按调用点记为"服务端/`GlobalEnv` 维护的 gid"。）
 
 ### 5.4 上报
 

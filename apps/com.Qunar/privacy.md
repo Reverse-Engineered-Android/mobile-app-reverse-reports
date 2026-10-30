@@ -90,7 +90,7 @@ if (bool.booleanValue()) {
 
 | 层 | 内容 | 是否离开设备 |
 |---|---|---|
-| 仅本地 | `shared_prefs` 配置、MMKV 业务 KV、13 个 SQLite 的城市/节假日库 | 否 |
+| 仅本地 | `shared_prefs` 配置、MMKV 业务 KV、17 个明文 SQLite 的城市/节假日/缓存/SDK 库（另有 1 个 0 表 netty 空壳） | 否 |
 | 本地 + 上报 | cparam 字段、设备指纹、应用列表、证书链、授权状态 | **是** |
 | 仅上报 | `hk`、`catom`、`cas`、`ke`、`ref`、`brush` | 是 |
 | 不采集 | 联系人、短信、通话记录、剪贴板（本次静态检索范围内） | — |

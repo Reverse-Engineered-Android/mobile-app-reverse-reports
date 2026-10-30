@@ -34,7 +34,7 @@
 - **本地存储**：17 个明文 SQLite 与 1 个 netty 空壳、50 个明文
   `shared_prefs`（362 个键名，与 livelab 的密文落盘不同）、16 个 MMKV。
 - **离线包 `assets/*.qp`**：23 个包的 `qp` + 小端 u32 清单长度 + JSON 清单 +
-  明文 JS 正文结构。
+  正文结构（20 个为明文 Metro JS，3 个旧格式包为 H5/字体/JSON，无 `extra` 字段）。
 
 ## 入口
 
