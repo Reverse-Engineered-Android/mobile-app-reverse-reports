@@ -57,7 +57,8 @@
 
 设备侧操作仅限只读核对：读取应用私有目录下 `databases/` 的文件名与
 `PRAGMA`/`integrity_check` 结果、`shared_prefs/` 的文件数量尺寸与键名统计、
-`files/kv_storage/` 的 MMKV 文件清单。数据库行值、偏好值、MMKV 内容一律未采集。
+`files/kv_storage/` 的 MMKV 文件清单。数据库行值、偏好值、MMKV 内容一律未提取、
+未引用、未发布。
 
 `libgoblin_6_1_1.so` 的受控模拟只针对 APK 自带的 `.so` 镜像，输入为合成数据，
 未连接任何服务端。
