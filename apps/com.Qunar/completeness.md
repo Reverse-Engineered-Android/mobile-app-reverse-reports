@@ -16,7 +16,7 @@
 | 超范围获取 | 完成 | `permissions.md` §3、§6.2；`privacy.md` §3、§6 | 按“已采集 / 条件触发 / 未发现”三层划分 |
 | 完整风控代码 | 完成，静态闭包 | `risk.md` §1–§8 | 服务端评分、处罚与配置下发结果不可见 |
 | 精确判定代码 | 完成 | `risk.md` §2、§3.3、§4、§5；`evidence.md` §2、§4 | 每项机制给出函数地址、DEX 偏移或常量字面量 |
-| 加密/混淆不留未知用途 | 部分完成，见 §4 | `risk.md` §3–§5、`storage.md` §1、§9 | 未复原项已逐条列明（响应侧 VM、`NUtils` 六方法），未以推测填补 |
+| 加密/混淆不留未知用途 | 部分完成，见 §4 | `risk.md` §3–§5、`storage.md` §1、§9、`network.md` §10 | 未复原项已逐条列明（响应侧 VM、`NUtils` 六方法、`.qp` 摘要字段），未以推测填补 |
 | cparam 指纹族 | 完成 | `network.md` §5、`risk.md` §2 | 字段语义按代码赋值点确定，服务端如何加权不可见 |
 | 两套设备风控 SDK | 完成，静态 | `risk.md` §4、§5 | `NUtils` 六个 native 的内部实现未复原 |
 | 只读 SSH 数据格式验证 | 完成（设备侧只读核对） | `evidence.md` §6、`storage.md` §2–§5 | 只读核对 schema、文件数量与尺寸，未写入设备 |
@@ -80,13 +80,14 @@
 | `NUtils` 六个 native（`cd`/`ep`/`uti`/`jcd`/`sepa`/`sfp`） | **未复原** | 经 `libqlynx_v++` 的 `vmEntry` 动态注册，无 `Java_*` 导出；`uti` 槽位已定位（`.data.rel.ro 0x23e5a8` → `.rodata 0x26797c`），其余 5 个槽位未逐一解析 |
 | `com.ctripfinance.risk.device` 结果加密 | 闭包 | `AES/CBC/PKCS5Padding`，key = `MD5hex(gid)` 前 8 个 hex 字符 + 时间戳前 8 位（共 16 字节 ASCII），IV 为固定 16 字节常量，Base64 后上报 |
 | `com.qunar.rc` `FpService` 上报体 | 结构已证实 | `multipart/form-data` 单字段 `b`，最多重试 3 次；`b` 的字节内容由 `NUtils.cd()` 生成，内部实现未复原 |
-| `shared_prefs` / `files` 落盘 | 闭包 | 全部明文，无应用层加密，机密性依赖 `/data/data` Unix 权限 |
+| `shared_prefs` / 普通文件落盘 | 闭包 | 无应用层加密，机密性依赖 `/data/data` Unix 权限；MMKV 格式见下一项 |
 | MMKV 存储 | 闭包 | MMKV 默认 mmap + CRC 格式，非应用自定义加密 |
 | `res/xml/network_config.xml` | 闭包 | 只被 `R.xml` 引用，未在清单挂载，属未生效的冗余策略 |
 | `assets/*.qp` 离线包正文 | 闭包 | `qp` + u32le 清单长度 + UTF-8 JSON 清单 + 明文正文，无字节码加密（20 个 Metro JS；`finance_cashier_hy`/`q_design_hy`/`qpadjust` 为 H5/字体/JSON） |
 | `.qp` 清单 `sl` 分片表 | 闭包（含 2 处例外） | 16 个包连续铺满、7 个稀疏；`f_major_bundle` 203 项首尾相接且和等于正文长度。例外：`cmn_mine` 有一处重复声明（`sum(sl)` 比正文多 483 字节）；3 个旧格式包无 `extra` 且正文非 JS |
 | `.qp` 清单 `md5`/`sha256` 字段 | **未复原** | 解码为 43/86 字节、与分片重算不符，非摘要语义，构造未知 |
 
-报告未复原的两项（`Ena1907_req`/`Dea1907_resp` 的内部变换，含响应侧有效
-状态词集；`NUtils` 六个 native 的方法体）均已在上表与 `risk.md` §7 中显式
-标注为未完成，未以推测替代结论。信封外层、两道校验与两表索引已完整复原。
+报告未复原的三类内容（`Ena1907_req`/`Dea1907_resp` 的内部变换，含响应侧有效
+状态词集；`NUtils` 六个 native 的方法体；`.qp` 清单 `md5`/`sha256` 字段的构造）
+均已在上表与对应章节中显式标注为未完成，未以推测替代结论。信封外层、两道
+校验与两表索引已完整复原。

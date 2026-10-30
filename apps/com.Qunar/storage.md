@@ -97,8 +97,10 @@ CREATE UNIQUE INDEX "" ON city (id COLLATE RTRIM ASC)
 ### 3.4 Netty 落盘
 
 `tfdjfjg9109_nettyhost_false_<hash>.dat`：`SQLite format 3` 头，
-`integrity_check=ok`，但**无任何表**（0 tables）——
-即 SQLite 壳 + 空 schema，实际数据在 78 KB 的 `-wal` 里。
+原始只读快照中 `integrity_check=ok`，但主文件当时**无任何表**（0 tables），
+伴随 78 KB 的 `-wal`；2026-10-30 连同 WAL/SHM 取得的一致快照中，主文件已有
+`IM_Cache_Data`、`IM_MESSAGE_NEW`、`IM_SessionList`、`IM_User` 四张表。
+因此“0 表”只描述前一快照，schema 会随 IM 长连会话动态创建。
 文件名前缀 `tfdjfjg9109` 是异或/哈希后的模块名，`nettyhost_false` 是
 Netty 主机开关标志位，`<hash>` 为 32 位十六进制的模块/环境标识。
 （文件名中的哈希值不发布，此处以 `<hash>` 占位。）
@@ -182,7 +184,7 @@ hermesEnabled:"false", ramEnabled:"false", slimEnabled:"true"}`。
 
 | 判定 | 结论 |
 |---|---|
-| 数据库是否加密 | **否**，17/17 明文，`integrity_check` 全 `ok` |
+| 数据库是否加密 | **否**，18/18 明文，`integrity_check` 全 `ok` |
 | `shared_prefs` 是否加密 | **否**，50/50 明文 XML |
 | MMKV 是否加密 | **否**，默认格式 |
 | 离线包是否加密 | **否**，`qp` 正文为明文（20 个 Metro JS；3 个旧格式包为 H5/字体/JSON） |

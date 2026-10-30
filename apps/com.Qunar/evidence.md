@@ -360,8 +360,9 @@ OAID provider 6、其余知名应用 **112**。六类加总 = 182，与去重总
 
 设备落盘是运行时快照。2026-10-30 再次以只读方式从 init 根目录流式复制
 `databases/` 的 DB/WAL/SHM 到主机临时目录后检查：仍为 33 个条目、18 个
-SQLite 格式文件、18/18 `integrity_check=ok`，合计 89 张表；netty 文件已有
-`IM_Cache_Data`、`IM_MESSAGE_NEW`、`IM_SessionList`、`IM_User` 四张表。
+SQLite 格式文件、18/18 `integrity_check=ok`；`sqlite_master` 含 89 个表对象
+（83 个应用表 + 6 个 `sqlite_sequence`），netty 文件已有 `IM_Cache_Data`、
+`IM_MESSAGE_NEW`、`IM_SessionList`、`IM_User` 四张表。
 早先的“0 表 netty 空壳”只描述原始快照，不是跨快照不变量。复查仍只读取设备，
 未在设备上打开、写入数据库或发起网络请求。
 
