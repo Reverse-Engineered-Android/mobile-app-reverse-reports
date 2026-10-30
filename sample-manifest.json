@@ -234,6 +234,19 @@
           "sha256": "6834433914f2ad469fc63b64b0bbd6ff4bc1f072377b3509be96e2cf046a3c2b"
         }
       ]
+    },
+    {
+      "app": "Guojin YJB",
+      "package": "cn.com.gjzq.yjb2",
+      "version_name": "9.05.004",
+      "version_code": 20260903,
+      "files": [
+        {
+          "name": "guojin-yjb-9.05.004-arm64.apk",
+          "size": 382970270,
+          "sha256": "e6cc89f97669d86601843a8c741459c2c3aa74386cb7e2206a7da60e7d10c82d"
+        }
+      ]
     }
   ]
 }
