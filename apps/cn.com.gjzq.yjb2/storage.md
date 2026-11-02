@@ -8,7 +8,7 @@
 
 ## 2. 数据库清单
 
-设备快照有 **7 个 SQLite、33 张业务表**，`PRAGMA integrity_check` 全部为 `ok`。
+设备快照有 **7 个 SQLite、30 个 `sqlite_master` 对象（23 张业务表 + 7 个 `android_metadata`）**，`PRAGMA integrity_check` 全部为 `ok`。
 
 | 数据库 | 表数 | 关键 schema |
 |---|---:|---|
@@ -20,24 +20,26 @@
 | `signalData.db` | 2 | `SignalDataTable(uid,signalType,stockUinKey,lineType,data,version,saveTime)`，复合主键 `(uid,signalType,stockUinKey,lineType)` |
 | `thinkive.db` | 6 | `data_cache_table(_id,key,size,ttl)`、`download_table`、`map_table`、`server_url_table` |
 
-快照行数示例：`page=46`、`CacheTable=43`、`HkCodes=3,785`；App 当前会话的
-`eventv3`、`record` 为 0，说明这些表存在但不保证持续有数据。
+快照行数示例：`eventv3=92`、`page=20`、`CacheTable=44`、`HkCodes=3,787`、
+`SignalDataTable=7`；其余业务表为 0。行数随使用状态变化，只作快照记录。
 
 ## 3. `shared_prefs`
 
-目录共 **69 个 XML 文件，全部非空**。观测到的结构：
+目录共 **70 个 XML 文件，全部非空**。观测到的结构：
 
-- 60 个文件共享前 56 字节密文前缀；
-- 6 个 81 字节文件（如 `CopyAssetsFolderRecord.xml`、`ZzxCache.xml`、
+- 61 个文件共享同一 56 字节密文前缀；
+- 6 个 81 字节文件（`CopyAssetsFolderRecord.xml`、`ZzxCache.xml`、
   `codesTime.xml`、`optionLevel.xml`、`update_site.xml`、`user_login.xml`）
-  密文完全相同；
-- 另 6 个文件前 44 字节相同，但从第 48 字节起分叉；
-- `ijm_ifr.xml` 使用不同前缀，`crhs_2019.xml` 为明文 XML；
-- 密文长度 mod 16 = 1，互 XOR 的可打印率约 0.38，符合随机外观。
+  彼此逐字节相同并共用另一个 56 字节前缀；
+- `ijm_ifr.xml`、`ijm_sharedecryption.xml` 使用各自前缀，`crhs_2019.xml`
+  是唯一明文 XML；
+- 66 个文件长度 mod 16 = 1，4 个例外（1 明文 + 3 个小文件）；
+- 主组内两两 XOR 的可打印 ASCII 比例均值约 0.22，低于随机期望 0.37。
 
 因此这是**4 帧 AES block 对齐的整体密文结构**，共享的只是相同 XML 明文头和
-块级处理结果；现有证据**不支持“同一逐位置 keystream 跨文件复用”**。算法、
-密钥、IV/模式和明文未还原，不能把前缀相似性误报为可直接解密。
+块级处理结果，组内首个差异字节落在 16 字节块边界（64/80/96 等）；现有
+证据**不支持“同一逐位置 keystream 跨文件复用”**。算法、密钥、IV/模式和
+明文未还原，不能把前缀相似性误报为可直接解密。
 
 ## 4. H5 `.r` 落盘
 
@@ -49,9 +51,8 @@
 
 | 路径 | 格式结论 |
 |---|---|
-| `files/i12196010e51071ed` | 与 `assets/ijiami.dat` 前 40 字节一致的加固器数据体；无 `dex`/ZIP/ELF/gzip 魔数 |
-| `files/app_payload.dex` | 运行时下发 DEX，`dex\n035` |
-| `files/app_payload.version` | 版本戳文本；具体服务端策略未知 |
+| `files/i12196010e51071ed` | 设备当前 `69,262,848` B；`04 00 00 00` + LE 长度 + 32 个十六进制字符（16 字节 ID），长度字段等于自身大小；与主样本 `ijiami.dat` 前 40 B 不同；无 `dex`/ZIP/ELF 魔数 |
+| `files/app_payload.dex` / `app_payload.version` / `gjzq_*` | 分析注入的 `GjzqProbe`，排除出 App 载荷结论 |
 | `files/uuid` | 设备唯一标识缓存（报告不发布真实值） |
 
 ## 6. 未闭环项

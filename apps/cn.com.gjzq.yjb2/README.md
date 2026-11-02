@@ -27,11 +27,11 @@ e6cc89f97669d86601843a8c741459c2c3aa74386cb7e2206a7da60e7d10c82d
   RPC 网关、`UniqueKey` 方法码族（`169` 个）、统一响应包 `ERRORNO`/`GRID0`。
 - 认证与加密：`APP_SECRET`（`g6j0z0q1w0e9bapp`）驱动的 AES-128-ECB +
   Pkcs7 + Base64URL 变体；`libndktest.so` 的 RC4/SM4 双栈导出。
-- 风控与设备指纹：`libShanYCore.so`（ptrace 反调试）、`libencrypt.so`
-  （tztEncrypt 四入口）、`imjar`/`ijiami` 加固、`libmsaoaidsec.so` 等 OAID
-  采集链；`<queries>` 中的反分析包名清单。
+- 风控与设备指纹：风险中心/适当性/问卷接口、`libShanYCore.so`（ptrace 导入）、
+  `libencrypt.so`（tztEncrypt 四入口）、`imjar`/`ijiami` 加固、
+  `libmsaoaidsec.so` 等 OAID 采集链；`<queries>` 中的反分析包名清单。
 - 权限、导出组件、明文 HTTP、WebView 文件提供器与 `SYSTEM_ALERT_WINDOW` 面。
-- 只读设备端真库 schema：`7` 个 SQLite、`33` 张表、`69` 个 `shared_prefs`。
+- 只读设备端真库 schema：`7` 个 SQLite、`23` 张业务表、`70` 个 `shared_prefs`。
 
 ## 入口
 
@@ -40,6 +40,7 @@ e6cc89f97669d86601843a8c741459c2c3aa74386cb7e2206a7da60e7d10c82d
 - [认证机制](auth.md)
 - [上传下载范围](transfer.md)
 - [风控机制](risk.md)
+- [混淆与载荷还原](obfuscation.md)
 - [权限](permissions.md)
 - [隐私](privacy.md)
 - [本地存储](storage.md)

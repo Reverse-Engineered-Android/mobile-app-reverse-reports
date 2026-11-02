@@ -47,7 +47,7 @@ base.apk
 ├─ lib/arm64-v8a/libndktest.so   29,320 B   cn.com.gjzq.crypto.GjEncrypt + RC4/SM4
 ├─ assets/ijm_lib/{arm64-v8a,armeabi,x86,x86_64}/libexec{,main}.so
 ├─ assets/ijiami.dat  14,330,583 B  ┐
-├─ assets/ijiami.ajm   7,514,954 B  ┘ 加固器数据（同一魔数：04 00 00 00 + 4 字节长度 + 32 字节 hex 串）
+├─ assets/ijiami.ajm   7,514,954 B  ┘ 加固器数据（同一魔数：04 00 00 00 + 4 字节长度 + 32 个十六进制字符）
 └─ assets/yjb.zip    186,793,631 B  H5 业务层（178 MiB，2,843 条目 / 37 模块）
 ```
 
@@ -58,11 +58,14 @@ base.apk
 `S.il()`（`S.java:464-570`）逐行读 `/proc/self/maps`，以
 `/lib64/libart.so`、`/lib64/libaoc.so`、`/bin/linker64` 是否存在区分 64/32 位。
 
-`files/i12196010e51071ed`（设备回落 `69,114,092` 字节，与 `assets/ijiami.dat`
-前 40 字节完全一致）是加固器主数据体；`files/app_payload.dex`
-（`13,680` 字节，`dex\n035`）是运行时下发的动态 DEX，版本戳记
-`files/app_payload.version` 为 `gjzq-objdump-20261029-11`（设备实际写入值为
-本次核对时刻的采样标签）。
+`files/i12196010e51071ed` 是加固器数据体：设备当前版本为 `69,262,848` 字节，
+头部是 `04 00 00 00` + 等于自身大小的 LE 长度 + 32 个十六进制字符（16 字节
+ID），与 `assets/ijiami.dat` 的 40 字节头部**并不相同**（后者的长度字段是
+`69,114,092`，即解包后大小，而文件本身只有 `14,330,583` 字节），两者同格式
+但不同实例。`files/app_payload.dex`（`13,680` 字节，`dex\n035`）、
+`files/app_payload.version` 与 `files/gjzq_*` 均为本次分析注入的
+`GjzqProbe`（版本戳 `gjzq-objdump-20261029-11`），不是 App 下发的动态 DEX
+或风控载荷，已排除在样本结论之外。
 
 ### 1.3 网络面（静态）
 
@@ -157,32 +160,42 @@ UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `
 
 ### 1.6 本地存储
 
-设备端只读核对得到 `7` 个 SQLite（`33` 张表）与 `69` 个 `shared_prefs`
-（69 个均非空）。`PRAGMA integrity_check` 全部为 `ok`：
+设备端只读核对（`2026-11-02` 快照）得到 `7` 个 SQLite、`30` 个
+`sqlite_master` 对象（`23` 张业务表 + `7` 个 `android_metadata`）与
+`70` 个 `shared_prefs`（70 个均非空）。`PRAGMA integrity_check` 全部为 `ok`：
 
-| 文件 | 表数 | schema / 快照 |
+| 文件 | 表数 | schema / 快照行数 |
 |---|---:|---|
-| `10000001@bd_tea_agent.db` | 9 | 埋点事件 schema；快照 `page=46`、`eventv3=0` |
-| `Popup.db` | 7 | 弹窗任务流 schema；快照各任务流表为 0 |
-| `atta.db` | 3 | 附件 record schema |
-| `db_xnzq` | 2 | `CacheTable(key1,version,key2,key3,saveTime,expTime,value)`；快照 `CacheTable=43` |
-| `mitake.sse.sqlite.db` | 4 | `Company` / `Stock` / `HkCodes`；快照 `HkCodes=3,785` |
-| `signalData.db` | 2 | `SignalDataTable` 复合主键 `(uid,signalType,stockUinKey,lineType)` |
-| `thinkive.db` | 6 | 缓存、下载、映射、服务 URL 表 |
+| `10000001@bd_tea_agent.db` | 7 | 埋点事件 schema（`packV2`/`trace`/`eventv3`/`profile`/`custom_event`/`launch`/`page`）；快照 `eventv3=92`、`page=20`，其余 0 |
+| `Popup.db` | 6 | 弹窗任务流 schema；快照各表均为 0 |
+| `atta.db` | 1 | `record(_id,process,params)`；快照 0 |
+| `db_xnzq` | 1 | `CacheTable(key1,version,key2,key3,saveTime,expTime,value)`；快照 44 |
+| `mitake.sse.sqlite.db` | 3 | `Company` / `Stock` / `HkCodes(type,code)`；快照 `HkCodes=3,787` |
+| `signalData.db` | 1 | `SignalDataTable` 复合主键 `(uid,signalType,stockUinKey,lineType)`；快照 7 |
+| `thinkive.db` | 4 | `data_cache_table` / `download_table` / `map_table` / `server_url_table`；快照均为 0 |
 
-`shared_prefs` 是 4 帧 AES block 结构，60 个文件共享前 56 B 密文前缀，6 个
-小文件（81 B）完全相同，另 6 个从第 48 字节起分叉；`ijm_ifr.xml` 使用不同
-前缀，`crhs_2019.xml` 为明文。密文长度 mod 16 = 1，互 XOR 的可打印率约
-0.38，符合随机外观，因此**不支持“跨文件逐位置 keystream 复用”**。具体
-算法、密钥与明文均未还原，见 [storage.md](storage.md)。
+行数随 App 使用状态变化，只作本次快照记录。`shared_prefs` 目录 `70` 个 XML
+全部非空：`61` 个文件共享同一 56 字节密文前缀，组内首个差异字节落在
+`64`/`80`/`96`（少数 `81`）等 16 字节块边界；`6` 个 `81` 字节文件彼此
+逐字节相同并共用另一个 56 字节前缀；`crhs_2019.xml` 是唯一明文 XML，
+`ijm_ifr.xml`、`ijm_sharedecryption.xml` 使用各自前缀。`66` 个文件长度
+`mod 16 == 1`，`4` 个例外（1 个明文 + 3 个长度不满足该式的小文件）。组内
+两两 XOR 的可打印 ASCII 比例均值约 `0.22`，低于随机期望 `0.37`，因此
+**不支持“跨文件逐位置 keystream 复用”**。算法、密钥与明文均未还原，见
+[storage.md](storage.md)。
 
 ### 1.7 完成边界
 
 已闭环：外壳装载链、H5 载荷解密、RPC 网关与方法码族、AES-128-ECB 常量密钥、
 native 侧 RC4/SM4 符号与调用面、权限面、设备端 schema 与落盘格式。
-未闭环：`libShanYCore.so` / `libencrypt.so` / `libhtsfx.so` / `libndktest.so`
-的 `.text` 被 `UPX!` 标记段与高熵区包裹（熵 `7.10`–`7.72`），静态反汇编不可
-直接读取；`i12196010e51071ed`（`69,114,092` B，熵 `4.646`，`b2` 占 `32.9%`）
-无 `dex`/`ZIP`/ELF/gzip 魔数，未复原内部压缩。以上均在
-[completeness.md](completeness.md) 中逐项标注为「结构已证实」或「未知」，
-不作为已验证结论。
+
+未闭环：四个关键 ELF 的节头表只声明 `6` 个动态/符号节（`.dynsym`、`.dynstr`、
+`.symtab`、`.strtab`、`.shstrtab`、`.dynamic`），**没有任何 `.text` 节**；
+代码与常量位于未被节头覆盖的间隙，最大一段的熵为 `7.14`（`libShanYCore.so`
+6,006 B）、`7.14`（`libencrypt.so` 5,813 B）、`5.40`（`libndktest.so`
+25,126 B）、`7.28`（`libhtsfx.so` 54,372 B），静态反汇编不能直接得到完整
+函数体（符号恢复见 [obfuscation.md](obfuscation.md) §4）。
+`i12196010e51071ed`（`69,262,848` B，熵 `4.639`，`0xb2` 占 `32.8%`）无
+`dex`/ZIP/ELF 魔数，未复原内部压缩。以上均在 [completeness.md](completeness.md)
+中逐项标注为「结构已证实」或「未知」，不作为已验证结论。
+

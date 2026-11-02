@@ -59,11 +59,10 @@ H5 不持有文件句柄**。
 
 | 路径 | 大小 | 格式 |
 |---|---|---|
-| `files/yjb/**.r` | 210 MiB / 3,382 文件 | 固定 keystream XOR |
-| `files/h5info.txt.r` | — | 同上，解密后为模块版本 JSON |
-| `files/i12196010e51071ed` | 69,114,092 B | 加固器数据体，无已知魔数 |
-| `files/app_payload.dex` | 13,680 B | 运行时下发 DEX，`dex\n035` |
-| `files/app_payload.version` | — | 版本戳 `gjzq-objdump-20261029-11` |
+| `files/yjb/**.r` | 210 MiB / 3,383 文件（39 个模块目录） | 固定 keystream XOR |
+| `files/h5info.txt.r` | 1,910 B | 同一 keystream；解密后为模块版本 JSON（首个键名解密为 `%margimtrading` 的歧义字节） |
+| `files/i12196010e51071ed` | 69,262,848 B（设备当前版本） | 加固器数据体，无已知魔数 |
+| `files/app_payload.dex` / `app_payload.version` / `gjzq_*` | — | 分析注入的 `GjzqProbe`，不是 App 载荷 |
 
 `files/uuid` 存放设备唯一标识（发布版已脱敏），属加固器/埋点 SDK 所有。
 

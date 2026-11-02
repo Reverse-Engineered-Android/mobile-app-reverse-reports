@@ -19,10 +19,14 @@
   `assets/ijm_lib/<abi>/libexec{,main}.so` 并释放到应用 `files/`。
 - `N.<clinit>` 释放后 `System.load`；`A` 通过反射 `ActivityThread.mBoundApplication`
   替换真实 Application。
-- `assets/ijiami.dat`：`14,330,583` 字节；`assets/ijiami.ajm`：`7,514,954` 字节。
+- `assets/ijiami.dat`：`14,330,583` 字节，头部 `04 00 00 00` + LE 长度 +
+  32 个十六进制字符（16 字节 ID）；`assets/ijiami.ajm`：`7,514,954` 字节，头部
+  `indl01\\0\\0`，两者不是同一魔数。
 - `assets/yjb.zip`：`186,793,631` 字节、`2,843` 条目、`37` 个业务模块。
-- `libShanYCore.so` / `libencrypt.so` / `libhtsfx.so` / `libndktest.so` 的
-  ELF 符号、导出名和高熵区测量见 [report.md](report.md) §1.2、§1.4。
+- 四个关键 ELF 的 `.dynsym sh_size` 都只有 3 个符号；按 `DT_SYMTAB`→
+  `DT_STRTAB` 间距恢复为 `23` / `27` / `53` / `226` 个表项，各 `DT_INIT`
+  内 `+0x48` 处都有 `dc cvau, x0` / `ic ivau, x0` 缓存维护指令，详见
+  [obfuscation.md](obfuscation.md) §4。
 
 ## 3. H5 keystream 证据
 
@@ -39,7 +43,8 @@ fb1cd66790b967059021938cb1adc6e430387b6d5007286e24e446b1e875c1fd
 ```
 
 自检：126,000..131,072 区间与早期基准 100% 一致；928 个文本文件中
-920 个完全 UTF-8 合法，非法字节 1,185，占 `0.000925%`。
+920 个完全 UTF-8 合法，非法字节 1,185，占 `0.000925%`；结构检查
+`940 / 948` 通过、8 个失败。
 
 ## 4. 加密证据
 
@@ -80,8 +85,10 @@ python3 tools/sqlite_schema.py <database-dir> <snapshot.txt>
 PRAGMA integrity_check;
 ```
 
-快照结果：7 个 SQLite、33 张表、69 个非空 `shared_prefs`；未输出设备 UUID、
-账号票据、数据库行内容或真实路径。
+快照结果：7 个 SQLite、30 个 `sqlite_master` 对象（23 张业务表）、
+70 个非空 `shared_prefs`；未输出设备 UUID、
+账号票据、数据库行内容或真实路径。设备安装版本为 `9.05.007` / `20261028`，
+只用于格式核对，不与 `9.05.004` 主样本混写。
 
 ## 7. 证据等级
 
