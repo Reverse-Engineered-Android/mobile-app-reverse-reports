@@ -316,24 +316,32 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 `$Info: This file is packed with the UPX executable packer http://upx.sf.net $`
 与 `$Id: UPX 6.02 Copyright (C) 1996-2025 the UPX Team. All Rights Reserved. $`。
 
-**`NotPackedException` 的真实原因是“尾部伪造节头把 UPX 尾部块挤离了 EOF”，
-不是尾部内容被改坏。** 这一点用对照实验可以定死：拿一个正常 UPX 打包的
-`linux/amd64` 小 ELF，在文件末尾追加同样的 7 × 64 字节伪造节头表并把
-`e_shoff` / `e_shnum` 指过去，`upx -d` 立刻从 `Unpacked 1 file` 变成
-`NotPackedException: not packed by UPX`；反之仅在尾部补 100–1200 字节零填充
-仍然能正常解包。
+**`NotPackedException` 的真实原因不是尾部字段被改坏，而是“尾部块不再与文件
+末尾对齐”。** 这一点用两组对照实验定死了：
 
-对照本样本：文件头声明 `e_shoff=0x70c8`、`e_shnum=7`，而 `0x702c` 起追加的
-`__stack_chk_fail`、`.dynsym`、`.dynstr`、`.symtab`、`.strtab`、`.shstrtab`、
-`.dynamic` 串正是那张伪造表的 `shstrtab`。真正该在 EOF 附近的 UPX 尾部块
-（`0x7004` 起）因此离 EOF 差了 `0x7288-0x7028 = 0x260` 字节，UPX 找不到。
-把文件截到 `0x7028` 再 `upx -d`，报错确实从 `NotPackedException` 变成
-`CantUnpackException: file corrupted`——已经认出是 UPX，只是校验不过。
+| 实验 | 操作 | `upx -d` 结果 |
+|---|---|---|
+| 对照 | 正常 UPX 样本原样 | `Unpacked 1 file` |
+| A | 仅把尾部 `l_checksum` 清零（长度不变） | `Unpacked 1 file` |
+| B | 尾部追加 100–1200 字节零填充 | `Unpacked 1 file` |
+| C | 尾部追加 `.dynsym`/`.dynstr`… 等节名字符串 | `NotPackedException` |
+| D | 追加 7 × 64 字节节头表并把 `e_shoff` 指过去 | `NotPackedException` |
 
-顺带说明：`l_checksum=0`、尾部 `l_version=2`、`l_format=8` 这些“看起来异常”
-的值**本身就是正常 UPX 文件的取值**，不能当作被篡改的证据（同一个正常样本
-的尾部也是 `l_checksum=0 / l_version=2 / l_format=8`）。真正的真伪对照是：
-`DT_HASH` 说 53 个符号，而伪造节头说 3 个。
+实验 A 说明字段值不参与判定；B 说明单纯加长也不致命；C/D 才复现失败。
+正常样本的尾部块正好以 EOF 结尾（`l_info@0x18c0` + `0x28` = `0x18e8` =
+文件长度），一旦在其后追加内容，UPX 的“从 EOF 反向定位尾部”就落空。
+
+本样本正是 D 这种形态：文件头声明 `e_shoff=0x70c8`、`e_shnum=7`，`0x70c8`
+起确实是 7 项自洽的节头（`shstrtab` 在 `0x7090`，内容为
+`.dynsym/.dynstr/.symtab/.strtab/.shstrtab/.dynamic`），而 UPX 尾部块在
+`0x7004`–`0x7028`，离 EOF（`0x7288`）差 `0x260` 字节。所以**节头表本身
+不是伪造的，是真实且自洽的**——它只是被放在了 UPX 尾部块之后，破坏了尾部
+对齐。把文件截到 `0x7028` 再 `upx -d`，报错从 `NotPackedException` 变成
+`CantUnpackException: file corrupted`，说明 UPX 已经认出容器。
+
+真正的真伪对照是：`DT_HASH` 的 `nchain=53` 说明动态符号表有 53 项，而
+`.dynsym` 节头只声明 `size=0x48`（3 项）。即**节头视图被截短**，符号表
+本身完好。
 
 ## 7. Native 方法体边界
 

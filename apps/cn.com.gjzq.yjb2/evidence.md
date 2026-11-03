@@ -261,25 +261,31 @@ print(hex(struct.unpack_from('<I', d, 0xcd0)[0]))  # 0x17588     b_info.u_len
 print(hex(struct.unpack_from('<I', open('a.upx','rb').read(), 0x218 + 16)[0]))  # 0x3e10
 ```
 
-### 10.3 尾部伪造节头导致 `NotPackedException`
+### 10.3 节头表破坏尾部对齐导致 `NotPackedException`
 
-对照实验（正常 UPX 打包的 `linux/amd64` 小 ELF）：
+对照实验（正常 UPX 打包的 `linux/amd64` 小 ELF，尾部块恰好以 EOF 结尾）：
 
-```bash
-upx -d a.upx                                  # Unpacked 1 file.
-python3 - <<'PY'
+| 实验 | 操作 | `upx -d` 结果 |
+|---|---|---|
+| 对照 | 原样 | `Unpacked 1 file` |
+| A | 尾部 `l_checksum` 清零（长度不变） | `Unpacked 1 file` |
+| B | 尾部追加 100–1200 字节零填充 | `Unpacked 1 file` |
+| C | 尾部追加 `.dynsym`/`.dynstr`… 节名字符串 | `NotPackedException` |
+| D | 追加 7 × 64 字节节头表并改 `e_shoff` | `NotPackedException` |
+
+A/B 说明**字段值本身与长度都不参与判定**，只有把内容放到尾部块之后
+（C/D）才复现失败，即 UPX 从 EOF 反向定位尾部块。
+
+```python
 import struct
 d = bytearray(open('a.upx','rb').read())
-shnum = 7
 tbl = b''.join(struct.pack('<IIQQQQIIQQ', i,1,6,0,0x1000,0x40,0,0,1,0)
-               for i in range(shnum))
+               for i in range(7))
 off = len(d)
 d += tbl
-struct.pack_into('<Q', d, 0x28, off)          # e_shoff
-struct.pack_into('<H', d, 0x3c, shnum)        # e_shnum
-open('b.so','wb').write(d)
-PY
-upx -d b.so                                   # NotPackedException
+struct.pack_into('<Q', d, 0x28, off)   # e_shoff
+struct.pack_into('<H', d, 0x3c, 7)     # e_shnum
+open('b.so','wb').write(d)             # upx -d b.so -> NotPackedException
 ```
 
 本样本把文件截到 `0x7028` 后，报错从 `NotPackedException` 变为

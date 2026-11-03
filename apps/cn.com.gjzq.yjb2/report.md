@@ -239,10 +239,11 @@ AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、native 侧 
 
 未闭环：四个关键 ELF 都是**标准 UPX 6.02 容器**（`libndktest.so` 的 `0xcc0`
 处 `UPX!` + `b_info.u_len=0x17588`，解包器骨架在 `0x3fd8`），但尾部被追加了
-伪造的 7 项节头表，把 UPX 尾部块挤离 EOF，因此 `upx -d` 报
-`NotPackedException`——该原因已用“正常 UPX 文件 + 同样的伪造节头”对照实验
-复现（见 [evidence.md](evidence.md) §10.3）。真伪对照很直接：`DT_HASH` 的
-`nchain=53` 说明有 53 个符号，而伪造节头只声明 3 个。节头表里**没有任何
+其后的节头表，使 UPX 尾部块不再与文件末尾对齐，因此 `upx -d` 报
+`NotPackedException`——该原因已用四组对照实验定位（见
+[evidence.md](evidence.md) §10.3）：只改尾部字段值或单纯补零都不影响解包，
+只有把节头表放到尾部块之后才复现失败。真伪对照很直接：`DT_HASH` 的
+`nchain=53` 说明动态符号表有 53 项，而 `.dynsym` 节头只声明 3 项。节头表里**没有任何
 `.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段；可执行段的字节三到
 五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、`libencrypt.so`
 `35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），而 `DT_INIT` 起
