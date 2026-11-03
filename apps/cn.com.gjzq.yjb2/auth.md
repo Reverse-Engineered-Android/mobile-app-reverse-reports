@@ -233,8 +233,8 @@ function decrypt(value, key = "z$B&E)H@McQfTjWn") {
 |---|---|
 | `Token.xml` 密文内容 | 未知（结构已证实：整体密文 + 共享密钥流前 48 B） |
 | native 侧票据有效期与刷新 | 未知（`expired_time:1800` / `expired_seconds:30` 是请求参数，实际策略在服务端） |
-| `libencrypt.so` 的 `tztEncrypt` 输入输出 | 未知（`.text` 高熵，见 [obfuscation.md](obfuscation.md) §5） |
-| `libndktest.so` RC4/SM4 的具体用途 | 结构已证实（符号存在），调用链未知 |
+| `libencrypt.so` 的 `tztEncrypt` 输入输出 | RC4+CRC32 信封结构已还原（[obfuscation.md](obfuscation.md) §7.4），运行时明文/密文实例未观测 |
+| `libndktest.so` RC4/SM4 的具体用途 | 算法已复现 GB/T 32907-2016 标准向量（[obfuscation.md](obfuscation.md) §7.3），调用链未端到端观测 |
 | `yjb-webapp-session` / `YCOMMENTPHPSESSID` 生命周期 | 未知 |
 | 服务端 `code:-1` 之外的其他鉴权失败码 | 未知 |
 
