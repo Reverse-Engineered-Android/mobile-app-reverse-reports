@@ -420,8 +420,9 @@ H5 不自行拼装设备指纹。`event_id` 是可枚举的数字串（如适当
 | 服务端评分、阈值、模型特征 | 未知 |
 | 冻结、限制、警告等处罚动作 | 未知 |
 | 风控参数下发与保存期限 | 未知 |
-| `libShanYCore.so` 的 ptrace 反调试反应 | 只证实导入，未还原分支 |
-| `libencrypt.so` / `libndktest.so` 完整 native 算法调用链 | 符号已恢复，方法体受保护 |
+| `libShanYCore.so` 的 ptrace 反调试**反应** | `ptrace(PTRACE_TRACEME)` 调用已还原且返回值未检查；被调试时的实际反应分支仍未知 |
+| `libShanYCore.so` 的 Wi-Fi 反射面**调用时机** | 已还原方法名字符串（`disableNetwork`/`enableNetwork`/`disconnect`/`reconnect`）与受控反射路径；何时实际调用未知 |
+| `libencrypt.so` / `libndktest.so` 完整 native 算法调用链 | **已还原**：`obfuscation.md` §7.3–§7.4（四库离线解包、逐函数分析）；SM4 密钥编排与块函数均复现 GB/T 32907-2016 标准向量 |
 | `<queries>` 各包名的实际判定分支 | 未知 |
 | `getRiskInfo` / `permDesk` / `access.authority` 的服务端判定规则 | 未知（只证实客户端 `===` 判定与跳转） |
 | `saveLog(4014)` 的服务端留存与用途 | 未知 |

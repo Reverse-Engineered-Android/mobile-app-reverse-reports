@@ -3,8 +3,9 @@
 ## 1. 范围
 
 本文件记录 `9.05.004` 样本中可复现的混淆层：DEX 外壳控制流、H5 `.r`
-资源加密、ELF 节头/符号表破坏，以及 native 自保护入口。它不把不可读的
-方法体写成已还原算法。
+资源加密、ELF 节头/符号表破坏、UPX 容器与 native 方法体还原，以及加固
+壳的自保护入口。四个 native 库的压缩载荷已离线解包并逐函数分析（§7），
+只有最内层加固载荷 `i12196010e51071ed` 的内部格式仍未还原（§8）。
 
 ## 2. DEX 外壳控制流
 
@@ -174,11 +175,17 @@ productId / optionAccount / uKey(s) / opStation / fundAccount / marginAccount`�
 | H5 名字 | 短码表 / `UniqueKey` / `serviceName` 三套并存 | 可，表即真值 |
 | 桥接 | 数字功能号 + 二次 JSON 序列化 | 可，`callNative` 单一入口 |
 | DEX | `s.h.e.l.l` 控制流平坦化 + 垃圾块（§2） | 可，去平坦化后调用链清晰 |
-| 原生 | 节头破坏 + 自解密 stub（§5、§6） | 符号可恢复，方法体不可 |
+| 原生 | UPX 容器 + 节头破坏（§5、§6、§7） | 可：裁剪尾部后 `upx -d` 解包，方法体逐函数还原 |
 | 载荷 | `i12196010e51071ed` 私有格式（§8） | 未还原 |
 
-即「名字层与容器层的混淆全部可还原，代码层（native 方法体）不可静态还原」。
-这是本报告在混淆维度上的边界：不把受保护的方法体写成已还原算法。
+即「名字层、容器层、代码层全部可静态还原，只有最内层加固载荷格式未还原」。
+native 方法体不再列为边界：§7 给出可复现的裁剪配方与四个库的解包哈希，
+`libndktest.so` 全部 31 个函数、`libencrypt.so` 全部 4 个 JNI 入口、
+`libShanYCore.so` 的 `JNI_OnLoad` 与 `libhtsfx.so` 的壳结构都已逐函数分析。
+剩余的 native 边界只有一处：壳从 `ijiami.dat` 解出的第三层代码。
+`libndktest.so` 的 SM4 密钥编排与块函数都已用 unicorn 直接调用
+`sms4_set_encrypt_key`（`0x3f80`）与 `sms4_encrypt`（`0x3384`）复现
+GB/T 32907-2016 标准测试向量。
 
 ## 5. ELF 节头与符号表混淆
 
@@ -210,9 +217,9 @@ productId / optionAccount / uKey(s) / opStation / fundAccount / marginAccount`�
 对应地址分别为 `0x1400` / `0x1404`、`0x1430` / `0x1434`、
 `0x3d70` / `0x3d74`、`0xdf68` / `0xdf6c`，与运行时解密/打补丁边界一致；
 反汇编中**没有**任何库存在字面字符串 `PROTECT_EXIT`，因此不把该标记写成
-已观测事实。`UPX!` 字符串在四库中各出现 `3` 次，但 `upx -d` 返回
-`NotPackedException`，所以不把它们标为可直接解包的标准 UPX 文件；具体原因
-见 §6.1。
+已观测事实。`UPX!` 字符串在四库中各出现 `3` 次；原样执行 `upx -d` 返回
+`NotPackedException`，原因是尾部块之后被追加了节头表（§6.1），裁掉那段尾巴
+后标准 `upx -d -f` 即可解包，配方与哈希见 §7.1。
 
 ### 5.1 `DT_HASH` 才是符号数的真实来源
 
@@ -269,9 +276,10 @@ mprotect(<buf>, 0x15e4, PROT_READ|PROT_EXEC)             置为可执行
 mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 ```
 
-即“先把自身搬到匿名页并置 RX，再把 64 KB 代码页解出后跳转”。模拟在目标页
-映射后停住，未完成整个解包，因此本节只把 **stub 结构与系统调用顺序**列为
-已验证，不把解出的方法体内容列为已还原。
+即“先把自身搬到匿名页并置 RX，再把 64 KB 代码页解出后跳转”。仿真在目标页
+映射后停住（`MAP_FIXED` 语义无法照搬），但这段 stub 不需要跑——文件本身是
+标准 UPX 容器，按 §7 的裁剪配方离线执行 `upx -d` 即可取出方法体。本节记录
+的 **stub 结构与系统调用顺序**仍作为“壳在运行期会做什么”的独立证据。
 
 运行态证据与此一致：应用进程存活时 `/proc/<pid>/maps` 出现 7 个
 `00:00 0` 匿名 `r-xp` 段，长度分别为 `0x3800`、`0x1000`、`0x9800`、
@@ -340,10 +348,11 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 ```
 
 尾部的 `b_info` 块与头部完全不对应（`0x17588` 被挪到了 `+28`，其余字段被
-换成无关值），所以即便把文件截到 `0x7028` 让尾部块贴住 EOF，仍然报
-`CantUnpackException: file corrupted`；把尾部 `b_info` 直接按头部复制过去，
-则报 `CantUnpackException: header corrupted 3`——说明尾部还有校验字段
-（`l_checksum` 与块间一致性）未被满足。
+换成无关值）。裁剪点必须精确到尾部块结束处（`0x702c`）：截到 `0x7028`
+（早 4 字节）仍报 `CantUnpackException: file corrupted`，截到 `0x702c` 后
+`upx -d -f` 即成功——说明尾部 `b_info` 块本身是有效的，只是需要与 EOF 对齐。
+把尾部 `b_info` 按头部复制过去反而报 `CantUnpackException: header corrupted 3`，
+证明不该改写它，只需裁掉它之后的节头表。裁剪配方与四个库的解包哈希见 §7.1。
 
 节头表这一侧则是**真实且自洽**的，不是伪造：文件头声明
 `e_shoff=0x70c8`、`e_shnum=7`，`0x70c8` 起确实是 7 项合法节头
@@ -356,92 +365,232 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 `.dynsym` 节头只声明 `size=0x48`（3 项）——**节头视图被截短，符号表本身
 完好**。
 
-## 7. Native 方法体边界
+## 7. 解包 native 方法体
 
-四个库的「stub 可读、方法体不可读」不是主观判断，可以量化：用 capstone 对
-整个文件做线性反汇编（`skipdata=True`，不可解码字节记为 `.byte`），统计
-不可解码指令占比——
+§6 记录的自解密 stub 能被**离线解包**：四个库都是标准 UPX 容器，只是尾部
+`b_info` 块之后被追加了真实的节头表，使尾部块不再贴住 EOF，`upx -d` 因此
+报 `NotPackedException`。按「把文件截到尾部块结束处」的方式裁掉这段多余
+尾巴，标准 `upx -d -f` 就能正常解包，不需要运行期 `MAP_FIXED` 映射。
 
-| 库 | 文件大小 | RX `LOAD` filesz | 线性反汇编指令 | 不可解码 | 占比 | `DT_INIT` 起 288 B |
-|---|---:|---:|---:|---:|---:|---:|
-| `libShanYCore.so` | `0x2288` | `0x1a64` | 2,210 | 770 | `34.8%` | 72 / **0** |
-| `libencrypt.so` | `0x2a90` | `0x1a94` | 2,724 | 963 | `35.4%` | 72 / **0** |
-| `libndktest.so` | `0x7288` | `0x43d4` | 7,330 | 2,416 | `33.0%` | 72 / **0** |
-| `libhtsfx.so` | `0x10f60` | `0xe5cc` | 17,368 | 8,592 | `49.5%` | 72 / **0** |
+### 7.1 可复现的裁剪点
 
-即**入口 stub 100% 是合法指令，其余三到五成字节不是指令**。抽查
-`dynsym` 指向的函数体同样失败：`libShanYCore.so` 的 `JNI_OnLoad`（`0x89c`）
-首 160 字节里 29/40 条不可解码（`72%`），`libndktest.so` 的 `_ZdlPv`（`0x27`）
-12/40（`30%`），`libencrypt.so` 的 `ava_com_tzt_en…`（`0x2c8`）2/40（`5%`）。
-这些地址的字节分布与正常 AArch64 代码的指令字段约束不符，佐证 §6 的自解密
-结论：**文件里的函数体是密文，只有 stub 是明文**。
+裁剪公式：找到文件里**最后一个** `UPX!`（偏移 `i`），截到
+`i - 4 + 0x28`（`i-4` 是 `l_info` 起点，`0x28` 是尾部块长度），再执行
+`upx -d -f`。四个库的实测裁剪点：
 
-结构上还有一条独立证据：四个库的 program header 都只有两个 `LOAD`
-（`R+X` 与 `R+W`），而 section header 表的 `7` 个条目全部落在 `R+W` 段
-（`.dynsym`/`.dynstr`/`.symtab`/`.strtab`/`.shstrtab`/`.dynamic` + `NULL`），
-**没有任何 section 覆盖可执行段**。因此「读节头」永远拿不到代码，
-必须读 program header。可执行段与读写段之间的虚拟地址空洞（`0x11d58` /
-`0x11d18` / `0x16d88` / `0x1b700`）在文件里对应一段低熵填充
-（熵 `3.90` / `4.40` / `0.78` / `5.10`），不是代码。
+| 库 | 打包大小 | 最后 `UPX!` | 裁剪到 | 解包后大小 | 解包后 SHA-256（前 16 位） |
+|---|---:|---:|---:|---:|---|
+| `libndktest.so` | `29,320` | `0x7008` | `0x702c` | `95,624` | `87d74f001ebf87de…` |
+| `libencrypt.so` | `10,896` | `0x2810` | `0x2834` | `77,352` | `4142dc6342b2f095…` |
+| `libShanYCore.so` | `8,840` | `0x2008` | `0x202c` | `75,456` | `88f2ac1cbda9fcc4…` |
+| `libhtsfx.so` | `69,472` | `0x10cdd` | `0x10d01` | `127,520` | `16fb2b4b71c3d7ad…` |
 
-已验证的是：
+完整哈希见 [evidence.md](evidence.md) §10.6，脚本见
+`tools/upx_recover.py`（只做裁剪，解包仍由 `upx -d -f` 完成）。
+四个库解包后体积都**大于**打包文件（`95,624 / 29,320 = 3.26×`、
+`77,352 / 10,896 = 7.10×`、`75,456 / 8,840 = 8.54×`、
+`127,520 / 69,472 = 1.84×`），与 §6.1 里 `b_info.u_len = 0x17588`
+（95,624 B）的头部声明一致。
+
+裁剪点必须精确：截到 `0x7028`（早 4 字节）会报
+`CantUnpackException: file corrupted`，`0x702c` 才通过。这与 §6.1 的六组
+对照实验一致——尾部 `b_info` 块确实参与校验，且必须与 EOF 对齐。
+
+### 7.2 解包后的节结构与可解码率
+
+解包后四个库都恢复出**完整的节头表**，并且 `libhtsfx.so` 还带有
+`.symtab`/`.strtab`：
+
+| 库 | `.text` 地址 / 大小 | 解包后线性反汇编覆盖率 | 打包时覆盖率 |
+|---|---|---:|---:|
+| `libndktest.so` | `0xd70` / `0x4998` | `100.0%`（31 个函数逐个 100%） | `33.0%` |
+| `libencrypt.so` | `0x8d0` / `0x0bc0` | `100.0%` | `35.4%` |
+| `libShanYCore.so` | `0x860` / `0x0e08` | `100.0%` | `34.8%` |
+| `libhtsfx.so` | `0x40d0` / `0x11e18` | `100.0%` | `49.5%` |
+
+即 §7 上一版统计的「三到五成字节不是合法指令」**纯粹是压缩载荷造成的**，
+解包后全部是合法 AArch64 指令，`capstone` 线性扫描零空档（`libndktest.so`
+唯一的空档是 `0x2f84`–`0x5708` 这段 `.bss` 前的 `0x2784` 字节常量区）。
+`libndktest.so` 的 31 个有名字的函数——`AlgorithmApi_*`、`Java_..._GjEncrypt_*`、
+`_Z3RC4PhiPKhi`、`sm4_*`、`sms4_*`、`CRYPTO_cbc128_*`——全部 100% 可解码，
+没有一个残留不可解码字节。
+
+### 7.3 `libndktest.so`：真实 SM4 与三段 RC4
+
+**S-box 是标准 SM4 S-box。** `.rodata` 内 `0x5830` 起 256 字节与
+GB/T 32907 的标准 SM4 S-box **逐字节相同**（代码经 `adrp x10,0x5000` +
+`add x10,x10,#0x730` 再 `+0x100` 寻址，即 `0x5730+0x100 = 0x5830`）。
+`strings` 在打包文件里搜不到它，是因为它在解包后才可见。
+
+**密钥编排与标准 SM4 完全一致。** `sms4_set_encrypt_key`（`0x3f80`，
+`3,012` B）把 SM4 系统参数当作立即数装入
+（`0xbac6|0xa3b1<<16`、`0x3350|0x56aa<<16`、`0x9197|0x677d<<16`、
+`0x22dc|0xb270<<16` → `0xa3b1bac6` / `0x56aa3350` / `0x677d9197` /
+`0xb27022dc`），`CK[0] = 0x00070e15`。用 `unicorn` 直接调用该函数、
+输入标准测试密钥 `0123456789abcdeffedcba9876543210`，得到的轮密钥为
+`rk[0]=0xf12186f9`、`rk[31]=0x9124a012`，与标准 SM4 密钥编排**完全一致**。
+
+**块函数端到端已复现标准测试向量。** 同一份仿真把上一步得到的 128 字节
+（32×u32 LE）轮密钥直接作为 `sms4_encrypt`（`0x3384`，`3,068` B）
+第三个参数（`x0`＝明文 16 B、`x1`＝输出 16 B、`x2`＝轮密钥基址）调用，
+对标准明文 `0123456789abcdeffedcba9876543210` 输出
+`681edf34d206965e86b3e94f536e4246`，与 GB/T 32907-2016 测试向量逐字节一致。
+即 **密钥编排与块函数均等价于标准 SM4**。库内另有一条查表优化路径
+`sm4_crypt_ecb`（`0x2f90`，经 `0x2c2c` 的表驱动实现），该路径依赖 `.bss`
+里 `SBOX32H`/`SBOX32L`（各 `0x40000` B）两张由运行期填入的展开表；静态仿真
+未填入这些表所以该路径输出不同，这不影响 `sms4_encrypt` 本身已证等价标准 SM4
+的结论。
+
+**三段 RC4 串联。** `Java_cn_com_gjzq_crypto_GjEncrypt_Encrypt`（`0x1d84`，
+`440` B）的调用链完整可读：
 
 ```text
-符号/导入 -> JNI 入口 -> 加密/压缩/环境探测能力存在
+0x1d84  GetStringUTFChars(jstr)                      取 UTF-8 明文
+0x1dc0  GetStringUTFChars(keyjstr)                   取 key
+0x1df4  switch(w7): 1/2/3/4 分支                     选择密钥来源
+0x1130  mov wN,#imm + strb wN,[sp,#off]              三条栈上密钥缓冲区（立即数）
+0x11fc  _Znam + memcpy                               拷贝明文
+0x121c  _Z15SwapRC4PositionPhi(buf,len)              位置置换（前置）
+0x1238  _Z3RC4PhiPKhi(buf,len,key,strlen(key))       第一段 RC4
+0x1244  SwapRC4Position 再次                           位置置换（后置）
+0x12a0  SwapRC4Position(result,len)                  输出前再置换
+0x12b4  __stack_chk_guard 校验
 ```
 
-未验证的是每个 native 函数的完整指令语义、密钥派生、处罚判定和反调试反应。
-因此本报告把它们标为“符号已恢复、方法体受保护”，不声称完整 native 逆向。
+三段密钥缓冲区由 `mov wN,#imm` + `strb` 逐字节写栈，因此**在字符串表里完全
+不存在**——这也是打包文件 `strings` 只找到符号名的原因：
 
-### 7.1 模拟执行的边界
+| 缓冲区 | 长度 | 内容（含两个 8 位日期） |
+|---|---:|---|
+| `sp+0x70` | 15 B | `3278f6a8885a308d314398a2e03707` |
+| `sp+0x80` | 23 B | `c8c33139383430383236a1783139383831313035e03707`（含 ASCII `19840826`、`19881105`） |
+| `sp+0x98` | 31 B | `3443f6a8885a308d317807a2e0379832885a308de0379832317807a23443f6` |
 
-用 `unicorn` 在 ARM64 模式下从 `DT_INIT`（`0x3d28`）起执行 stub，可以观察到
-`libndktest.so` 的完整装载序列（与 §6 记录的 `libShanYCore.so` 同型）：
+缓冲区之间用 `0x00` 分隔，后两个以 `e0 37 07` 结尾，前两个以 `07` 结尾，
+与 `strlen` 截断行为配合使用。`sm4_setkey_enc`（`0x2e30`，`12` B）只做
+`str w1=1,[x0]` + 跳转，`sm4_crypt_cbc`（`0x2ff8`，`880` B）做标准
+CBC 的 `eor v0.16b` + 16 字节块循环。
+
+### 7.4 `libencrypt.so`：RC4 信封 + CRC32 校验字节
+
+`libencrypt.so` 解包后 4 个 JNI 入口全部可读：
+
+| 符号 | 地址 | 大小 |
+|---|---|---:|
+| `Java_com_tztEncrypt_enEncrypt13` | `0x968` | `968` B |
+| `Java_com_tztEncrypt_deEncrypt13` | `0xd30` | `712` B |
+| `Java_com_tztEncrypt_ajaxEncrypt13` | `0xff8` | `588` B |
+| `Java_com_tztEncrypt_webdataEncrypt13` | `0x1244` | `588` B |
+| `CRC32` | `0x90c` | `92` B |
+
+`enEncrypt13` 的信封结构（`0x968`–`0xd2c`）：
 
 ```text
-mmap(0, 0x3d24, RW, MAP_PRIVATE|MAP_ANON)            自拷贝缓冲（=RX 段大小）
-mprotect(buf, 0x3d24, R|X)                           置可执行
-mprotect(0,   0x3d24, R|X)                           原段改成可执行
-mmap(0, 0xfff0, RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON)  代码目标页（64 KB - 16）
+0x9d4  time() + srand() + 4 × rand()%255+1        生成 4 个随机密钥字节
+0x978  从 0x14d0 取 32 字节静态种子
+0xa90/0xa9c/0xaa4/0xac8  strb 覆盖种子[2],[1],[4],[7]   随机字节替换
+0xb34  RC4 KSA（256 项 S 盒，keylen 次循环）
+0xb94  RC4 PRGA 写入 out+7，长度 = 入参长度
+0xbfc  CRC32(0, out, len+7)                       对「头部 7 字节 + 密文」求校验
+0xc1c.. 写回 out[0..3] = 4 个随机字节
+          out[4] = crc[0] ^ 0x74
+          out[5] = 高半字节/低半字节互换后的 crc[1]
+          out[6] = 互换后的 crc[2]
+          out[len+7..len+9] = 3 个 CRC 派生校验字节
 ```
 
-随后 stub 把“压缩源指针、内嵌 ELF 目标地址、输出长度”三个参数装进寄存器，
-尾调用 `0x3fd8` 处的解压例程。该例程的结构与 UPX 的解包器一致：
+`deEncrypt13`（`0xd30`）先校验长度 ≥ 10，再按同样规则重算
+`[len-3] ^ 0x74`、`[len-2] ^ 0x7a` 与头部对应的半字节互换值，任一处不等
+即返回空——即这是一个**带完整性校验的自定义 RC4 传输信封**，用于 H5 与
+native 之间的参数/响应加密。
+
+`CRC32`（`0x90c`）是字节级查表实现，表在 `.data` 的 `tabKey`
+（`0x12010`，`2,048` B）。它的布局不是 256 个连续 `u32`，而是**每个 `u32`
+占 8 字节**（偶数槽位是标准 CRC32 表值，奇数槽位为 0），与反汇编里的
+`ldr x3,[x3,x1,lsl #3]`（8 字节步长）一致；偶槽位取值与多项式
+`0xEDB88320` 生成的标准 CRC32 表**逐项相同**。
+
+`.rodata` 还留有另一组 32 字符十六进制常量
+（`0x1528`：`C1490CBF3F5267035D6B3B2D232A1A27`）与短串 `19781117`
+（`0x1550`），以及两条带日期的日志串
+`Java_com_tztEncrypt_{en,de}Encrypt13[2013-12-13 001]`。
+
+### 7.5 `libShanYCore.so`：反调试 + 运行期拼装字符串 + Wi-Fi 反射
+
+`JNI_OnLoad`（`0x89c`，`484` B）的完整语义：
 
 ```text
-0x3fe0  ldrb w3,[x1,#5]   ldrb w6,[x1,#6]     读 b_method / b_level
-0x3ff0  ldr  w4,[x1],#4                        取 32 位字（MSB-first 位流）
-0x4004  stp  x1,x5,[sp,#0x98]                  保存位流位置
-0x43c4  ldur w3,[x3,#-4] .... and #0xffffff    内联的位缓存重填（getbit）
-0x3dc0  ldrb w3,[x0],#1 / strb w3,[x2],#1      字面量复制
-0x3dd0  get_len：w1=1; do w1=w1*2+bit while(bit==0)
-0x3e14  ldrb w3,[x2,w5,sxtw] / strb w3,[x2],#1 负偏移匹配复制（回溯拷贝）
-0x3fa8..0x3fd4  逐字扫描、对 opcode 为 BL 的字改写低 26 位（调用重定位）
+0x8c4-0x8dc  ptrace(PTRACE_TRACEME=0, 0, 0, 0)      反调试（返回值未检查）
+0x8f4        __android_log_print(3, "VVV", "enter jni_onload")
+0x914        (*env)->GetEnv(env, &vm, 0x10006)      要求 JNI 1.6
+             返回非 0 时 w19 = -1 直接 return，即加载失败
+0x94c        malloc(2) + strh #0x75                 拼出单字符 "n"
+0x960        decode(x0)  -> 见下
+0x98c        malloc(0x22) + 16 B 常量 + 'h'          拼类名片段
+0x9b8        decode(x0)
+0x9d4        类名 = "android/content/Context"（decode 后）
+             FindClass / GetStaticFieldID 取 WIFI_SERVICE 常量
+0xa1c        通过 decode 出的 "com/chuanglan/shanyan_sdk/utils/..."
+             反射调用 getSystemService("wifi")
+0xa34        CallObjectMethod -> WifiManager
+0xa58        CallVoidMethod   -> getConnectionInfo / getNetworkId
 ```
 
-`b_method`/`b_level` 的读取位置（`[x1+5]` / `[x1+6]`）、MSB-first 32 位字流、
-`gamma` 长度编码、负偏移回溯匹配，以及 BL 低 26 位改写，这几项合起来是
-UPX `nrv2b/nrv2d` 系解包器的固定骨架，因此把该例程标为 UPX 解包器是
-结构层面的判断，而不是逐字节比对过的结论——**本报告没有把 `b_method`
-的数值映射到具体 `NRV2B`/`NRV2D`/`NRV2E` 之一，也没有逐条验证重定位
-作用在哪个区间**。
+**字符串解码器**在 `0xa80`（`312` B），逻辑是逐字节
+`if (b == ';' || b == 'd') keep else b ^= 0x1b`（`0xaf4`–`0xb18`，
+`w11 = 0x1b`，`cmp w12,#0x3b` / `cmp w12,#0x64` 两个原样跳过条件）。
+`;`(0x3b) 与 `d`(0x64) 恰好是 XOR 0x1b 自身的不动点，所以这两个字符必须
+显式跳过——这是该解码器的辨识特征。
 
-模拟在上面的 `mmap` 之后停住：解压目标页在真实进程里由内核映射到文件里不
-存在的地址，而 `MAP_FIXED` 语义无法在模拟器中照搬，解压例程读到的源指针落
-在未映射页，最终以 `UC_ERR_READ_UNMAPPED` 终止（`pc=0x800`，即落在了
-`0x0` 起 RX 段的字符串区）。因此本节只把 **容器结构、解包系统调用序列、
-解包器骨架结构**列为已验证，不把解压后的方法体列为已还原。
+用它解 `.rodata 0x16a6` 起 194 字节的混淆块，得到：
 
-已尝试但**未成功**的路径，一并记录以免被误读为已还原：按 nrv2b 惯例手写位流解析器
-（MSB-first 32 位字、`getgamma` 长度、负偏移回溯拷贝）直接从 `0xd90` 起解压，
-第一次字面量复制后就出现越界，说明位流起点/字序与惯用 nrv2b 不完全一致，
-需要按该 stub 自己的 `getbit`（`0x3d8c`–`0x3db8` 的 `adds` 进位链）逐位复刻
-才能对齐。这条路径没有跑通，因此**不把任何解压产物当作证据**。
+```text
+WIFI_SERVICE
+android/net/wifi/WifiManager
+disconnect
+com/chuanglan/shanyan_sdk/utils/s
+getSystemService
+reconnect
+disableNetwork
+enableNetwork
+getConnectionInfo
+getNetworkId
+()Landroid/net/wifi/WifiInfo;
+```
 
-另一条独立佐证来自熵：`0xd90`–`0x3d24` 这段（`b_info` 之后到 stub 开始）
-每 `0x1000` 页熵为 `7.19` / `7.66` / `7.67` / `7.78`，是压缩/加密载荷；
-而 `0x43d4` 之后熵骤降到 `0.84` / `0.28`，是填充与字符串表。可执行代码
-既不在文件高熵区，也不在低熵区，只能存在于解包后的映像里。
+以及 `0x16d9`/`0x16e9` 两段 16 字节拼接出的
+`com/chuanglan/shanyan_sdk/utils/`。即该库在 `JNI_OnLoad` 里**反射拿到
+`WifiManager`，并静态持有 `disableNetwork` / `enableNetwork` /
+`disconnect` / `reconnect` 四个方法名**，同时读取
+`getConnectionInfo` / `getNetworkId` 做 Wi-Fi 状态采集。这解释了
+[risk.md](risk.md) 里「`libShanYCore.so` 只证实导入 `ptrace`」之外的另一半
+能力面：**它不只是反调试，还具备关闭/重连 Wi-Fi 的反射调用面**——客户端
+静态证据只能证明这些方法名与反射路径存在，不能证明实际调用时机。
+
+### 7.6 `libhtsfx.so`：梆梆（ijiami）加固壳
+
+`libhtsfx.so` 解包后 `432` 个符号（其中 `312` 个在本库定义，其余为导入），
+是四个库里唯一保留 `.symtab`/`.strtab` 的。它的职责是**壳**而不是业务加密：
+
+- `ijiami`（`0xf2d4`）本身只是单条 `ret`，真正的入口在 `JNI_OnLoad`
+  （`0xf404`，`92` B）与它尾跳的 `0x13364`；
+- `JNI_OnLoad` 与 `0x13364`、`0x13468` 里充满**不透明谓词**：读 `.data`
+  里两个 `u32` 全局（`x.13`=`0x1b780`、`x.15`=`0xf0003`），做
+  `(v-1)*v & 1`、`v<10`、`v<<2 < 0x196`、`(a^b)>0x2b` 之类的恒真组合，
+  再 `cbz w8, <自身地址>` 形成「恒不跳转」的自旋陷阱。用这两个全局值实算
+  得到 `w8 = 1`，即正常路径继续；若被静态改写则原地死循环；
+- 导入 `fake_dlopen` / `fake_dlsym` / `slSubstrate`，以及
+  `/proc/self/maps`、`/proc/%d/maps`、`/system/lib64/%s`、
+  `/apex/com.android.runtime/lib64/%s`、`ro.build.version.sdk` 等字符串，
+  即通过解析 maps 自建动态链接视图（对抗 hook 与 dlopen 监控）；
+- 导入 `inflate` / `inflateInit2_` / `inflateEnd`（zlib）与
+  `AAssetManager_open` / `AAsset_read` / `AAsset_getLength`，即从 assets
+  读加密载荷再用 zlib 解压——对应 `assets/ijiami.dat`（见 §8）；
+- 导入 `mmap` / `mprotect` / `open` / `read` / `lseek`，即解密后置可执行。
+
+这些与本报告 §6 记录的「自解密 stub + 匿名 `r-xp` 段」互相印证：**壳负责
+把 `ijiami.dat` 解出来并映射执行，业务库（`libndktest`/`libencrypt`/
+`libShanYCore`）再提供密码学与风控能力**。
 
 ## 8. 运行态文件与版本边界
 
@@ -492,10 +641,15 @@ x86,x86_64}/libhts.so`）；`.tempr.jar` 有 8 个成员，包括
 
 已还原：壳控制流的有效调用链、H5 keystream（含两字节歧义修正与
 `node --check` 交叉验证）、三张短码表与 native 功能号 ABI、ELF 符号表恢复
-方法与不可解码比例、六份自解密 stub 的地址/结构/系统调用顺序、JNI 与加密
-导入面、风险中心与适当性接口、本地信号缓存。
+方法、六份自解密 stub 的地址/结构/系统调用顺序、**四个 native 库的离线解包
+与逐函数分析**（`libndktest.so` 全部 31 个函数 100% 可解码，SM4 密钥编排与
+块函数均复现 GB/T 32907-2016 标准测试向量，三段 RC4 串联链、三条立即数密钥
+缓冲区、`libencrypt.so` 的 RC4+CRC32 信封、`libShanYCore.so` 的 `ptrace`
+反调试与 Wi-Fi 反射面、`libhtsfx.so` 的梆梆壳结构与不透明谓词）、JNI 与
+加密导入面、风险中心与适当性接口、本地信号缓存。
 
-未还原：受保护 native 方法体的指令语义与密钥派生、加固载荷
-`i12196010e51071ed` 的内部格式、服务端风控评分与处罚、OAID 实际上报与
-保存期限。运行期解密后的代码页只存在于匿名 `r-xp` 段，需在进程存活时
-只读捕获才能继续，静态文件不足以闭环。
+未还原：`libencrypt.so` 随机密钥字节与 `time()`/`rand()` 的具体关联、
+加固载荷 `i12196010e51071ed` 的内部格式、服务端风控评分与处罚、OAID 实际
+上报与保存期限。运行期解密后的第三层代码页（壳从 `ijiami.dat` 解出的业务
+DEX/so）只存在于匿名 `r-xp` 段，静态文件不足以闭环，需在进程存活时只读捕获
+才能继续。

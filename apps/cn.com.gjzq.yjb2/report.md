@@ -234,22 +234,47 @@ UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `
 
 已闭环：外壳装载链、H5 载荷解密（含两字节歧义修正）、两层 RPC 网关与
 `subSystemNo`/`functionId` 分域、三张短码表与 native 功能号 ABI、
-AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、native 侧 RC4/SM4
-符号与调用面、客户端六类风控判定点、权限面、设备端 schema 与落盘格式。
+AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、**四个关键 ELF 的
+离线解包与逐函数分析**、客户端六类风控判定点、权限面、设备端 schema 与
+落盘格式。
 
-未闭环：四个关键 ELF 都是**标准 UPX 6.02 容器**（`libndktest.so` 的 `0xcc0`
-处 `UPX!` + `b_info.u_len=0x17588`，解包器骨架在 `0x3fd8`），但尾部被追加了
-其后的节头表，因此 `upx -d` 报 `NotPackedException`。原因用六组对照实验
-定位（见 [evidence.md](evidence.md) §10.3）：`l_checksum` 与单纯补零都不
-影响解包，但尾部 `b_info` 块参与校验、且尾部块必须贴住 EOF；本样本的尾部
-`b_info` 与头部完全不对应，节头表又把尾部块推离了 EOF，两者叠加。真伪对照
-很直接：`DT_HASH` 的 `nchain=53` 说明动态符号表有 53 项，而 `.dynsym` 节头
-只声明 3 项。节头表里**没有任何
-`.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段；可执行段的字节三到
-五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、`libencrypt.so`
-`35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），而 `DT_INIT` 起
-288 字节 100% 可解码——即文件里的函数体是压缩/加密载荷、只有入口 stub 是
-明文（判据见 [obfuscation.md](obfuscation.md) §5–§7）。
-`i12196010e51071ed`（`69,262,848` B，熵 `4.639`，`0xb2` 占 `32.8%`）无
-`dex`/ZIP/ELF 魔数，未复原内部压缩。以上均在 [completeness.md](completeness.md)
-中逐项标注为「结构已证实」或「未知」，不作为已验证结论。
+native 层不再是边界。四个库都是**标准 UPX 容器**（`libndktest.so` 的
+`0xcc0` 处 `UPX!` + `b_info.u_len=0x17588`），尾部 `b_info` 块之后被追加了
+真实节头表，把尾部块推离 EOF，因此原样 `upx -d` 报 `NotPackedException`
+（六组对照实验见 [evidence.md](evidence.md) §10.3）。把文件截到
+「最后一个 `UPX!` 减 4 再加 `0x28`」——四库分别是 `0x702c` / `0x2834` /
+`0x202c` / `0x10d01`——再执行 `upx -d -f` 即全部解包成功，脚本见
+`tools/upx_recover.py`，四个库的解包哈希见 [evidence.md](evidence.md) §10.6。
+解包后 `.text` 线性反汇编覆盖率从 `33.0%` / `35.4%` / `34.8%` / `49.5%`
+升到**全部 `100.0%`**，`libndktest.so` 31 个具名函数逐个 `100%`。
+
+逐函数还原的要点（[obfuscation.md](obfuscation.md) §7）：`libndktest.so`
+的 `.rodata 0x5830` 是**标准 SM4 S-box**，`sms4_set_encrypt_key` 的
+SM4 系统参数与 `CK[0]=0x00070e15` 以立即数出现，仿真实跑得到
+`rk[0]=0xf12186f9` / `rk[31]=0x9124a012`，**密钥编排与标准 SM4 一致**；
+`AlgorithmApi_Encrypt` 用 `mov`+`strb` 在栈上拼出三条密钥缓冲区（含
+`19840826` / `19881105` 两个日期串），`GjEncrypt_Encrypt` 是「位置置换 →
+RC4 → 位置置换 → 分段 RC4 → 位置置换」的多段串联；`libencrypt.so` 是
+**RC4 + CRC32 完整性校验信封**（`tabKey` 为标准 CRC32 表、8 字节步长）；
+`libShanYCore.so` 的 `JNI_OnLoad` 先 `ptrace(PTRACE_TRACEME)`，再用
+`b ^ 0x1b`（`;` 与 `d` 转义）解码出 `WifiManager` 反射面与
+`disableNetwork`/`enableNetwork`/`disconnect`/`reconnect`；`libhtsfx.so`
+是梆梆（ijiami）壳，含 `fake_dlopen`、`/proc/self/maps` 自建链接视图、
+zlib 与 `AAsset*` 载荷读取、以及恒真不透明谓词自旋陷阱。
+
+未闭环（三条，均已在 [completeness.md](completeness.md) 逐项标注）：
+
+1. `libndktest.so` 的 SM4 密钥编排与块函数均已用 unicorn 直接调用
+   `sms4_set_encrypt_key`（`0x3f80`）/ `sms4_encrypt`（`0x3384`）复现
+   GB/T 32907-2016 标准测试向量 `681edf34d206965e86b3e94f536e4246`，
+   即**完整等价于标准 SM4**。库内另有 `sm4_crypt_ecb` 走的表驱动优化路径
+   依赖运行期填入的 `.bss` 展开表（`SBOX32H`/`SBOX32L`），静态仿真未
+   填入所以该路径输出不同，但这不影响 `sms4_encrypt` 本身已证等价标准 SM4
+   的结论。
+2. `i12196010e51071ed`（`69,262,848` B，熵 `4.639`，`0xb2` 占 `32.8%`）无
+   `dex`/ZIP/ELF 魔数，内部格式未复原；壳从它解出的第三层代码只存在于匿名
+   `r-xp` 段。
+3. 服务端风控评分/阈值/处罚、OAID 实际上报与保存期限，静态不可达。
+
+以上不作为已验证结论；其余各项的边界见
+[completeness.md](completeness.md)。

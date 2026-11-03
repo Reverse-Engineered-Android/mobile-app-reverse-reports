@@ -39,9 +39,14 @@ e6cc89f97669d86601843a8c741459c2c3aa74386cb7e2206a7da60e7d10c82d
   的键集合。
 - 风控与设备指纹：六类客户端判定点（适当性状态机、等级比较、购前闸门、
   `permDesk` 权限位、`access.authority` 深链准入、登录/交易超时）、
-  `saveLog(4014)` 设备遥测信封、`libShanYCore.so`（ptrace 导入）、
-  `libencrypt.so`（tztEncrypt 四入口）、`imjar`/`ijiami` 加固、
+  `saveLog(4014)` 设备遥测信封、`libShanYCore.so`（`ptrace` 反调试 +
+  `WifiManager` 反射面）、`libencrypt.so`（`tztEncrypt` 四入口，RC4 +
+  CRC32 校验信封）、`libndktest.so`（标准 SM4 密钥编排 + 多段 RC4）、
+  `imjar`/`ijiami` 加固（`libhtsfx.so` 梆梆壳）、
   `libmsaoaidsec.so` 等 OAID 采集链；`<queries>` 中的反分析包名清单。
+- native 方法体：四个关键 ELF 都是标准 UPX 容器，按
+  `tools/upx_recover.py` 裁剪尾部后 `upx -d -f` 全部解包，`.text` 反汇编
+  覆盖率 `100.0%`，逐函数分析见 `obfuscation.md` §7。
 - 权限、导出组件、明文 HTTP、WebView 文件提供器与 `SYSTEM_ALERT_WINDOW` 面。
 - 只读设备端真库 schema：`7` 个 SQLite、`23` 张业务表、`70` 个 `shared_prefs`。
 

@@ -299,8 +299,10 @@ struct.pack_into('<H', d, 0x3c, 7)     # e_shnum
 open('b.so','wb').write(d)             # upx -d b.so -> NotPackedException
 ```
 
-本样本把文件截到 `0x7028` 后，报错从 `NotPackedException` 变为
-`CantUnpackException: file corrupted`，说明 UPX 已认出容器。
+本样本把文件截到 `0x7028`（距正确的尾部块结束还差 4 字节）后，报错从
+`NotPackedException` 变为 `CantUnpackException: file corrupted`——说明 UPX
+已认出容器、但尾部块仍差 4 字节才与 EOF 对齐；截到 `0x702c` 后即成功解包，
+见 §10.6。
 
 ### 10.4 模拟装载序列
 
@@ -318,7 +320,9 @@ mprotect(0, 0x3d24, R|X)
 mmap(0, 0xfff0, RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON)
 ```
 
-随后以 `UC_ERR_READ_UNMAPPED` 终止（`pc=0x800`），即未完成解包。
+随后以 `UC_ERR_READ_UNMAPPED` 终止（`pc=0x800`）。仿真停在
+`MAP_FIXED` 语义无法照搬处，但该 stub 不需要跑通：文件本身是标准 UPX
+容器，按 §10.6 裁剪后 `upx -d -f` 即可直接取出全部方法体。
 
 ### 10.5 熵分布佐证
 
@@ -334,3 +338,86 @@ mmap(0, 0xfff0, RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON)
 
 高熵段是压缩载荷，低熵段是填充与字符串表，stub 区居中——与
 “文件里不存在明文方法体”的结论一致。
+
+### 10.6 解包脚本与哈希（native 方法体已还原）
+
+`tools/upx_recover.py` 只做一件事：把每个库截到「最后一个 `UPX!` 减去 4
+字节再加 `0x28`」，然后由标准 `upx -d -f` 解包。四个库全部通过：
+
+```bash
+python3 apps/cn.com.gjzq.yjb2/tools/upx_recover.py \
+    <apk-lib-dir>/arm64-v8a <out-dir>
+for f in <out-dir>/*.cut; do upx -d -f -o "$f.unp" "$f"; done
+```
+
+| 库 | 打包 SHA-256（前 16 位） | 打包大小 | 裁剪到 | 解包大小 | 解包 SHA-256（前 16 位） | 膨胀比 |
+|---|---:|---:|---:|---:|---:|---:|
+| `libndktest.so` | `86047701966196d8…` | `29,320` | `0x702c` | `95,624` | `87d74f001ebf87de…` | `3.26×` |
+| `libencrypt.so` | `e668d6f24bb2f122…` | `10,896` | `0x2834` | `77,352` | `4142dc6342b2f095…` | `7.10×` |
+| `libShanYCore.so` | `902b8f35bf9c3eca…` | `8,840` | `0x202c` | `75,456` | `88f2ac1cbda9fcc4…` | `8.54×` |
+| `libhtsfx.so` | `5852cec0650bd689…` | `69,472` | `0x10d01` | `127,520` | `16fb2b4b71c3d7ad…` | `1.84×` |
+
+完整解包 SHA-256：
+
+```text
+libndktest.so   87d74f001ebf87de2ec8655c63b8d048ec4ecec468f56b3201a6a16bfa80e96f
+libencrypt.so   4142dc6342b2f09543766c54660899c4bae313d7f3be57b404b7228b865db3e4
+libShanYCore.so 88f2ac1cbda9fcc4826ac812558ce47e6f3a196c9a54315324b287f217efc1b1
+libhtsfx.so     16fb2b4b71c3d7ad20a7f57f3e22946e711cefac8cf78d26101c5f031b0d2515
+```
+
+解包后四个库都有完整节头表，`.text` 线性反汇编覆盖率全部 `100.0%`
+（`libndktest.so` `0x4998` B / `2,181` 条、`libencrypt.so` `0xbc0` B /
+`752` 条、`libShanYCore.so` `0xe08` B / `898` 条、`libhtsfx.so`
+`0x11e18` B / `18,310` 条）；`libndktest.so` 的 31 个具名函数逐个
+`100.0%`。
+
+**SM4 关键证据。** 解包后的 `libndktest.so` 在 `.rodata 0x5830` 起 256 字节
+与标准 SM4 S-box 逐字节相同：
+
+```python
+d = open('libndktest.so.unp', 'rb').read()
+sbox = d[0x5830:0x5830+256]
+assert sbox[0:4] == bytes.fromhex('d690e9fe')      # 标准 SM4 S-box 前 4 字节
+assert len(set(sbox)) == 256                        # 是置换表
+```
+
+`sms4_set_encrypt_key`（`0x3f80`）的 SM4 系统参数以立即数形式出现
+（`0xa3b1bac6` / `0x56aa3350` / `0x677d9197` / `0xb27022dc`，
+`CK[0]=0x00070e15`）。用 `unicorn` 直接调用该函数、输入标准测试密钥
+`0123456789abcdeffedcba9876543210`，输出轮密钥
+`rk[0]=0xf12186f9`、`rk[31]=0x9124a012`，与标准 SM4 密钥编排一致
+（前提是把 `.rodata 0x5830` 的标准 S-box 拷进 `.bss 0x57008`，因为该表在
+文件里为空、由运行期填充）。
+
+**块函数级验证（成立）**：把上述轮密钥（128 字节，32×u32 LE）直接
+作为 `sms4_encrypt`（`0x3384`，`3,068` B）第三个参数（`x0`＝明文 16 B、
+`x1`＝输出 16 B、`x2`＝轮密钥基址）在 unicorn 中调用，对标准向量
+`0123456789abcdeffedcba9876543210` 加密输出 `681edf34d206965e86b3e94f536e4246`，
+与 GB/T 32907-2016 测试向量逐字节一致，即 **块函数亦等价于标准 SM4**。
+库内另有一条查表优化路径 `sm4_crypt_ecb`（`0x2f90`，经 `0x2c2c` 的
+表驱动实现），该路径依赖 `.bss` 里 `SBOX32H`/`SBOX32L`（各 `0x40000` B）
+两张由运行期填入的展开表，静态仿真没有填入这些表所以输出不同；这不影响
+`sms4_encrypt` 本身已证等价标准 SM4 的结论。
+
+**三条立即数密钥缓冲区**（`AlgorithmApi_Encrypt` `0x1028`，由
+`mov wN,#imm` + `strb wN,[sp,#off]` 逐字节写栈，故字符串表中不存在）：
+
+```text
+sp+0x70  15 B  3278f6a8885a308d314398a2e03707
+sp+0x80  23 B  c8c33139383430383236a1783139383831313035e03707   (ASCII 19840826, 19881105)
+sp+0x98  31 B  3443f6a8885a308d317807a2e0379832885a308de0379832317807a23443f6
+```
+
+**`libShanYCore.so` 字符串解码器**：`0xa80` 处逐字节
+`if (b=='\x3b' || b=='\x64') keep else b ^= 0x1b`。`0x16a6` 起 194 字节
+解出 `WIFI_SERVICE`、`android/net/wifi/WifiManager`、
+`com/chuanglan/shanyan_sdk/utils/`、`getSystemService`、`disableNetwork`、
+`enableNetwork`、`disconnect`、`reconnect`、`getConnectionInfo`、
+`getNetworkId`。
+
+**`libencrypt.so` 的 `tabKey`**：`.data 0x12010` 起 2,048 B，布局为每
+`u32` 占 8 字节（偶槽位为标准 CRC32 表值、奇槽位为 0），与
+`ldr x3,[x3,x1,lsl #3]` 一致；偶槽位与多项式 `0xEDB88320` 生成的标准
+CRC32 表逐项相同。
+
