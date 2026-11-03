@@ -316,32 +316,45 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 `$Info: This file is packed with the UPX executable packer http://upx.sf.net $`
 与 `$Id: UPX 6.02 Copyright (C) 1996-2025 the UPX Team. All Rights Reserved. $`。
 
-**`NotPackedException` 的真实原因不是尾部字段被改坏，而是“尾部块不再与文件
-末尾对齐”。** 这一点用两组对照实验定死了：
+**`NotPackedException` 由两个叠加因素造成：尾部 `b_info` 块内容错位，以及
+节头表使尾部块不再与 EOF 对齐。** 四组对照实验（正常 UPX 样本）先把边界
+划清：
 
 | 实验 | 操作 | `upx -d` 结果 |
 |---|---|---|
-| 对照 | 正常 UPX 样本原样 | `Unpacked 1 file` |
-| A | 仅把尾部 `l_checksum` 清零（长度不变） | `Unpacked 1 file` |
+| 对照 | 原样 | `Unpacked 1 file` |
+| A | 尾部 `l_checksum` 清零（长度不变） | `Unpacked 1 file` |
 | B | 尾部追加 100–1200 字节零填充 | `Unpacked 1 file` |
-| C | 尾部追加 `.dynsym`/`.dynstr`… 等节名字符串 | `NotPackedException` |
-| D | 追加 7 × 64 字节节头表并把 `e_shoff` 指过去 | `NotPackedException` |
+| C | 尾部追加 `.dynsym`/`.dynstr`… 节名字符串 | `NotPackedException` |
+| D | 追加 7 × 64 字节节头表并改 `e_shoff` | `NotPackedException` |
+| E | 尾部 `+0x14`/`+0x18`/`+0x1c`/`+0x20` 任一被改写 | `CantUnpackException` |
 
-实验 A 说明字段值不参与判定；B 说明单纯加长也不致命；C/D 才复现失败。
-正常样本的尾部块正好以 EOF 结尾（`l_info@0x18c0` + `0x28` = `0x18e8` =
-文件长度），一旦在其后追加内容，UPX 的“从 EOF 反向定位尾部”就落空。
+由此可知：`l_checksum` 与单纯的长度变化不参与判定（A/B），但尾部 `b_info`
+块**确实参与校验**（E），且尾部块必须能被从 EOF 反向定位（C/D）。
 
-本样本正是 D 这种形态：文件头声明 `e_shoff=0x70c8`、`e_shnum=7`，`0x70c8`
-起确实是 7 项自洽的节头（`shstrtab` 在 `0x7090`，内容为
-`.dynsym/.dynstr/.symtab/.strtab/.shstrtab/.dynamic`），而 UPX 尾部块在
-`0x7004`–`0x7028`，离 EOF（`0x7288`）差 `0x260` 字节。所以**节头表本身
-不是伪造的，是真实且自洽的**——它只是被放在了 UPX 尾部块之后，破坏了尾部
-对齐。把文件截到 `0x7028` 再 `upx -d`，报错从 `NotPackedException` 变成
-`CantUnpackException: file corrupted`，说明 UPX 已经认出容器。
+本样本两条都踩中：
+
+```text
+头部 l_info@0xcc0  +16..+32 = 0x17588, 0x17588, 0xcc0, 0x4c2, 0x2
+尾部 l_info@0x7004 +16..+32 = 0xc735a5f9, 0x580, 0x1ce, 0x17588, 0xf4000052
+```
+
+尾部的 `b_info` 块与头部完全不对应（`0x17588` 被挪到了 `+28`，其余字段被
+换成无关值），所以即便把文件截到 `0x7028` 让尾部块贴住 EOF，仍然报
+`CantUnpackException: file corrupted`；把尾部 `b_info` 直接按头部复制过去，
+则报 `CantUnpackException: header corrupted 3`——说明尾部还有校验字段
+（`l_checksum` 与块间一致性）未被满足。
+
+节头表这一侧则是**真实且自洽**的，不是伪造：文件头声明
+`e_shoff=0x70c8`、`e_shnum=7`，`0x70c8` 起确实是 7 项合法节头
+（`shstrtab` 在 `0x7090`，内容为
+`.dynsym/.dynstr/.symtab/.strtab/.shstrtab/.dynamic`）。它之所以有害，只是
+因为它被排在 UPX 尾部块（`0x7004`–`0x7028`）之后，把尾部块推离了 EOF
+（`0x7288`），正好复现实验 C/D 的形态。
 
 真正的真伪对照是：`DT_HASH` 的 `nchain=53` 说明动态符号表有 53 项，而
-`.dynsym` 节头只声明 `size=0x48`（3 项）。即**节头视图被截短**，符号表
-本身完好。
+`.dynsym` 节头只声明 `size=0x48`（3 项）——**节头视图被截短，符号表本身
+完好**。
 
 ## 7. Native 方法体边界
 

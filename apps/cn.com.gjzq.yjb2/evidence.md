@@ -261,7 +261,7 @@ print(hex(struct.unpack_from('<I', d, 0xcd0)[0]))  # 0x17588     b_info.u_len
 print(hex(struct.unpack_from('<I', open('a.upx','rb').read(), 0x218 + 16)[0]))  # 0x3e10
 ```
 
-### 10.3 节头表破坏尾部对齐导致 `NotPackedException`
+### 10.3 `NotPackedException` 的六组对照实验
 
 对照实验（正常 UPX 打包的 `linux/amd64` 小 ELF，尾部块恰好以 EOF 结尾）：
 
@@ -272,9 +272,20 @@ print(hex(struct.unpack_from('<I', open('a.upx','rb').read(), 0x218 + 16)[0]))  
 | B | 尾部追加 100–1200 字节零填充 | `Unpacked 1 file` |
 | C | 尾部追加 `.dynsym`/`.dynstr`… 节名字符串 | `NotPackedException` |
 | D | 追加 7 × 64 字节节头表并改 `e_shoff` | `NotPackedException` |
+| E | 尾部 `+0x14`/`+0x18`/`+0x1c`/`+0x20` 任一改写 | `CantUnpackException` |
 
-A/B 说明**字段值本身与长度都不参与判定**，只有把内容放到尾部块之后
-（C/D）才复现失败，即 UPX 从 EOF 反向定位尾部块。
+A/B 说明 `l_checksum` 与长度变化不参与判定；C/D 说明尾部块必须能被从 EOF
+反向定位；E 说明尾部 `b_info` 块**确实参与校验**。
+
+本样本的尾部 `b_info` 与头部不对应：
+
+```text
+头部 0xcc0  +16..+32 = 0x17588, 0x17588, 0xcc0, 0x4c2, 0x2
+尾部 0x7004 +16..+32 = 0xc735a5f9, 0x580, 0x1ce, 0x17588, 0xf4000052
+```
+
+因此截到 `0x7028` 仍报 `CantUnpackException: file corrupted`；把尾部
+`b_info` 按头部复制则报 `header corrupted 3`。
 
 ```python
 import struct

@@ -33,10 +33,11 @@
 
 - `libShanYCore.so`、`libencrypt.so`、`libhtsfx.so`、`libndktest.so` 都是
   **标准 UPX 6.02 容器**（`libndktest.so` 头部 `0xcc0` 处 `UPX!` +
-  `b_info.u_len=0x17588`）。`upx -d` 报 `NotPackedException` 的原因是**节头表
-  被放在 UPX 尾部块之后**，使尾部块不再与 EOF 对齐（对照实验见
-  `evidence.md` §10.3）。真伪对照是 `DT_HASH` 的 `nchain=53` 说动态符号表有
-  53 项，而 `.dynsym` 节头只声明 3 项；
+  `b_info.u_len=0x17588`）。`upx -d` 报 `NotPackedException` 有两个叠加原因：
+  **尾部 `b_info` 块与头部不对应**，以及**节头表被排在尾部块之后、使尾部块
+  不再贴住 EOF**（六组对照实验见 `evidence.md` §10.3）。真伪对照是
+  `DT_HASH` 的 `nchain=53` 说动态符号表有 53 项，而 `.dynsym` 节头只声明
+  3 项；
   可执行段字节三到五成不可解码（`34.8%` / `35.4%` / `33.0%` / `49.5%`），
   而 `DT_INIT` 起 288 字节 100% 可解码，即函数体在文件中是密文。
   符号表与解包器骨架可恢复，**方法体未还原**（解包需要运行期 `MAP_FIXED`
@@ -64,6 +65,6 @@
 | 风控 | 风险中心与适当性 | 追加购前闸门、权限位、深链准入、预警规则、短信验证、遥测信封 |
 | 混淆 | 只有 keystream 与 stub | 追加三张短码表、native 功能号 ABI、不可解码比例量化 |
 | keystream | `fb1cd667…`，920/928 | `b8f6bbc7…`，921/928，`node --check` 82→369 |
-| native 容器 | 「非标准 UPX，`upx -d` 失败」 | **标准 UPX 6.02 + 节头表破坏尾部对齐**，四组对照实验可复现 |
+| native 容器 | 「非标准 UPX，`upx -d` 失败」 | **标准 UPX 6.02 + 尾部 b_info 错位 + 节头破坏 EOF 对齐**，六组对照实验可复现 |
 | 符号数来源 | 按 `DT_SYMTAB`→`DT_STRTAB` 间距推算 | **`DT_HASH` 的 `nchain` 直接给出**（53），与间距推算互证 |
 | native 装载 | 只记录 `libShanYCore.so` 的调用序列 | 追加 `libndktest.so` 同型序列 + 熵分布 + 解包器骨架 |

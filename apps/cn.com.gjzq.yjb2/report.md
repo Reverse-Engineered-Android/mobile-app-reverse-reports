@@ -239,11 +239,12 @@ AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、native 侧 
 
 未闭环：四个关键 ELF 都是**标准 UPX 6.02 容器**（`libndktest.so` 的 `0xcc0`
 处 `UPX!` + `b_info.u_len=0x17588`，解包器骨架在 `0x3fd8`），但尾部被追加了
-其后的节头表，使 UPX 尾部块不再与文件末尾对齐，因此 `upx -d` 报
-`NotPackedException`——该原因已用四组对照实验定位（见
-[evidence.md](evidence.md) §10.3）：只改尾部字段值或单纯补零都不影响解包，
-只有把节头表放到尾部块之后才复现失败。真伪对照很直接：`DT_HASH` 的
-`nchain=53` 说明动态符号表有 53 项，而 `.dynsym` 节头只声明 3 项。节头表里**没有任何
+其后的节头表，因此 `upx -d` 报 `NotPackedException`。原因用六组对照实验
+定位（见 [evidence.md](evidence.md) §10.3）：`l_checksum` 与单纯补零都不
+影响解包，但尾部 `b_info` 块参与校验、且尾部块必须贴住 EOF；本样本的尾部
+`b_info` 与头部完全不对应，节头表又把尾部块推离了 EOF，两者叠加。真伪对照
+很直接：`DT_HASH` 的 `nchain=53` 说明动态符号表有 53 项，而 `.dynsym` 节头
+只声明 3 项。节头表里**没有任何
 `.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段；可执行段的字节三到
 五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、`libencrypt.so`
 `35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），而 `DT_INIT` 起
