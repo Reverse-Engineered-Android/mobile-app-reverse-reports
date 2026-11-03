@@ -282,26 +282,35 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 
 ### 6.1 UPX 容器与 `NotPackedException` 的真实原因
 
-`UPX!` 不是残留字符串。`libndktest.so` 的 `0xcc0` 处是一个字段合法的 UPX
-`l_info` 头（`l_checksum, l_magic, l_lsize, l_version, l_format` 依次紧排，
-其后按 `u_len, c_len, u_file_size, filter, filter_cto` 排布）。这些偏移用
-同一版本 UPX 打包的正常样本校准过：正常样本 `+16` 处正是其原始文件大小
-`0x3e10`，与本样本 `+16 = 0x17588` 语义一致：
+`UPX!` 不是残留字符串。`libndktest.so` 的 `0xcc0` 处是一个真实 UPX
+`l_info` 头。字段语义用**同一版本 UPX（5.2.0，格式串 `UPX 6.02`）打包的
+正常 `linux/amd64` 样本校准过**：正常样本 `+16` 处的值恰好等于它的原始
+（未压缩）文件大小 `0x3e10 = 15888`，据此可以确认 `+16` 是
+`b_info.u_len`。
 
 ```text
 0xcc0  e0 74 5c c1                l_checksum = 0xc15c74e0
 0xcc4  55 50 58 21                l_magic    = "UPX!"  (0x21585055)
-0xcc8  c0 06                      l_lsize    = 0x06c0
-0xcca  0d                        l_version  = 13
-0xccb  2a                        l_format   = 42
+0xcc8  c0 06 / 0d / 2a            l_lsize=0x06c0, l_version=13, l_format=42
 0xccc  00 00 00 00                (对齐空档)
-0xcd0  88 75 01 00                b_info.u_len        = 0x17588  (95,624 B)
-0xcd4  88 75 01 00                b_info.c_len        = 0x17588
-0xcd8  c0 0c 00 00                b_info.u_file_size  = 0xcc0
-0xcdc  c2 04 00 00                b_info.filter       = 0x4c2
-0xce0  02 00                      b_info.filter_cto   = 2
-0xce4  7f 45 4c 46                "ELF"  <-- 内嵌 ELF 头紧随其后
+0xcd0  88 75 01 00                b_info.u_len        = 0x17588 = 95,624 B
+0xcd4  88 75 01 00                (同值；正常样本此处为 blocksize)
+0xcd8  c0 0c 00 00                (= 0xcc0，头部块长度)
+0xcdc  c2 04 00 00                (过滤相关参数)
+0xce0  02 00 00 00                (过滤相关参数)
+0xce4  f6 fb 21 ff                (固定标记 0xff21fbf6，正常样本同位置同值)
+0xce8  7f 45 4c 46                "ELF"  <-- 内嵌 ELF 头紧随其后
 ```
+
+**关键量化**：`b_info.u_len = 0x17588`（95,624 B）远大于文件实际长度
+`0x7288`（29,320 B），也远大于 RX 段可容纳的载荷空间
+`0x43d4 - 0xd90 = 12,180 B`。同时 `SBOX` 等符号的 `st_value` 达到
+`0x57008`，只有解包后才会存在。三者互相印证：**可执行代码在文件里是
+压缩态，长度约 1/8**。
+
+注意：`l_checksum=0`、尾部 `l_version=2`、`l_format=8` 这类“看着异常”的
+值**本来就是正常 UPX 文件的取值**（正常样本尾部同样如此），不能当作被
+篡改的证据。
 
 容器里也保留了 UPX 自述串（`0x3e68`）：
 `$Info: This file is packed with the UPX executable packer http://upx.sf.net $`
