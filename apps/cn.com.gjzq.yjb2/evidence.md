@@ -251,11 +251,14 @@ print('section header says     =', 3)                        # .dynsym sh_size/2
 ```python
 import struct
 d = open('libndktest.so', 'rb').read()
-print(d[0xcc4:0xcc8])                       # b'UPX!'
-print(struct.unpack_from('<I', d, 0xcc0)[0])  # 0xc15c74e0  l_checksum
-print(struct.unpack_from('<H', d, 0xcc8)[0])  # 0x06c0      l_lsize
-print(d[0xcca], d[0xccb])                     # 13, 42      l_version/l_format
-print(struct.unpack_from('<I', d, 0xcd0)[0])  # 0x17588     b_info.u_len
+print(d[0xcc4:0xcc8])                        # b'UPX!'
+print(hex(struct.unpack_from('<I', d, 0xcc0)[0]))  # 0xc15c74e0  l_checksum
+print(hex(struct.unpack_from('<H', d, 0xcc8)[0]))  # 0x6c0       l_lsize
+print(d[0xcca], d[0xccb])                          # 13 42       l_version/l_format
+print(hex(struct.unpack_from('<I', d, 0xcd0)[0]))  # 0x17588     b_info.u_len
+
+# 偏移校准：同一版本 UPX 打包的正常样本，+16 处即其原始文件大小
+print(hex(struct.unpack_from('<I', open('a.upx','rb').read(), 0x218 + 16)[0]))  # 0x3e10
 ```
 
 ### 10.3 尾部伪造节头导致 `NotPackedException`

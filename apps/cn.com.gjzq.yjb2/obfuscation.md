@@ -283,7 +283,10 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 ### 6.1 UPX 容器与 `NotPackedException` 的真实原因
 
 `UPX!` 不是残留字符串。`libndktest.so` 的 `0xcc0` 处是一个字段合法的 UPX
-`l_info` 头（`l_checksum, l_magic, l_lsize, l_version, l_format` 依次紧排）：
+`l_info` 头（`l_checksum, l_magic, l_lsize, l_version, l_format` 依次紧排，
+其后按 `u_len, c_len, u_file_size, filter, filter_cto` 排布）。这些偏移用
+同一版本 UPX 打包的正常样本校准过：正常样本 `+16` 处正是其原始文件大小
+`0x3e10`，与本样本 `+16 = 0x17588` 语义一致：
 
 ```text
 0xcc0  e0 74 5c c1                l_checksum = 0xc15c74e0
@@ -291,6 +294,7 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 0xcc8  c0 06                      l_lsize    = 0x06c0
 0xcca  0d                        l_version  = 13
 0xccb  2a                        l_format   = 42
+0xccc  00 00 00 00                (对齐空档)
 0xcd0  88 75 01 00                b_info.u_len        = 0x17588  (95,624 B)
 0xcd4  88 75 01 00                b_info.c_len        = 0x17588
 0xcd8  c0 0c 00 00                b_info.u_file_size  = 0xcc0
