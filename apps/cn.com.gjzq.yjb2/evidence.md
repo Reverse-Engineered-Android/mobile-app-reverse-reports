@@ -33,18 +33,29 @@
 已知明文交叉验证前 16 字节：
 
 ```
-b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 9f
+b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 98
 ```
 
-UTF-8 状态机 + 二元语言模型逐列求解的产物为 `6,165,153` 字节，SHA-256：
+UTF-8 状态机 + 二元语言模型逐列求解、再经 webpack 序言与 `node --check`
+两轮校验的产物为 `6,165,153` 字节，SHA-256：
 
 ```
-fb1cd66790b967059021938cb1adc6e430387b6d5007286e24e446b1e875c1fd
+b8f6bbc75f3d5b667239114a1366d41d4420e843a477560f2dbd58c35fb2ceba
 ```
 
-自检：126,000..131,072 区间与早期基准 100% 一致；928 个文本文件中
-920 个完全 UTF-8 合法，非法字节 1,185，占 `0.000925%`；结构检查
-`940 / 948` 通过、8 个失败。
+早期版本在偏移 `15`（`0x9f`→`0x98`）与 `21`（`0x51`→`0x52`）各有一个歧义
+字节；只有这两处与最终值不同（逐字节比对全部 921 个成员，差异位置集合恰为
+`{15, 21}`）。修正判据是 89 个共享 webpack 序言文件：
+
+| 偏移 | 旧值 | 新值 | 序言解出 |
+|---:|---|---|---|
+| `15` | `0x9f` | `0x98` | `fuiction#t(` → `function t(` |
+| `21` | `0x51` | `0x52` | `vau t={}8fu` → `var t={};fu` |
+
+自检：126,000..131,072 区间与早期基准 100% 一致；928 个文本文件
+（`128,065,750` 字节）中 921 个完全 UTF-8 合法，非法序列 1,182、非法字节
+1,401，占 `0.001094%`；20 个 TrueType 成员魔数全部通过；`node --check`
+通过的 JS 由 `82/507` 升至 `369/507`，且无一个文件由通过变失败。
 
 ## 4. 加密证据
 
@@ -129,3 +140,90 @@ ssh root@<host> 'nsenter -t 1 -m -- cat /data/data/cn.com.gjzq.yjb2/files/i12196
 匿名可执行段（解密后的代码页）只存在于 `/proc/<pid>/maps` 的 `00:00 0`
 `r-xp` 区间，静态文件不含明文代码。
 
+## 9. 本轮新增静态证据（网络 / 认证 / 风控 / 混淆）
+
+以下证据全部来自解密后的 `yjb.zip`（keystream 见 §3）。偏移为解密后单个
+JS 文件内的字节偏移，可按 `open(path,'rb').read()[offset:]` 直接复现。
+
+| 对象 | 文件 | 偏移 |
+|---|---|---:|
+| `IAR_INTERFACE`（28 短码 → 服务名） | `stockInformation/common/vendors/Tool.js` | `0x2a` |
+| `fetchToIAR`（短码 → `/core/api[/json]`） | 同上 | `0x2116` |
+| `API_URL` 默认值 | 同上 | `0xb26` |
+| `Interface`（65 短码 → GET 路径） | `stockInformation/common/vendors/interface.js` | `0x0` |
+| `stockInformationSiteBak`（OSS 直连） | `stockInformation/con-f/paramConfig.js` | `0xc4` |
+| `callNative`（native 桥 ABI） | `stockInformation/common/js/NativeAPI.js` | `0x642` |
+| `window.respFromNative` | 同上 | `0xc2b` |
+| `YJBExec = callNative` | 同上 | `0x4d9` |
+| `fetchYJBAPI`（登录状态机入口） | `treasurybonds/build/index.js` | `0x3116a` |
+| `_fetchYJBAPI`（`YJBExec(1001,…)`） | 同上 | `0x319c5` |
+| `loginLogic`（`loginStatus/tradeOvertime` 状态机） | 同上 | `0x2dc2c` |
+| `LoginTypeEnum`（占位符 → 登录类型） | `ycomment/build/ycomment.js` | `0xc28fd` |
+| `AUTH_ERROR_CODE = -1` | 同上 | `0xc2dd9` |
+| `LoginAndReTry`（拦截 + 重放） | 同上 | `0xc2e6e` |
+| `CHANNELID` 默认 `YPaJ9axolEpz` | 同上 | `0x12a781` |
+| `checkLogin`（uKey → webapps 会话） | 同上 | `0x12d1e8` |
+| `decrypt(value, "z$B&E)H@McQfTjWn")` | 同上 | `0x12af1a` |
+| `ssoDToken/sasDToken/sasIToken` 模板 | `margintrading/build/commons.js` | `0x192e5` |
+| `opKey`（AES-128-ECB + Base64URL） | 同上 | `0xa980` |
+| `getRiskInfo` 购前闸门 | `ai-adviser/optional.js` | `0x179280` |
+| `agreement.signQuery` | 同上 | `0x4c564` |
+| `checkTransactionTime` | 同上 | `0x1798d9` |
+| `permDesk.v2.query` | `vas/build/buy0.js` | `0x184c` |
+| `access.authority` + `is_auth` | `vas/build/commons.js` | `0x8cd3` |
+| `saveLog` 设备遥测信封 | 同上 | `0x9ee6` |
+| `spew.rule.*` 预警规则模板 | `stockWarning/build/index.js` | `0x1f956` |
+| 普通委托 `functionId:302` | `trans/build/position.js` | `0x2189a` |
+| 撤单 `functionId:304` | `trans/build/bottom_entrust.js` | `0xf989` |
+| NDB WebSocket 服务器实现 | `relatedfunds/build/static/NDBCLIAPI.js` | `0x1b602` |
+| `quoteLogin` 登录帧 | 同上 | `0x29c36` |
+| `xGtsJason` 帧压缩 | 同上 | `0x71fe` |
+
+派生表（可复核，均由上述文件静态抽取）：
+
+| 产物 | 条目数 | SHA-256 |
+|---|---:|---|
+| `iar-interface.tsv`（短码 → 服务名） | 28 | `47985d5987c57940935dbffc57d5f825d16f0ea8ab3ffc10c0a7b2a466ce8d0f` |
+| `method-codes.txt`（`UniqueKey` 短码） | 169 | `7652d7c08dac789306f8f8d57d9b65a85e040aba9a18d30475c2b9f20e081cb0` |
+| `native-bridge-codes.tsv`（有文档的功能号） | 38 | `3720f487732df09d8dbd4680788fc082a60f530f1d017a342c7f0ac8f015b9a1` |
+| `trade-functionids.json`（交易参数模板） | 70 | `8bd42e7e12eee3e5d3b06cd003389bc98818ed53e3b03fba7b778d41d2657394` |
+| `jssdk-bridge-raw.json`（JSSDK 绑定） | 236 | `fe96efe174650d99639d7b757568b0d8aea50e7230609af695e8b7dca944b4d0` |
+| `service-names.json`（服务名，按文件） | 653 唯一 | `f2d463d96ac0c5ea2c27437f53675b9872f93ef1e424e958e331eaa10b349661` |
+| `ks6m-v2.bin`（修正后 keystream） | 6,165,153 B | `b8f6bbc75f3d5b667239114a1366d41d4420e843a477560f2dbd58c35fb2ceba` |
+
+复现命令：
+
+1. `.r` 条目计数与最大成员
+
+```bash
+python3 -c "import zipfile;z=zipfile.ZipFile('assets/yjb.zip');\
+n=[x for x in z.namelist() if x.endswith('.r')];\
+print(len(n), sum(z.getinfo(x).file_size for x in n), max((z.getinfo(x).file_size,x) for x in n))"
+```
+
+2. native 功能号实际调用点（62 个号 / 10,372 处）
+
+```bash
+grep -ohE '(YJBExec|nativeIOOperation|callNative)\( *[0-9]{4}' yjb/*/*/*.js | sort -u | wc -l
+```
+
+3. native 库不可解码比例（capstone `skipdata`，见 obfuscation.md §7）
+
+```python
+from capstone import Cs, CS_ARCH_ARM64, CS_MODE_ARM
+
+md = Cs(CS_ARCH_ARM64, CS_MODE_ARM)
+md.skipdata = True
+for name in ('libShanYCore.so', 'libencrypt.so', 'libndktest.so', 'libhtsfx.so'):
+    blob = open(name, 'rb').read()
+    ins = list(md.disasm(blob, 0))
+    bad = sum(1 for i in ins if i.mnemonic == '.byte')
+    print(name, len(ins), bad, round(100 * bad / len(ins), 1))
+```
+
+`node --check` 计数（对解密后 507 个 JS）：
+
+| keystream | 通过 | 未通过 |
+|---|---:|---:|
+| 修正前（偏移 15/21 旧值） | 82 | 425 |
+| 修正后（`ks6m-v2.bin`） | 369 | 138 |

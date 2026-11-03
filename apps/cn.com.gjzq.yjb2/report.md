@@ -69,13 +69,28 @@ ID），与 `assets/ijiami.dat` 的 40 字节头部**并不相同**（后者的�
 
 ### 1.3 网络面（静态）
 
-业务 H5 只使用一个 RPC 网关与一组独立子域：
+业务 H5 使用**两层 RPC**：交易/风控类请求经 native 代发（H5 只写参数），
+资讯/评论类请求由浏览器直发。二者共用一套 `serviceName` 与业务码。
+
+| 层 | 调用点 | 出口 |
+|---|---|---|
+| Native（主通道） | `fetchYJBAPI` → `YJBExec(1001, {functionId, subSystemNo, tradeType, param})` | 由 native 进程发出 |
+| 浏览器 | `fetchToIAR` / `@sinolink/http` | `https://webapps.yongjinbao.com.cn/yjbwebservice/core/api[/json]` |
+| 资讯直连 | `fetchTo(…, Interface)` | `stockInformationSiteBak`（阿里云 OSS） |
+
+`subSystemNo` 分四个域：`103` 普通交易、`112` 融资融券、`519` YJBAPI 业务总线、
+`200` 资讯行情；`tradeType` 取 `1`（普通）/`2`（信用）。静态抽出 **70** 个
+交易参数模板与 **23** 条「函数号 ↔ 业务码 ↔ 中文名」三元组（如
+`302` 普通委托、`304`/`401` 撤单、`713`/`335103` 客户委托流水、
+`719`/`335004` 委托撤单、`720`/`335505` 两融合约）。业务 H5 只使用一个 RPC
+网关与一组独立子域：
 
 | 用途 | 生产 | 仿真 |
 |---|---|---|
 | 主 Web/API | `https://webapps.yongjinbao.com.cn` | `https://fzwebapps.yjbtest.com` |
 | 运营/评论 | `https://operating.yongjinbao.com.cn` | `https://fzoperating.yjbtest.com` |
-| 行情 | `https://quote4j.yongjinbao.com.cn` | `https://fzquote4j.yjbtest.com` |
+| 行情 HTTP | `https://quote4j.yongjinbao.com.cn` | `https://fzquote4j.yjbtest.com` |
+| 行情推送 WS | `wss://quotezy.yongjinbao.com.cn:8443` | `wss://fzquotezy.yjbtest.com:30443` |
 | 支付 | `https://payment.yongjinbao.com.cn` | `https://fzpayment.yjbtest.com` |
 | 理财商城 | `https://mall.yongjinbao.com.cn` | `https://fzmall.yjbtest.com` |
 | 发现器 | `https://finder.yongjinbao.com.cn` | `https://fzfinder.yjbtest.com` |
@@ -84,20 +99,28 @@ ID），与 `assets/ijiami.dat` 的 40 字节头部**并不相同**（后者的�
 | APK 分发 | `http://appdl.yongjinbao.com.cn/yjb/android/yjbkh.apk` | — |
 | 统计 | `https://growing.yongjinbao.com.cn` | — |
 
-统一 RPC 端点为 `<origin>/yjbwebservice/core[/]`（`Service.js` / `env.js`），
-传输为 `POST` + `application/x-www-form-urlencoded;charset=utf-8`，
-跨域 `withCredentials:false`，默认超时 `5000 ms`。请求以 `UniqueKey` 方法码分派，
-静态可枚举 `169` 个唯一方法码（`method-codes.txt` 与 §2.2）。响应统一包：
+浏览器通道为 `POST` + `application/x-www-form-urlencoded;charset=utf-8`，
+跨域 `withCredentials:false`，超时 `30,000 ms`；请求以 `UniqueKey` 方法码分派，
+短码表 `IAR_INTERFACE` 有 **28** 条（24 form + 4 json），全库 `UniqueKey`
+字面量 **169** 个。响应固定两层：
 
 ```json
 {"ERRORNO": 0, "GRID0": {"code": 0, "message": "...", "result": ...}}
 ```
 
-`ERRORNO=1` 被前端固定解释为“登录超时请返回重新登录”，其它值统一落到
-“服务器错误”。评论子站另用 `YCOMMENTPHPSESSID`（`localStorage` 回填）做会话。
-明文 HTTP 被显式允许（`android:usesCleartextTraffic="true"`，
-`@xml/network_security_config`），且静态资源里有 `http://appdl.…` 与
+`ERRORNO=1` 被前端固定解释为“登录超时请返回重新登录”。native 通道是
+**两级判定**：`result.code === 0` 且 `result.result.errorNo === 0`，业务体是
+`result.result.data` 这一层 JSON 字符串。评论子站另用 `YCOMMENTPHPSESSID`
+（`localStorage` 回填）做会话。明文 HTTP 被显式允许
+（`android:usesCleartextTraffic="true"`），且静态资源里有 `http://appdl.…` 与
 仿真环境内网地址（报告统一脱敏为 `172.28.x.x` / `192.168.x.x`）。
+
+实时行情走独立 WebSocket（`NDBCLIAPI.js`），不是 `libndbcliapi.so` 的封装：
+登录帧带 `device_type:101` / `sdk_version:"SDK-web-v1.5.0"` /
+`device_id_internal`（**每次连接新生成的随机 UUID v4**，不是硬件 ID），
+心跳 `120 s`，关闭码 `3999` 视为正常，`gtsver` 非空后所有帧改走自研
+GTS-JSON 二进制（基值 32、基数 223、头 2 字节固定 `0x98 0xBE`）。
+详见 [network.md](network.md) §6。
 
 ### 1.4 认证与传输加密
 
@@ -124,17 +147,31 @@ CryptoJS.AES.encrypt(content, key, { mode: ECB, padding: Pkcs7 }).toString();
 使用 T-table 展开实现；`AlgorithmApi_Encrypt_File` / `Decrypt_File`
 （各 `384` 字节）给出文件级加解密入口。
 
-账号态分散在三处：`shared_prefs/Token.xml`、`TokenStatus.xml`、
-`account_info.xml`（均整体密文存储，见 §1.6），评论子站用
-`YCOMMENTPHPSESSID`，行情/交易经 `yjbInterface` 桥交给 native 会话。
+另有第二把常量密钥 `z$B&E)H@McQfTjWn`，只用于**解密服务端返回的账号标识**
+（`userId` / `clientId` / `passportId`），解出的值直接喂给火山 finder 做埋点
+绑定。两把都是参数混淆而非认证：密钥随包分发、ECB 无 IV，不构成请求真实性
+保证。唯一带服务端密钥的签名出现在 `ai-adviser` 的非 App 分支
+（`apiSign = md5(apiKey + token + userId + "475830")`，仅 `!window.isApp` 时
+生效），App 内走 native 票据、不签名。
+
+账号态分散在四处：`shared_prefs/Token.xml`、`TokenStatus.xml`、
+`account_info.xml`（均整体密文存储，见 §1.6）、WebView Cookie
+`yjb-webapp-session`（金融账户体系会话），评论子站用 `YCOMMENTPHPSESSID`，
+行情/交易经 `yjbInterface` 桥交给 native 会话。登录的真实状态机是
+`fetchYJBAPI` 的 `loginStatus` / `tradeOvertime` 判定：未满足时先弹登录、
+成功后**在同一 Promise 链里补发原业务请求**；`@sinolink/http` 另有一套
+`code === -1` + 占位符（`($fundAccount)` 等）→ 翻译成登录类型 → 登录 →
+重放原请求的中间件。详见 [auth.md](auth.md) §3、§4。
 
 ### 1.5 H5 载荷加密：位置相关 keystream（已验证全覆盖）
 
 `yjb.zip` 中全部 `.r` 资源按**同一位置相关 keystream**逐字节异或，与文件名、
-大小、扩展名无关。HTML 与 TrueType 双明文交叉验证得到前 16 字节：
+大小、扩展名无关。`.r` 载荷合计 `131,312,489` 字节，最大成员
+`ai-adviser/optional.js.r` 为 `6,165,153` 字节。HTML 与 TrueType 双明文交叉
+验证得到前 16 字节：
 
 ```
-b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 9f
+b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 98
 ```
 
 UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `6,165,153` 字节，
@@ -143,15 +180,24 @@ UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `
 | 指标 | 值 |
 |---|---|
 | 密钥流长度 | `6,165,153` 字节（最大 `.r` 文件同长） |
-| SHA-256 | `fb1cd66790b967059021938cb1adc6e430387b6d5007286e24e446b1e875c1fd` |
+| SHA-256 | `b8f6bbc75f3d5b667239114a1366d41d4420e843a477560f2dbd58c35fb2ceba` |
 | 已知区复现 | 126,000..131,072 与 128 KiB 基准 100% 一致 |
-| UTF-8 完全合法文件 | `920 / 928` |
-| 非法字节 | `1,185` / `128,065,750`（`0.000925%`），集中在 8 个文件 |
+| UTF-8 完全合法文件 | `921 / 928` |
+| 非法字节 | `1,401` / `128,065,750`（`0.001094%`），集中在 7 个文件 |
+| TrueType 魔数 | `20 / 20` 通过 |
+| `node --check` 通过的 JS | `369 / 507` |
 | `portal_yjb.zip` | 542 条目、104 个 `.r`，同一 keystream 正常解密 |
 
-剩余 8 个文件的少量非法字节是语言模型歧义或原文件本身含非 UTF-8 字节，不能
-据此声称逐字节 100% 正确；公开的是可复现的全长度恢复结果与明确的误差率。
-同一 keystream 也覆盖设备侧运行时下载的 `files/yjb/**.r`（`210 MiB`、
+早期版本在偏移 `15`（`0x9f`→`0x98`）与 `21`（`0x51`→`0x52`）各有一个歧义
+字节，是两份哈希唯一不同的地方。修正是被 89 个共享 webpack 序言文件共同证实
+的：旧值解出 `!function(e){fuiction#t(` / `vau t={}8fu`，新值解出
+`!function(e){function t(` / `var t={};fu`；单字节修正让 `node --check` 的
+通过数从 `82` 升到 `369`，且没有任何文件由通过变失败。详见
+[obfuscation.md](obfuscation.md) §3.2。
+
+剩余 7 个文件的少量非法字节是语言模型歧义（集中在长中文文案与 base64 字面量
+附近），不能据此声称逐字节 100% 正确；公开的是可复现的全长度恢复结果与明确的
+误差率。同一 keystream 也覆盖设备侧运行时下载的 `files/yjb/**.r`（`210 MiB`、
 `3,382` 个文件）及 `files/h5info.txt.r`；解密后得到模块版本 JSON。
 
 解密后 `yjb.zip` 为 37 个业务模块、2,843 个文件，其中 `smarttrade`（353）、
@@ -186,16 +232,18 @@ UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `
 
 ### 1.7 完成边界
 
-已闭环：外壳装载链、H5 载荷解密、RPC 网关与方法码族、AES-128-ECB 常量密钥、
-native 侧 RC4/SM4 符号与调用面、权限面、设备端 schema 与落盘格式。
+已闭环：外壳装载链、H5 载荷解密（含两字节歧义修正）、两层 RPC 网关与
+`subSystemNo`/`functionId` 分域、三张短码表与 native 功能号 ABI、
+AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、native 侧 RC4/SM4
+符号与调用面、客户端六类风控判定点、权限面、设备端 schema 与落盘格式。
 
-未闭环：四个关键 ELF 的节头表只声明 `6` 个动态/符号节（`.dynsym`、`.dynstr`、
-`.symtab`、`.strtab`、`.shstrtab`、`.dynamic`），**没有任何 `.text` 节**；
-代码与常量位于未被节头覆盖的间隙，最大一段的熵为 `7.14`（`libShanYCore.so`
-6,006 B）、`7.14`（`libencrypt.so` 5,813 B）、`5.40`（`libndktest.so`
-25,126 B）、`7.28`（`libhtsfx.so` 54,372 B），静态反汇编不能直接得到完整
-函数体（符号恢复见 [obfuscation.md](obfuscation.md) §4）。
+未闭环：四个关键 ELF 的节头表都只有 `7` 个条目（`6` 个实际节：`.dynsym`、
+`.dynstr`、`.symtab`、`.strtab`、`.shstrtab`、`.dynamic` + 1 个 `NULL`），
+**没有任何 `.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段。可执行段
+的字节三到五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、
+`libencrypt.so` `35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），
+而 `DT_INIT` 起 288 字节 100% 可解码——即文件里的函数体是密文、只有入口
+stub 是明文（判据与符号恢复见 [obfuscation.md](obfuscation.md) §5、§7）。
 `i12196010e51071ed`（`69,262,848` B，熵 `4.639`，`0xb2` 占 `32.8%`）无
 `dex`/ZIP/ELF 魔数，未复原内部压缩。以上均在 [completeness.md](completeness.md)
 中逐项标注为「结构已证实」或「未知」，不作为已验证结论。
-

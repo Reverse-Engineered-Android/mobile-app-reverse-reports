@@ -32,30 +32,188 @@ S.attachBaseContext
 ## 3. H5 `.r` 位置相关 keystream
 
 `assets/yjb.zip` 有 `967` 个 `.r` 条目（其中 `966` 个位于 `yjb/`，另有
-`h5info.txt.r`），最大文件 `6,165,153` 字节。`portal_yjb.zip` 有 `542`
-个条目、`104` 个 `.r`。恢复的 keystream 长度为 `6,165,153` 字节，SHA-256：
+`..h5info.txt.r`），`.r` 载荷合计 `131,312,489` 字节，最大成员
+`yjb/ai-adviser/optional.js.r` 为 `6,165,153` 字节。`portal_yjb.zip` 有 `542`
+个条目、`104` 个 `.r`。全部 `.r` 按**同一位置相关 keystream** 逐字节异或，
+与文件名、大小、扩展名无关。
+
+### 3.1 长度与哈希
+
+恢复的 keystream 长度为 `6,165,153` 字节（等于最大成员）：
 
 ```text
-fb1cd66790b967059021938cb1adc6e430387b6d5007286e24e446b1e875c1fd
+b8f6bbc75f3d5b667239114a1366d41d4420e843a477560f2dbd58c35fb2ceba
 ```
 
-前 16 字节已由 HTML/TrueType 明文交叉验证：
+前 16 字节由 HTML/TrueType 双明文交叉验证：
 
 ```text
-b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 9f
+b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c 7? 9? 1a? ...
+b3 09 cd 5d e7 1c 06 59 d1 77 a8 02 21 4c c7 98 43 75 36 53 df 52 a1 ae …
 ```
 
-结构检查覆盖文本（928）+ 字体（20）共 `948` 个成员：`940` 个满足
-UTF-8 合法或 TrueType 魔数，`8` 个文本成员含少量非法序列；其中 `920` 个
-文本成员完全合法。非法字节合计 `1,185`（966 个非法序列），占
-`128,065,750` 字节的 `0.000925%`。同一 keystream 在设备侧也成立：取
-`files/h5info.txt.r` 的 1,910 字节异或后得到模块版本 JSON，首个键名带一个
-歧义字节（解密为 `%margimtrading`）。因此报告给出全长度恢复和明确误差率，
-不声称逐字节 100% 正确。解密脚本见 [tools/yjb_keystream.py](tools/yjb_keystream.py)。
+### 3.2 两个歧义字节的修正
 
-## 4. ELF 节头与符号表混淆
+早期求解在这两个位置给出了**语义上不成立**的候选值，它们是唯一的系统性误差，
+且可用共享 webpack 序言交叉验证：
 
-## 5. 统一的自解密 stub 与运行态载荷
+| 偏移 | 旧值 | 修正为 | 判据 |
+|---:|---|---|---|
+| `15` | `0x9f` | `0x98` | 89 个文件共享 `!function(e){…` 序言，旧值解密出 `fuiction#t(`，修正后为 `function t(` |
+| `21` | `0x51` | `0x52` | 同上，旧值解出 `vau t={}8fu…`，修正后为 `var t={};fu…`；UMD 头 `sblf.weapack`→`self.webpack` 亦同 |
+
+修正只影响这两字节，其余 `6,165,151` 字节不变（逐字节比对全库 921 个成员，
+差异位置集合恰为 `{15, 21}`）。修正后的统计：
+
+| 指标 | 旧 keystream | 修正后 |
+|---|---:|---:|
+| 文本成员（`.js/.html/.css/.svg/.less/.ini/.txt`） | 928 | 928 |
+| 文本字节 | `128,065,750` | `128,065,750` |
+| 完全 UTF-8 合法成员 | `920` | `921` |
+| 含非法序列的成员 | `8` | `7` |
+| 非法序列 / 非法字节 | `1,185` / `1,404` | `1,182` / `1,401` |
+| 非法占比 | `0.001096%` | `0.001094%` |
+| TrueType 魔数通过 | `20 / 20` | `20 / 20` |
+| `node --check` 通过的 JS | `82 / 507` | **`369 / 507`** |
+| 共享 webpack 序言（89 个文件）通过 | `0 / 89` | `60 / 89` |
+| `!function(` 开头的 JS 通过 | `9 / 263` | `194 / 263` |
+
+`node --check` 是这里最强的独立判据：单字节修正让可解析文件数从 `82` 涨到
+`369`（`+287`），且**没有任何文件由可解析变为不可解析**（回退集合为空）。
+说明这两个字节不只是在局部「看起来更像」，而是被 287 个文件的语法结构共同
+证实。
+
+### 3.3 剩余歧义与错误目录
+
+其余 `1,182` 个非法序列集中在 7 个文件（`optional.js` 340、`vendor.js` 298、
+`postText.js` 263、`ycomment.js` 101、`askSecretary.js` 92、`userCenter.js` 85、
+`main.js` 3），它们的共同点是**含有大量长中文文案与 base64 图片字面量**——
+keystream 求解依赖 UTF-8 合法性约束，而这些位置的中文/`kAAAB…`串提供的约束
+比 JS 关键字少。解出的系统性错字可以逐个定位到具体偏移，例如：
+
+| 解出错字 | 应为 | 说明 |
+|---|---|---|
+| `fuiction#` / `functnon` | `function ` | 序言区（已由 §3.2 修正） |
+| `sblf.weapack` | `self.webpack` | UMD 头 |
+| `Chrnkai_` / `webpackChrnkai_bdviser` | `webpackChunkai_adviser` | 分块名 |
+| `vau t={}` | `var t={}` | 变量声明 |
+| `ctnon(mogule` | `cont(inue)`+`module` | 循环体 |
+| `%objecw` | `typeof` | 关键字；同族还有 `"use strict"` 里的反引号字节被解成 `t` |
+| `aunctiln` / `vonse` / `deft(` | `function` / `console` / `default` | 常见标识符 |
+
+这些错字的共同形态是「相邻字节差 1–2 位」，与「在多个候选值中选错」一致，
+而不是整体偏移。因此报告给出全长度恢复 + 精确误差率，不声称逐字节 100%。
+解密脚本见 [tools/yjb_keystream.py](tools/yjb_keystream.py)（`PREFIX` 已按上表修正）。
+
+### 3.4 设备侧交叉验证
+
+同一 keystream 也适用于设备运行时下载的 `files/yjb/**.r`（`210 MiB`、
+`3,382` 个文件）。取 `files/h5info.txt.r` 的 1,910 字节异或后得到模块版本
+JSON，其中 `m`→`%` 的单个歧义字节仍在（首个键名解出 `%margimtrading`），
+与 §3.3 的误差率一致。
+
+## 4. JS 层混淆与 native 桥 ABI
+
+H5 载荷除了 §3 的整包异或，还有两层「名字层面」的混淆：短码表与 native
+功能号。两者都不是加密，但都是阅读业务代码必须过的第一道门槛。
+
+### 4.1 三张短码表
+
+| 表 | 位置 | 条目 | 值域 |
+|---|---|---:|---|
+| `IAR_INTERFACE` | `stockInformation/common/vendors/Tool.js` `0x2a` | 28 | `serviceName.*` 全名 + `type:"json"` + `method` |
+| `Interface` | `stockInformation/common/vendors/interface.js` `0x0` | 65 | GET 路径后缀（`/news/…`） |
+| `UniqueKey` 字面量 | 全库 | 169 | 短码直接作参数名 |
+
+短码与语义之间**没有可推导关系**（`NAQ` / `NNQOP` / `KFCPNEWS` 之类），唯一
+真值是表本身，因此这三张表必须整表中继才能读懂调用点。`Tool.fetchToIAR`
+在发请求前做一次 `param.UniqueKey = IAR_INTERFACE[param.UniqueKey].UniqueKey`，
+即短码只活在前端源码里，出网关时已还原为全名。
+
+### 4.2 native 功能号 ABI
+
+`stockInformation/common/js/NativeAPI.js` 定义唯一桥函数
+`callNative(funcId, param, cb, noNative)`（`0x642`）：
+
+```js
+let callbackId = uuid().replace(/-/g, '');
+if (functionIDClearOnDisappear.indexOf(funcId) === -1)   // [1000, 1001] 之外
+    callbackId = 'keep_' + callbackId;                    // 加前缀 = 页面销毁后仍保留
+window.respCallbacks[callbackId] = cb;
+window.yjbInterface.execute(funcId, JSON.stringify(param), callbackId);   // Android
+window.webkit.messageHandlers.yjbInterface.postMessage({functionId, param, callbackId}); // iOS
+```
+
+native 侧固定回调 `window.respFromNative(data, callbackId)`（`0xc2b`），取出并
+删除回调。**`param` 是二次序列化的 JSON 字符串**，返回值也是字符串，业务层
+`JSON.parse`。常量 `YJBExec = callNative`（`0x4d9`）。
+
+功能号按千位分域，静态可枚举 **62** 个实际被调用的号（共 10,372 处调用点），
+其中 38 个在 SDK 文档注释里有完整签名：
+
+| 段 | 语义 | 代表功能号 |
+|---|---|---|
+| `1xxx` | 交易/行情/文件 | `1000` 交易数据、`1001` YJBAPI、`1002` 行情、`1003` `readFile`、`1004` `uploadFile` |
+| `2xxx` | 系统参数与内存/磁盘 | `2000` `readSystemParameter`、`2001/2002/2003` 内存读/写/删（`{namespace,keys}`）、`2004/2005` 磁盘写/读、`2006` 导航条定制、`2008` `openNewWindow`、`2009` `closePage`、`2011` 生命周期、`2012` 右侧按钮 |
+| `3xxx` | 设备能力 | `3000` 拨号、`3002` `openApp`、`3003` `showAlert`、`3004` `chooseImg`、`3005` AnyChat 视频见证、`3007` 扫码、`3011` 系统设置、`3012` 支付宝、`3013` 微信支付、`3014` 角标、`3015` 微信分享、`3016` 状态栏、`3017` 关 loading、`3018` 活体检测、`3019` 权限申请、`3020/3021` Apple Pay、`3022–3024` 日历、`3038` base64 图片、`3039` 微信客服、`3040` 截屏监听、`3045` 配置跳转 |
+| `4xxx` | 金融/登录/风控 | `4000` 金融登录取 `uKey`、`4001` 注销（`1` 普通/`2` 信用/`3` 担保）、`4002` 本地跳转、`4003` 持仓联动、`4004` `hybridGetPassport`、`4007` 错误描述、`4009` `doneSuitability`、`4011/4020` 自选增删、`4012` 登录状态、`4014` `saveLog`、`4015` `userLogin`、`4016` `userLogOut`、`4017` 资金流向、`4024–4026` 人脸/皮肤/开页、`4028` `userLoginModal`、`4030` `loginWithAccount`、`4031` 登录扩展、`4735` `needUKey` 变体 |
+
+`readSystemToMemory(2000)` 的键集合是设备上下文的唯一来源：
+`appVersion / systemName / machine / IP / systemVersion / interfaceVersion / uid`；
+`nonSystemParam(4004)` 提供
+`passportId / userId / loginStatus / tradeOvertime / clientId / mobileCode /
+productId / optionAccount / uKey(s) / opStation / fundAccount / marginAccount`。
+这两组键名就是全报告里出现的 `($opStation)`、`($fundAccount)` 等占位符的
+取值来源。
+
+### 4.3 混淆的分层结论
+
+| 层 | 手段 | 是否可静态还原 |
+|---|---|---|
+| H5 资源 | 整包位置相关 XOR（§3） | 可，全长度恢复 + 0.0011% 误差 |
+| H5 名字 | 短码表 / `UniqueKey` / `serviceName` 三套并存 | 可，表即真值 |
+| 桥接 | 数字功能号 + 二次 JSON 序列化 | 可，`callNative` 单一入口 |
+| DEX | `s.h.e.l.l` 控制流平坦化 + 垃圾块（§2） | 可，去平坦化后调用链清晰 |
+| 原生 | 节头破坏 + 自解密 stub（§5、§6） | 符号可恢复，方法体不可 |
+| 载荷 | `i12196010e51071ed` 私有格式（§8） | 未还原 |
+
+即「名字层与容器层的混淆全部可还原，代码层（native 方法体）不可静态还原」。
+这是本报告在混淆维度上的边界：不把受保护的方法体写成已还原算法。
+
+## 5. ELF 节头与符号表混淆
+
+四个关键 ARM64 库的 section header 表都只有 `7` 个条目（`6` 个实际节：
+`.dynsym`/`.dynstr`/`.symtab`/`.strtab`/`.shstrtab`/`.dynamic`，另有 1 个
+空 `NULL` 节），**没有 `.text` 节**；`.dynsym sh_size` 只声明 `72` 字节
+（3 个符号），普通 `readelf` 因 `BAD[...]` 索引报错。利用 `DT_SYMTAB` 到
+`DT_STRTAB` 的实际间距和 `DT_SYMENT=24` 可恢复完整动态符号表：
+
+| 库 | 声明符号 | 恢复表项 / 带名 | `DT_INIT` |
+|---|---:|---:|---:|
+| `libShanYCore.so` | 3 | 23 / 20 | `0x13b8` |
+| `libencrypt.so` | 3 | 27 / 24 | `0x13e8` |
+| `libndktest.so` | 3 | 53 / 50 | `0x3d28` |
+| `libhtsfx.so` | 3 | 226 / 223 | `0xdf20` |
+
+恢复出的关键符号包括：
+
+- `libShanYCore.so`：`JNI_OnLoad`、`ptrace`、`__android_log_print`、`usleep`；
+- `libencrypt.so`：四个 `Java_com_tztEncrypt_*Encrypt13`、`CRC32`、`tabKey`、
+  `srand`/`rand`；
+- `libndktest.so`：`Java_cn_com_gjzq_crypto_GjEncrypt_*`、`_Z3RC4PhiPKhi`、
+  `sm4_*`、`sms4_*`、`_Z14pkcs7_input_pdPhPi`、`AlgorithmApi_*`；
+- `libhtsfx.so`：`JNI_OnLoad`、`ijiami`、`mmap`、`mprotect`、`dlopen`、
+  `dlsym`、`inflate*`、`AAsset*`，以及大量 `x.NN`/`y.NN` BSS 槽位。
+
+四个库的有效 `DT_INIT` 内 `+0x48` 处都有 ARM64 缓存维护指令
+`dc cvau, x0` / `ic ivau, x0`（改写在 AArch64 上必须显式刷 I-cache），
+对应地址分别为 `0x1400` / `0x1404`、`0x1430` / `0x1434`、
+`0x3d70` / `0x3d74`、`0xdf68` / `0xdf6c`，与运行时解密/打补丁边界一致；
+反汇编中**没有**任何库存在字面字符串 `PROTECT_EXIT`，因此不把该标记写成
+已观测事实。`UPX!` 字符串在四库中各出现 `3` 次，但 `upx -d` 返回
+`NotPackedException`，所以不把它们标为可直接解包的标准 UPX 文件。
+
+## 6. 统一的自解密 stub 与运行态载荷
 
 四个 APK 库、`.tcache` 中的 `libhts.so` 以及 `files/libijmDataEncryption.so`
 都不是可直接反汇编的常规 ELF：可执行段被替换为**同一套自解密 stub**，函数体
@@ -105,52 +263,44 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 段；进程退出后匿名段与 `.tcache` 一并消失，说明两者都是解包期临时产物。
 
 
-四个关键 ARM64 库的 section header 表都只有 `7` 个条目（`6` 个实际节：
-`.dynsym`/`.dynstr`/`.symtab`/`.strtab`/`.shstrtab`/`.dynamic`，另有 1 个
-空 `NULL` 节），**没有 `.text` 节**；`.dynsym sh_size` 只声明 `72` 字节
-（3 个符号），普通 `readelf` 因 `BAD[...]` 索引报错。利用 `DT_SYMTAB` 到
-`DT_STRTAB` 的实际间距和 `DT_SYMENT=24` 可恢复完整动态符号表：
+## 7. Native 方法体边界
 
-| 库 | 声明符号 | 恢复表项 / 带名 | `DT_INIT` |
-|---|---:|---:|---:|
-| `libShanYCore.so` | 3 | 23 / 20 | `0x13b8` |
-| `libencrypt.so` | 3 | 27 / 24 | `0x13e8` |
-| `libndktest.so` | 3 | 53 / 50 | `0x3d28` |
-| `libhtsfx.so` | 3 | 226 / 223 | `0xdf20` |
+四个库的「stub 可读、方法体不可读」不是主观判断，可以量化：用 capstone 对
+整个文件做线性反汇编（`skipdata=True`，不可解码字节记为 `.byte`），统计
+不可解码指令占比——
 
-恢复出的关键符号包括：
+| 库 | 文件大小 | RX `LOAD` filesz | 线性反汇编指令 | 不可解码 | 占比 | `DT_INIT` 起 288 B |
+|---|---:|---:|---:|---:|---:|---:|
+| `libShanYCore.so` | `0x2288` | `0x1a64` | 2,210 | 770 | `34.8%` | 72 / **0** |
+| `libencrypt.so` | `0x2a90` | `0x1a94` | 2,724 | 963 | `35.4%` | 72 / **0** |
+| `libndktest.so` | `0x7288` | `0x43d4` | 7,330 | 2,416 | `33.0%` | 72 / **0** |
+| `libhtsfx.so` | `0x10f60` | `0xe5cc` | 17,368 | 8,592 | `49.5%` | 72 / **0** |
 
-- `libShanYCore.so`：`JNI_OnLoad`、`ptrace`、`__android_log_print`、`usleep`；
-- `libencrypt.so`：四个 `Java_com_tztEncrypt_*Encrypt13`、`CRC32`、`tabKey`、
-  `srand`/`rand`；
-- `libndktest.so`：`Java_cn_com_gjzq_crypto_GjEncrypt_*`、`_Z3RC4PhiPKhi`、
-  `sm4_*`、`sms4_*`、`_Z14pkcs7_input_pdPhPi`、`AlgorithmApi_*`；
-- `libhtsfx.so`：`JNI_OnLoad`、`ijiami`、`mmap`、`mprotect`、`dlopen`、
-  `dlsym`、`inflate*`、`AAsset*`，以及大量 `x.NN`/`y.NN` BSS 槽位。
+即**入口 stub 100% 是合法指令，其余三到五成字节不是指令**。抽查
+`dynsym` 指向的函数体同样失败：`libShanYCore.so` 的 `JNI_OnLoad`（`0x89c`）
+首 160 字节里 29/40 条不可解码（`72%`），`libndktest.so` 的 `_ZdlPv`（`0x27`）
+12/40（`30%`），`libencrypt.so` 的 `ava_com_tzt_en…`（`0x2c8`）2/40（`5%`）。
+这些地址的字节分布与正常 AArch64 代码的指令字段约束不符，佐证 §6 的自解密
+结论：**文件里的函数体是密文，只有 stub 是明文**。
 
-四个库的有效 `DT_INIT` 内 `+0x48` 处都有 ARM64 缓存维护指令
-`dc cvau, x0` / `ic ivau, x0`（改写在 AArch64 上必须显式刷 I-cache），
-对应地址分别为 `0x1400` / `0x1404`、`0x1430` / `0x1434`、
-`0x3d70` / `0x3d74`、`0xdf68` / `0xdf6c`，与运行时解密/打补丁边界一致；
-反汇编中**没有**任何库存在字面字符串 `PROTECT_EXIT`，因此不把该标记写成
-已观测事实。`UPX!` 字符串在四库中各出现 `3` 次，但 `upx -d` 返回
-`NotPackedException`，所以不把它们标为可直接解包的标准 UPX 文件。
+结构上还有一条独立证据：四个库的 program header 都只有两个 `LOAD`
+（`R+X` 与 `R+W`），而 section header 表的 `7` 个条目全部落在 `R+W` 段
+（`.dynsym`/`.dynstr`/`.symtab`/`.strtab`/`.shstrtab`/`.dynamic` + `NULL`），
+**没有任何 section 覆盖可执行段**。因此「读节头」永远拿不到代码，
+必须读 program header。可执行段与读写段之间的虚拟地址空洞（`0x11d58` /
+`0x11d18` / `0x16d88` / `0x1b700`）在文件里对应一段低熵填充
+（熵 `3.90` / `4.40` / `0.78` / `5.10`），不是代码。
 
-## 6. Native 方法体边界
-
-`libShanYCore.so`、`libencrypt.so`、`libhtsfx.so`、`libndktest.so` 的
-`.text` 位于高熵/受保护区域，section header 被截断，静态反汇编不能直接得到
-完整函数体。已验证的是：
+已验证的是：
 
 ```text
 符号/导入 -> JNI 入口 -> 加密/压缩/环境探测能力存在
 ```
 
 未验证的是每个 native 函数的完整指令语义、密钥派生、处罚判定和反调试反应。
-代码与常量位于未被节头覆盖的文件间隙（详见 report.md §1.7 的逐库熵值），
 因此本报告把它们标为“符号已恢复、方法体受保护”，不声称完整 native 逆向。
 
-## 7. 运行态文件与版本边界
+## 8. 运行态文件与版本边界
 
 只读设备当前安装版本为 `9.05.007` / `20261028`，与主样本不同。
 
@@ -195,11 +345,12 @@ x86,x86_64}/libhts.so`）；`.tempr.jar` 有 8 个成员，包括
 `files/app_payload.dex`、`app_payload.version`、`gjzq_*` 是分析注入的
 `GjzqProbe`，不作为 App 下发载荷或风控证据。
 
-## 8. 结论
+## 9. 结论
 
-已还原：壳控制流的有效调用链、H5 keystream、ELF 符号表恢复方法、六份
-自解密 stub 的地址/结构/系统调用顺序、JNI 与加密导入面、风险中心与适当性
-接口、本地信号缓存。
+已还原：壳控制流的有效调用链、H5 keystream（含两字节歧义修正与
+`node --check` 交叉验证）、三张短码表与 native 功能号 ABI、ELF 符号表恢复
+方法与不可解码比例、六份自解密 stub 的地址/结构/系统调用顺序、JNI 与加密
+导入面、风险中心与适当性接口、本地信号缓存。
 
 未还原：受保护 native 方法体的指令语义与密钥派生、加固载荷
 `i12196010e51071ed` 的内部格式、服务端风控评分与处罚、OAID 实际上报与

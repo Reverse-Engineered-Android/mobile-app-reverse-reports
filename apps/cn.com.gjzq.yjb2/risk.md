@@ -55,7 +55,9 @@ fetchYJBAPI({
 `clientId`、`fundAccount`、`opStation`、`password`；成功条件同样是 `code===0`。
 页面展示比例、到期合同和处置入口，阈值与最终处置由服务端给出。
 
-## 5. 风险关注页面
+## 5. 风险关注页面与购前闸门
+
+### 5.1 风险关注列表
 
 `information/build/optional/riskAttention.js` 不是评分器，而是服务端风险结果的
 消费端：
@@ -73,6 +75,136 @@ fetchYJBAPI({
 
 页面埋点为 `watchlist_show` / `watchlist_click`，空态为“暂无符合条件的数据”。
 没有发现客户端风险评分或处罚判定分支。
+
+### 5.2 购前风险闸门（AI 投顾解锁）
+
+`ai-adviser/optional.js`（偏移 `0x179280`、`0x1c8bec`、`0x4c564`）在下单/解锁
+前并联查询**两件事**，任一不满足即拦截：
+
+```js
+// m = <origin>/yjbwebservice/core/api/json
+function Y()  { return http.post(m, {userId:"($userId)",
+  UniqueKey:"serviceName.users.external.profile.getRiskInfo"},
+  {directResponse:true}); }                                   // 客户风险等级
+function fe(e){ return http.post(m, {loginId:"dev4", ...e,
+  UniqueKey:"serviceName.agreement.signQuery"}); }            // 协议签署状态
+
+Promise.allSettled([
+  Y(),
+  fe({khh:"($userId)", wbkhlx:"6",
+      xylxdm:"AIGPJT-TY-SDXPGJGQRS;AIGPJT-TY-CPFXBSDJSJTZZQRS"}),
+]).then(([a, b]) => {
+  const l = a.value.result, u = b.value.result;
+  if (l?.riskLevel !== 99 &&                       // 99 = 专业投资者，直接放行
+      (l?.riskExpired || l?.riskLevel === -1 ||    // 已过期 / 未测评
+       !(u?.length > 0)))                          // 无已签协议
+      return blocked();                            // 弹免费体验/跳签约页
+  …unlock();
+});
+```
+
+`wbkhlx` 是「外部客户类型」编码，同文件的映射表把它写成
+`{USER:"6"→($userId), PID:"2"→($passportId), CLIENT:"2"→($clientId),
+KHH:"5"→($clientId), PRESIGN:"1"→($preappoint)}`，即 AI 投顾用 `6`（=userId）。
+同一段闸门在 **AI 选好股**（`xylxdm:"AIXHG-…"`，偏移 `0x1a9162`）里复用，
+只是协议号不同；两条路径都在通过后调
+`serviceName.aiStrategyProduct.freeTrail` 解锁。另有
+`professionUser` 分支：已是专业投资者时直接弹「使用成功」并返回，不再查协议。
+
+`getRiskInfo` 返回 `{riskLevel, riskExpired}`；`riskLevel` 的取值域与
+`ai-customer-service/business-risk.js` 的客户等级表一致（`C0…C6`，`C6` =
+“暂不启用”），`99` 是专业投资者旁路，`-1` 视为未测评。被拦截时的对话框
+指向 `dialog.html?orderInfo=<urlencode(JSON)>&title=<name>&biz_type=aigpjt`，
+其中 `orderInfo` 含 `strategyType / targetCode / targetType / targetName /
+gainType / authType`，即**拦截结果被编码进 H5 路由参数**，服务端不参与该分支。
+
+同文件的 `postRiskInfo`（`serviceName.users.external.profile.postRiskInfo`，
+`POST /core/api`）是等级写入入口，`getUserInfo`
+（`serviceName.users.external.profile.getUserInfo`，带 `desensitize:false`）是
+等级展示的数据源；问卷侧对应
+`serviceName.questionnaire.result.pre.computed`（预计算）与
+`serviceName.questionnaire.result.save`（保存）。
+
+### 5.3 权限位：`permDesk.*`
+
+`vas/build/buy0.js`（偏移 `0x184c`）在购买增值服务前查询可用性：
+
+```js
+{ serviceName:"permDesk.v2.query", userId:"($userId)",
+  nameCodes:<"HSLV2"|"HKLV2"|bizCode>, functionId:1000, subSystemNo:519 }
+→ result[0].availability ∈ AVAILABLE | COMING | EXPIRED | DISABLE
+→ 可用/即将可用取 result[0].endDate 作为 startDate，
+  过期/停用则取当天；随后再按 startDate + value + timeUnit 调
+  serviceName:"permDesk.calculate"
+```
+
+`permDesk.calculate` 只做「到期日推算」，真正的权限判定在 `availability` 字段，
+由服务端下发。`permDesk.v2.calculate` 是同族的 v2 名称。
+
+### 5.4 二维码/深链的访问授权
+
+`vas/build/commons.js`（偏移 `0x8cd3`）在扫码进入外部 URL 前调用：
+
+```js
+fetchYJBAPI({functionId:1000, subSystemNo:519,
+             serviceName:"access.authority", url: y.url},
+            {bulletError:true, permitType:true});
+→ parseInt(result.is_auth) !== 1
+   → 重定向到 envConfig.SCANQR_RESULT_URL + "?is_auth=<code>&content=<原始串>"
+```
+
+`is_auth` 的三值语义在 `investCalendar/build/Check.js` 的注释里写明：
+
+| `is_auth` | 含义 | 客户端动作 |
+|---:|---|---|
+| `1` | 在白名单中，允许访问 | 继续 |
+| `2` | 在黑名单中，不允许访问 | 跳 `SCANQR_RESULT_URL?is_auth=2` |
+| `3` | 不在黑名单中（未白名单） | 跳 `SCANQR_RESULT_URL?is_auth=3` |
+
+即**被扫 URL 的准入结论由服务端给出**，客户端只做 `=== 1` 判定与失败跳转；
+`permitType:true` 让它拿到未经 `code===0` 过滤的原始串。
+`treasurybonds/build/tradeToday.js`、`select.js` 与
+`ycomment/common/vendors/NativeAPI.js` 有同族调用。这是本样本里唯一出现
+「黑名单」字样的判定路径，且判定结果是服务端返回的枚举，不含本地计算。
+
+### 5.5 价格预警规则（`spew.rule.*`）
+
+`stockWarning/build/index.js`（偏移 `0x1f956`）定义了两套并行的规则模板，
+均为 `functionId:1000` + `subSystemNo:519`：
+
+| 服务名 | 关键参数 |
+|---|---|
+| `passportfront.trade.spew.rule.{add,queryOne,queryAll,delete}` | `source_account`、`source_account_type`、`stockCode`、`stockName`、`marketCode`、`priceUpTo`、`priceDownTo`、`percentRise`、`percentFalling`、`lastSequence`、`pageSize` |
+| `trade.spew.rule.{add,queryOne,queryAll,delete}` | `userId` + 同一组股票/价格字段 |
+
+两套方法名完全对称（`add / queryOne / queryAll / delete`），`passportfront.*` 面向
+「资金账号 + 账号类型」维度，`trade.*` 面向 `userId` 维度；页面按当前登录类型
+二选一，登录前用 `passportfront.*` 并提示「用户登录后即可设置股价提醒」。
+阈值由用户输入，客户端只做上下限校验（`priceUpTo > priceDownTo` 之类），
+触发与推送都在服务端。
+
+### 5.6 短信验证与设备绑定
+
+| 服务名 | 参数 | 用途 |
+|---|---|---|
+| `uasd.v2.smsPush` | `{mobile, template_no:17, expire_minutes:10, validate_mobile:1}` | 发送验证码 |
+| `uasd.v2.validate` | `{mobile, template_no:17, captcha_code, expire_now:2}` | 校验验证码 |
+
+出现在 `me/build/unbind_account.js`、`change_phone_num.js`、
+`change_phone_num_old.js`、`investCalendar/build/unbindAccount.js`，即
+**换绑手机/解绑设备**类高危操作的验证入口。`template_no:17` 是模板号，
+`expire_minutes:10` 是客户端声明的有效期参数。
+
+### 5.7 交易时段校验
+
+```js
+serviceName.core.timeservice.checkTransactionTime
+  { type:3, time_kind:"E", exchange_type:1 }        // GET
+```
+
+`ai-adviser/optional.js`（偏移 `0x1798d9`）用它判断当前是否在可交易时段；
+返回布尔值。`type:3` 与 `time_kind:"E"` 是固定值（`E` = 交易时段类目），
+具体时段表在服务端。
 
 ## 6. 适当性、问卷与等级比较
 
@@ -215,9 +347,24 @@ e = E ? "99"==E ? "专业投资者"
 
 ### 6.7 小结
 
-客户端侧可验证的风控逻辑到此为止：**状态机 + 优先级推进 + 等级比较弹层 +
-问卷/AML 查询**。评分公式、阈值下发、冻结/限制等处罚动作都在服务端，未在
-客户端代码中出现判定分支。
+客户端侧可验证的风控逻辑到此为止，可归纳为**六类判定点**：
+
+| 类型 | 位置 | 判定依据 |
+|---|---|---|
+| 适当性状态机 | `suitability/build/index.js` | 服务端 `check_items[].item_status` |
+| 等级比较弹层 | `ai-adviser/optional.js` §6.5 | `buyLevel > riskLevel` → 二次确认（非硬拦截） |
+| 购前闸门 | `ai-adviser/optional.js` §5.2 | `riskLevel !== 99` 且（过期/未测评/无协议）→ 拦截 |
+| 权限可用性 | `vas/build/buy0.js` §5.3 | `availability ∈ {AVAILABLE,COMING}` |
+| 深链准入 | `vas/build/commons.js` §5.4 | `is_auth === 1` |
+| 登录/交易超时 | `fetchYJBAPI` 状态机 | `loginStatus / tradeOvertime` |
+
+六类全部是**对服务端下发字段的 `===` 比较与跳转**，没有一处计算分数、阈值或
+惩罚力度。全库检索 `限制交易` / `冻结` / `黑名单` 三个词：`限制交易` 只出现在
+`knowledge/build/transferErrorInfo.js` 的银行转账错误对照表（静态文案）；
+`冻结` 只出现在 `floorfundtrading/build/commons.js` 的业务代码表
+（`4081 资金冻结` / `4083 证券冻结` 等枚举文案）；`黑名单` 只出现在 §5.4 的
+`is_auth` 注释里。三者都没有对应的客户端判定分支。评分公式、阈值下发、冻结/限制等
+处罚动作都在服务端。
 
 ## 7. 反分析、设备标识与本地信号
 
@@ -244,6 +391,28 @@ OAID 提供方和微信等包名；这证明 Android 11+ 包可见性查询能�
 `SignalDataTable` 是信号策略缓存；`Popup.db` 证明任务流/频控引擎存在，但本次
 快照没有触发任务。
 
+### 7.4 客户端身份/设备遥测信封
+
+`vas/build/commons.js`（偏移 `0x9ee6`）的 `getBasicLogInfo()` 把两路 native
+查询拼成一条埋点信封，凡是要带设备上下文的日志都复用它：
+
+```js
+readSystemToMemory({keys:["machine","appVersion","IP","interfaceVersion",
+                          "systemName","systemVersion","uid"]})
+nonSystemParam({keys:["clientId","passportId","mobileCode","productId","userId"]})
+→ { uid, machine, appVersion, ip, interfaceVersion, systemName, systemVersion,
+    clientid, pid, userid, productId, time }
+```
+
+再交给 `saveLog({event_id, eventName, …})` → `YJBExec(4014, …)`。
+即**风控/埋点判断所依据的设备与账号标识，全部来自 native 侧同一组键**；
+H5 不自行拼装设备指纹。`event_id` 是可枚举的数字串（如适当性状态异常
+`3005028`、YJBAPI 业务码异常 `3005031`），客户端只上报，不据此做本地判定。
+
+另一条设备上下文来自 `readSystemToMemory({keys:["machine"]})` 的 `machine`
+与 `IP`——二者的生成逻辑在 native 内（见
+[obfuscation.md](obfuscation.md) §5），静态不可见。
+
 ## 8. 未闭环项
 
 | 项 | 状态 |
@@ -254,6 +423,8 @@ OAID 提供方和微信等包名；这证明 Android 11+ 包可见性查询能�
 | `libShanYCore.so` 的 ptrace 反调试反应 | 只证实导入，未还原分支 |
 | `libencrypt.so` / `libndktest.so` 完整 native 算法调用链 | 符号已恢复，方法体受保护 |
 | `<queries>` 各包名的实际判定分支 | 未知 |
+| `getRiskInfo` / `permDesk` / `access.authority` 的服务端判定规则 | 未知（只证实客户端 `===` 判定与跳转） |
+| `saveLog(4014)` 的服务端留存与用途 | 未知 |
 | `files/i12196010e51071ed` 内部格式 | 未知 |
 
 ## 9. 研究边界

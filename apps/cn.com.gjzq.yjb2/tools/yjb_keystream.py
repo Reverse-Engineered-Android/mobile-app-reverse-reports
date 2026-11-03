@@ -4,6 +4,13 @@
 The public report ships only a 128-byte prefix for smoke tests. A complete
 keystream file can be supplied by the analyst; this tool never embeds sample
 data or full keystream material.
+
+Two bytes of the prefix were re-solved after the first publication: offset 15
+(0x9f -> 0x98) and offset 21 (0x51 -> 0x52). With the old values the shared
+webpack prologue decodes as `!function(e){fuiction#t(` / `vau t={}8fu`; with
+them it decodes as `!function(e){function t(` / `var t={};fu`. The correction
+raises the number of JS members that pass `node --check` from 82/507 to
+369/507 without making any previously valid member invalid.
 """
 
 from __future__ import annotations
@@ -15,7 +22,7 @@ from pathlib import Path
 
 
 PREFIX = bytes.fromhex(
-    "b309cd5de71c0659d177a802214cc79f43753653df51a1ae9c150cf43d24"
+    "b309cd5de71c0659d177a802214cc79843753653df52a1ae9c150cf43d24"
     "a12e0ea293c5235fb1b360d2740e9c004c687783ebc34b1223001143294a"
     "5187808c1a0615461d76632c1d0176fb872bb8c9296c755935da6cff880d"
     "2b5cb056c57985b4e0526ae6b617db3871197acdffa879a7a9d88dc70f36"
