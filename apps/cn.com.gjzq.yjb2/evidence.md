@@ -227,3 +227,90 @@ for name in ('libShanYCore.so', 'libencrypt.so', 'libndktest.so', 'libhtsfx.so')
 |---|---:|---:|
 | 修正前（偏移 15/21 旧值） | 82 | 425 |
 | 修正后（`ks6m-v2.bin`） | 369 | 138 |
+
+## 10. Native 容器证据（UPX 头部 / DT_HASH / 模拟装载）
+
+本节的三条结论都可用下面的脚本在未修改的 `libndktest.so` 上复现。
+
+### 10.1 `DT_HASH` 给出的真实符号数
+
+```python
+import struct
+d = open('libndktest.so', 'rb').read()
+u32 = lambda o: struct.unpack_from('<I', d, o)[0]
+
+print('DT_HASH nbucket/nchain =', u32(0x190), u32(0x194))   # 37 / 53
+print('section header says     =', 3)                        # .dynsym sh_size/24
+```
+
+`nchain=53` 与按 `DT_SYMTAB`(0x300)→`DT_STRTAB`(0x7f8) 间距
+`(0x7f8-0x300)/24 = 53` 一致，而节头只声明 3 项。
+
+### 10.2 UPX 容器头字段
+
+```python
+import struct
+d = open('libndktest.so', 'rb').read()
+print(d[0xcc4:0xcc8])                       # b'UPX!'
+print(struct.unpack_from('<I', d, 0xcc0)[0])  # 0xc15c74e0  l_checksum
+print(struct.unpack_from('<H', d, 0xcc8)[0])  # 0x06c0      l_lsize
+print(d[0xcca], d[0xccb])                     # 13, 42      l_version/l_format
+print(struct.unpack_from('<I', d, 0xcd0)[0])  # 0x17588     b_info.u_len
+```
+
+### 10.3 尾部伪造节头导致 `NotPackedException`
+
+对照实验（正常 UPX 打包的 `linux/amd64` 小 ELF）：
+
+```bash
+upx -d a.upx                                  # Unpacked 1 file.
+python3 - <<'PY'
+import struct
+d = bytearray(open('a.upx','rb').read())
+shnum = 7
+tbl = b''.join(struct.pack('<IIQQQQIIQQ', i,1,6,0,0x1000,0x40,0,0,1,0)
+               for i in range(shnum))
+off = len(d)
+d += tbl
+struct.pack_into('<Q', d, 0x28, off)          # e_shoff
+struct.pack_into('<H', d, 0x3c, shnum)        # e_shnum
+open('b.so','wb').write(d)
+PY
+upx -d b.so                                   # NotPackedException
+```
+
+本样本把文件截到 `0x7028` 后，报错从 `NotPackedException` 变为
+`CantUnpackException: file corrupted`，说明 UPX 已认出容器。
+
+### 10.4 模拟装载序列
+
+```python
+from unicorn import Uc, UC_ARCH_ARM64, UC_MODE_ARM, UC_HOOK_INTR, UcError
+```
+
+以 `mem_write` 把整个文件映射到地址 0，从 `DT_INIT`=`0x3d28` 起
+`emu_start`，在 `UC_HOOK_INTR` 里把 `x8` 当 syscall 号记录，可观察到：
+
+```text
+mmap(0, 0x3d24, RW, MAP_PRIVATE|MAP_ANON)
+mprotect(buf, 0x3d24, R|X)
+mprotect(0, 0x3d24, R|X)
+mmap(0, 0xfff0, RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON)
+```
+
+随后以 `UC_ERR_READ_UNMAPPED` 终止（`pc=0x800`），即未完成解包。
+
+### 10.5 熵分布佐证
+
+| 文件区间 | 字节数 | 熵 |
+|---|---:|---:|
+| `0x0d90`–`0x1000` | 624 | 7.190 |
+| `0x1000`–`0x2000` | 4,096 | 7.655 |
+| `0x2000`–`0x3000` | 4,096 | 7.669 |
+| `0x3000`–`0x3d24` | 3,364 | 7.780 |
+| `0x3d24`–`0x43d4`（stub 区） | 1,712 | 6.527 |
+| `0x43d4`–`0x6000` | 7,212 | 0.840 |
+| `0x6000`–`0x7008` | 4,104 | 0.282 |
+
+高熵段是压缩载荷，低熵段是填充与字符串表，stub 区居中——与
+“文件里不存在明文方法体”的结论一致。

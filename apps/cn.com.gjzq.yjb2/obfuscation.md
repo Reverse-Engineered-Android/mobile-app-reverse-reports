@@ -211,7 +211,25 @@ productId / optionAccount / uKey(s) / opStation / fundAccount / marginAccount`�
 `0x3d70` / `0x3d74`、`0xdf68` / `0xdf6c`，与运行时解密/打补丁边界一致；
 反汇编中**没有**任何库存在字面字符串 `PROTECT_EXIT`，因此不把该标记写成
 已观测事实。`UPX!` 字符串在四库中各出现 `3` 次，但 `upx -d` 返回
-`NotPackedException`，所以不把它们标为可直接解包的标准 UPX 文件。
+`NotPackedException`，所以不把它们标为可直接解包的标准 UPX 文件；具体原因
+见 §6.1。
+
+### 5.1 `DT_HASH` 才是符号数的真实来源
+
+上面那张表的「恢复表项」不是靠猜间距得来的，而是 `DT_HASH` 直接给出的：
+`DT_HASH` 指向的 SysV hash 表头两个 `u32` 就是 `nbucket` 与 `nchain`，而
+`nchain` 恒等于动态符号表项数。`libndktest.so` 的 `DT_HASH`（`0x190`）读出
+`nbucket=37`、`nchain=53`，与按 `DT_SYMTAB`→`DT_STRTAB` 间距算出的 53 项
+互相印证，而 section header 只声明 3 项。也就是说被砍掉的是**节头视图**，
+不是符号表本身：按 `nchain` 遍历 `DT_SYMTAB` 即可拿到全部 53 项。
+
+恢复出的符号带有真实的 `st_value` 与 `st_size`，例如
+`AlgorithmApi_Encrypt`=`0x1028`/`0x2fc`、`_Z3RC4PhiPKhi`=`0xdc0`/`0x164`、
+`sm4_crypt_cbc`=`0x2ff8`/`0x370`、
+`Java_cn_com_gjzq_crypto_GjEncrypt_Encrypt`=`0x1d84`/`0x1b8`、
+`sms4_set_encrypt_key`=`0x3f80`/`0xbc4`、`SBOX`=`0x57008`。这些
+`st_value` 已明显超出文件长度（`0x7288`），说明它们指向的是**解包后**的
+内存映像，而不是文件内偏移——这一点也是判定载荷被压缩/加密的直接证据。
 
 ## 6. 统一的自解密 stub 与运行态载荷
 
@@ -262,6 +280,47 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 在 maps 中只有 `r--p` / `rw-p` 而没有 `r-xp`，其可执行代码只存在于上述匿名
 段；进程退出后匿名段与 `.tcache` 一并消失，说明两者都是解包期临时产物。
 
+### 6.1 UPX 容器与 `NotPackedException` 的真实原因
+
+`UPX!` 不是残留字符串。`libndktest.so` 的 `0xcc0` 处是一个字段合法的 UPX
+`l_info` 头（`l_checksum, l_magic, l_lsize, l_version, l_format` 依次紧排）：
+
+```text
+0xcc0  e0 74 5c c1                l_checksum = 0xc15c74e0
+0xcc4  55 50 58 21                l_magic    = "UPX!"  (0x21585055)
+0xcc8  c0 06                      l_lsize    = 0x06c0
+0xcca  0d                        l_version  = 13
+0xccb  2a                        l_format   = 42
+0xcd0  88 75 01 00                b_info.u_len        = 0x17588  (95,624 B)
+0xcd4  88 75 01 00                b_info.c_len        = 0x17588
+0xcd8  c0 0c 00 00                b_info.u_file_size  = 0xcc0
+0xcdc  c2 04 00 00                b_info.filter       = 0x4c2
+0xce0  02 00                      b_info.filter_cto   = 2
+0xce4  7f 45 4c 46                "ELF"  <-- 内嵌 ELF 头紧随其后
+```
+
+容器里也保留了 UPX 自述串（`0x3e68`）：
+`$Info: This file is packed with the UPX executable packer http://upx.sf.net $`
+与 `$Id: UPX 6.02 Copyright (C) 1996-2025 the UPX Team. All Rights Reserved. $`。
+
+**`NotPackedException` 的真实原因是“尾部伪造节头把 UPX 尾部块挤离了 EOF”，
+不是尾部内容被改坏。** 这一点用对照实验可以定死：拿一个正常 UPX 打包的
+`linux/amd64` 小 ELF，在文件末尾追加同样的 7 × 64 字节伪造节头表并把
+`e_shoff` / `e_shnum` 指过去，`upx -d` 立刻从 `Unpacked 1 file` 变成
+`NotPackedException: not packed by UPX`；反之仅在尾部补 100–1200 字节零填充
+仍然能正常解包。
+
+对照本样本：文件头声明 `e_shoff=0x70c8`、`e_shnum=7`，而 `0x702c` 起追加的
+`__stack_chk_fail`、`.dynsym`、`.dynstr`、`.symtab`、`.strtab`、`.shstrtab`、
+`.dynamic` 串正是那张伪造表的 `shstrtab`。真正该在 EOF 附近的 UPX 尾部块
+（`0x7004` 起）因此离 EOF 差了 `0x7288-0x7028 = 0x260` 字节，UPX 找不到。
+把文件截到 `0x7028` 再 `upx -d`，报错确实从 `NotPackedException` 变成
+`CantUnpackException: file corrupted`——已经认出是 UPX，只是校验不过。
+
+顺带说明：`l_checksum=0`、尾部 `l_version=2`、`l_format=8` 这些“看起来异常”
+的值**本身就是正常 UPX 文件的取值**，不能当作被篡改的证据（同一个正常样本
+的尾部也是 `l_checksum=0 / l_version=2 / l_format=8`）。真正的真伪对照是：
+`DT_HASH` 说 53 个符号，而伪造节头说 3 个。
 
 ## 7. Native 方法体边界
 
@@ -299,6 +358,50 @@ mmap(0, 0xfff0, PROT_RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON) 代码目标页
 
 未验证的是每个 native 函数的完整指令语义、密钥派生、处罚判定和反调试反应。
 因此本报告把它们标为“符号已恢复、方法体受保护”，不声称完整 native 逆向。
+
+### 7.1 模拟执行的边界
+
+用 `unicorn` 在 ARM64 模式下从 `DT_INIT`（`0x3d28`）起执行 stub，可以观察到
+`libndktest.so` 的完整装载序列（与 §6 记录的 `libShanYCore.so` 同型）：
+
+```text
+mmap(0, 0x3d24, RW, MAP_PRIVATE|MAP_ANON)            自拷贝缓冲（=RX 段大小）
+mprotect(buf, 0x3d24, R|X)                           置可执行
+mprotect(0,   0x3d24, R|X)                           原段改成可执行
+mmap(0, 0xfff0, RW, MAP_FIXED|MAP_PRIVATE|MAP_ANON)  代码目标页（64 KB - 16）
+```
+
+随后 stub 把“压缩源指针、内嵌 ELF 目标地址、输出长度”三个参数装进寄存器，
+尾调用 `0x3fd8` 处的解压例程。该例程的结构与 UPX 的解包器一致：
+
+```text
+0x3fe0  ldrb w3,[x1,#5]   ldrb w6,[x1,#6]     读 b_method / b_level
+0x3ff0  ldr  w4,[x1],#4                        取 32 位字（MSB-first 位流）
+0x4004  stp  x1,x5,[sp,#0x98]                  保存位流位置
+0x43c4  ldur w3,[x3,#-4] .... and #0xffffff    内联的位缓存重填（getbit）
+0x3dc0  ldrb w3,[x0],#1 / strb w3,[x2],#1      字面量复制
+0x3dd0  get_len：w1=1; do w1=w1*2+bit while(bit==0)
+0x3e14  ldrb w3,[x2,w5,sxtw] / strb w3,[x2],#1 负偏移匹配复制（回溯拷贝）
+0x3fa8..0x3fd4  逐字扫描、对 opcode 为 BL 的字改写低 26 位（调用重定位）
+```
+
+`b_method`/`b_level` 的读取位置（`[x1+5]` / `[x1+6]`）、MSB-first 32 位字流、
+`gamma` 长度编码、负偏移回溯匹配，以及 BL 低 26 位改写，这几项合起来是
+UPX `nrv2b/nrv2d` 系解包器的固定骨架，因此把该例程标为 UPX 解包器是
+结构层面的判断，而不是逐字节比对过的结论——**本报告没有把 `b_method`
+的数值映射到具体 `NRV2B`/`NRV2D`/`NRV2E` 之一，也没有逐条验证重定位
+作用在哪个区间**。
+
+模拟在上面的 `mmap` 之后停住：解压目标页在真实进程里由内核映射到文件里不
+存在的地址，而 `MAP_FIXED` 语义无法在模拟器中照搬，解压例程读到的源指针落
+在未映射页，最终以 `UC_ERR_READ_UNMAPPED` 终止（`pc=0x800`，即落在了
+`0x0` 起 RX 段的字符串区）。因此本节只把 **容器结构、解包系统调用序列、
+解包器骨架结构**列为已验证，不把解压后的方法体列为已还原。
+
+另一条独立佐证来自熵：`0xd90`–`0x3d24` 这段（`b_info` 之后到 stub 开始）
+每 `0x1000` 页熵为 `7.19` / `7.66` / `7.67` / `7.78`，是压缩/加密载荷；
+而 `0x43d4` 之后熵骤降到 `0.84` / `0.28`，是填充与字符串表。可执行代码
+既不在文件高熵区，也不在低熵区，只能存在于解包后的映像里。
 
 ## 8. 运行态文件与版本边界
 

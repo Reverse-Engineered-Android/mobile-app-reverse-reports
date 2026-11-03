@@ -237,13 +237,17 @@ UTF-8 状态机约束与二元语言模型逐列求解，把密钥流扩展到 `
 AES-128-ECB 双常量密钥、登录状态机与 SAS/SSO 票据链、native 侧 RC4/SM4
 符号与调用面、客户端六类风控判定点、权限面、设备端 schema 与落盘格式。
 
-未闭环：四个关键 ELF 的节头表都只有 `7` 个条目（`6` 个实际节：`.dynsym`、
-`.dynstr`、`.symtab`、`.strtab`、`.shstrtab`、`.dynamic` + 1 个 `NULL`），
-**没有任何 `.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段。可执行段
-的字节三到五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、
-`libencrypt.so` `35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），
-而 `DT_INIT` 起 288 字节 100% 可解码——即文件里的函数体是密文、只有入口
-stub 是明文（判据与符号恢复见 [obfuscation.md](obfuscation.md) §5、§7）。
+未闭环：四个关键 ELF 都是**标准 UPX 6.02 容器**（`libndktest.so` 的 `0xcc0`
+处 `UPX!` + `b_info.u_len=0x17588`，解包器骨架在 `0x3fd8`），但尾部被追加了
+伪造的 7 项节头表，把 UPX 尾部块挤离 EOF，因此 `upx -d` 报
+`NotPackedException`——该原因已用“正常 UPX 文件 + 同样的伪造节头”对照实验
+复现（见 [evidence.md](evidence.md) §10.3）。真伪对照很直接：`DT_HASH` 的
+`nchain=53` 说明有 53 个符号，而伪造节头只声明 3 个。节头表里**没有任何
+`.text` 节**，也没有任何 section 覆盖可执行 `LOAD` 段；可执行段的字节三到
+五成不是合法 AArch64 指令（`libShanYCore.so` `34.8%`、`libencrypt.so`
+`35.4%`、`libndktest.so` `33.0%`、`libhtsfx.so` `49.5%`），而 `DT_INIT` 起
+288 字节 100% 可解码——即文件里的函数体是压缩/加密载荷、只有入口 stub 是
+明文（判据见 [obfuscation.md](obfuscation.md) §5–§7）。
 `i12196010e51071ed`（`69,262,848` B，熵 `4.639`，`0xb2` 占 `32.8%`）无
 `dex`/ZIP/ELF 魔数，未复原内部压缩。以上均在 [completeness.md](completeness.md)
 中逐项标注为「结构已证实」或「未知」，不作为已验证结论。

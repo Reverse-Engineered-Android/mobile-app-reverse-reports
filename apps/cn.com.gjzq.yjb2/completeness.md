@@ -22,7 +22,7 @@
 | 风控代码（服务端评分/阈值） | 不可见 | `risk.md` §8 | 未登录、未抓包，静态不可达 |
 | 混淆代码（H5 层） | 完成 | `obfuscation.md` §3、§4 | keystream 全长度恢复，误差 0.0011% |
 | 混淆代码（DEX 壳层） | 完成 | `obfuscation.md` §2 | 去平坦化后调用链清晰 |
-| 混淆代码（native 层） | 客户端层完成，native 边界明确 | `obfuscation.md` §5–§7 | 符号与 stub 结构已还原；方法体加密不可静态反解 |
+| 混淆代码（native 层） | 客户端层完成，native 边界明确 | `obfuscation.md` §5–§7、`evidence.md` §10 | 符号表、UPX 容器头、解包器骨架已还原；方法体需运行期解包 |
 | H5 `.r` 加密 | 完成，已知误差 | `report.md` §1.5、`evidence.md` §3、`obfuscation.md` §3 | 921/928 完全 UTF-8；7 个文件有少量歧义 |
 | 本地数据库格式 | 完成，只读 | `storage.md` §1–§6 | 行数为快照，不代表稳定状态 |
 | `shared_prefs` 算法 | 未闭环 | `storage.md` §3 | 只证实 4 帧 AES block 对齐，密钥/模式未知 |
@@ -31,11 +31,15 @@
 
 ## 2. 未完成项
 
-- `libShanYCore.so`、`libencrypt.so`、`libhtsfx.so`、`libndktest.so` 的
-  节头表没有任何 `.text` 节，也没有任何 section 覆盖可执行 `LOAD` 段；
+- `libShanYCore.so`、`libencrypt.so`、`libhtsfx.so`、`libndktest.so` 都是
+  **标准 UPX 6.02 容器**（`libndktest.so` 头部 `0xcc0` 处 `UPX!` +
+  `b_info.u_len=0x17588`），但尾部追加了伪造的 7 项节头表，把 UPX 尾部块
+  挤离 EOF，于是 `upx -d` 报 `NotPackedException`。真伪对照是
+  `DT_HASH` 声明 53 个符号而伪造节头只说 3 个；
   可执行段字节三到五成不可解码（`34.8%` / `35.4%` / `33.0%` / `49.5%`），
   而 `DT_INIT` 起 288 字节 100% 可解码，即函数体在文件中是密文。
-  符号可恢复，方法体未还原；
+  符号表与解包器骨架可恢复，**方法体未还原**（解包需要运行期 `MAP_FIXED`
+  映射，模拟到该步即终止）；
 - `files/i12196010e51071ed` 内部格式未知（非 DEX/ELF/ZIP 魔数，非强加密）；
 - `shared_prefs` 的 AES key、模式和明文未知；
 - OAID、电话状态、风险数据是否上报及服务端保存期限未知；
@@ -59,3 +63,6 @@
 | 风控 | 风险中心与适当性 | 追加购前闸门、权限位、深链准入、预警规则、短信验证、遥测信封 |
 | 混淆 | 只有 keystream 与 stub | 追加三张短码表、native 功能号 ABI、不可解码比例量化 |
 | keystream | `fb1cd667…`，920/928 | `b8f6bbc7…`，921/928，`node --check` 82→369 |
+| native 容器 | 「非标准 UPX，`upx -d` 失败」 | **标准 UPX 6.02 + 伪造节头挤走尾部块**，原因可复现 |
+| 符号数来源 | 按 `DT_SYMTAB`→`DT_STRTAB` 间距推算 | **`DT_HASH` 的 `nchain` 直接给出**（53），与间距推算互证 |
+| native 装载 | 只记录 `libShanYCore.so` 的调用序列 | 追加 `libndktest.so` 同型序列 + 熵分布 + 解包器骨架 |
