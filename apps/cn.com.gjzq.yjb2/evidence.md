@@ -97,3 +97,35 @@ PRAGMA integrity_check;
 | 已验证 | 可从 APK/资源/只读设备快照直接复现 |
 | 结构已证实 | 符号、调用点、schema 或格式存在，但完整语义未还原 |
 | 未知 | 需要运行时、服务端或高熵 native 深度反汇编才能闭环 |
+
+## 8. 运行态载荷与临时解包目录
+
+样本 `9.05.007`（只读设备当前安装版本）在进程存活期间产生两类解包期文件，
+取回后的哈希如下，均只用于格式核对，不与 `9.05.004` 主样本混写：
+
+| 对象 | 大小 | SHA-256 |
+|---|---:|---|
+| `files/i12196010e51071ed` | `69,262,848` | `58d34180407eb06e901802c520d1a45d8145a113745d29f9919447d2c42074f` |
+| `.tcache/.templ.jar` | `423,320` | `ce15254e51e3cc2a1354a9ed6d70642da2c1f50c1d5bb0fd8523379b09085b0` |
+| `.tcache/.tempr.jar` | `29,075` | `2dac063e5aec6bfe0fbbb9e002cba9e1d4f88391b3d8f4c3139c4c65ca1b4828` |
+| `.tcache/libs/libhts.so` | `151,840` | `d6d9c0f6c607a27d4c06c01bd0f6a64f35128ff801159c2bb0f695fd44ef2df5` |
+
+`i12196010e51071ed` 的 40 字节头部与主样本 `assets/ijiami.dat` 同格式但
+不同实例（长度字段 `69,262,848` 对 `69,114,092`，ID
+`ed186bf3f8a4acf0d8450fdb005efa66` 对 `d39c9da2c2ccce5f0f6f0129e91152ce`）。
+实测统计：正文熵 `4.639`、`0xB2` 占 `32.8%`、`0x41` 占 `22.8%`、
+`gzip` 后 `14,513,395` 字节；全文无 `dex\n` / `\x7fELF` /
+`PK\x03\x04` / `cn/com` / `Ljava/` / `yongjinbao` 标记，周期
+`1/2/4/8/16/32` 的按列众数 XOR 解扰也不产生 DEX/ELF 头。
+
+`.tcache` 在应用进程退出后消失，因此这些对象属于解包期临时产物；复现需在
+进程存活时只读取回，命令形如：
+
+```bash
+ssh root@<host> 'nsenter -t 1 -m -- cat /data/data/cn.com.gjzq.yjb2/.tcache/.templ.jar'
+ssh root@<host> 'nsenter -t 1 -m -- cat /data/data/cn.com.gjzq.yjb2/files/i12196010e51071ed'
+```
+
+匿名可执行段（解密后的代码页）只存在于 `/proc/<pid>/maps` 的 `00:00 0`
+`r-xp` 区间，静态文件不含明文代码。
+
