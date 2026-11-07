@@ -247,6 +247,19 @@
           "sha256": "e6cc89f97669d86601843a8c741459c2c3aa74386cb7e2206a7da60e7d10c82d"
         }
       ]
+    },
+    {
+      "app": "Xiaomi Market",
+      "package": "com.xiaomi.market",
+      "version_name": "4.129.10",
+      "version_code": 40007720,
+      "files": [
+        {
+          "name": "base.apk",
+          "size": 62827916,
+          "sha256": "9b39be35a80d6eddfec960b309fc34ef4dd3449c387fa0b117f3191e21cb8066"
+        }
+      ]
     }
   ]
 }
